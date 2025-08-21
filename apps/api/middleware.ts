@@ -19,7 +19,15 @@ export default clerkMiddleware(async (auth, req) => {
       return; // continue
     }
 
-    // No HTML handling at all
+    // Handle SPA routes - serve the React app for all non-API routes
+    if (req.method === "GET") {
+      const res = NextResponse.next();
+      // Add minimal guard header for debugging
+      res.headers.set("x-guard-active", "1");
+      return res;
+    }
+
+    // For non-GET requests, just continue
     return; 
   } catch (e) {
     console.error("middleware_failed", {
@@ -34,5 +42,5 @@ export default clerkMiddleware(async (auth, req) => {
 });
 
 export const config = {
-  matcher: ["/api/(.*)"], // 👈 API only
+  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/api/(.*)"], // 👈 Restore full matcher
 }; 
