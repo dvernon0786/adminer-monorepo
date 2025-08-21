@@ -18,6 +18,11 @@ Successfully recreated a complete React/TypeScript project from the provided cod
 - **Tailwind Setup**: Configured PostCSS and Tailwind for proper CSS processing
 - **Environment Configuration**: Set up separate .env files for web and API apps
 
+### Build Error Resolution
+- **TypeScript Type Error**: Fixed missing `AuthPayload` type in API response
+- **API Type Safety**: Added proper typing for authenticated endpoint responses
+- **Build Process**: Resolved Vercel deployment build failures
+
 ## High-level Task Breakdown
 
 ### ✅ Task 1: Project Setup and Dependencies
@@ -132,11 +137,25 @@ The project has been fully recreated and all patches applied. The application is
 - **Authentication**: Centralize auth logic to avoid duplicate redirects and toasts
 - **Form Validation**: Use Zod schemas with proper error handling and accessibility
 
+### **API Development & TypeScript**
+- **Response Type Safety**: Always define complete type unions for API responses
+- **Type Definitions**: Include all possible response shapes in the Data union type
+- **Build Validation**: Test TypeScript compilation before deployment to catch type errors early
+
 ### **UI/UX Improvements**
 - **Error Handling**: Provide clear, accessible error messages with proper ARIA attributes
 - **Loading States**: Disable forms until authentication state is known
 - **Animation Cleanup**: Always cancel requestAnimationFrame on component unmount
 - **Copy Consistency**: Use en dashes (–) for ranges and maintain brand voice
+
+## Recent Fixes Applied
+
+### **TypeScript Build Error Fix (Latest)**
+- **Issue**: API build failed with "Object literal may only specify known properties, and 'auth' does not exist in type 'Data'"
+- **Root Cause**: Missing `AuthPayload` type in the Data union type for authenticated responses
+- **Solution**: Added `AuthPayload` type with proper structure for quota/status endpoint
+- **Files Modified**: `adminer/apps/api/pages/api/consolidated.ts`
+- **Status**: ✅ Fixed, committed, and pushed to resolve Vercel deployment
 
 ## Next Steps
 
