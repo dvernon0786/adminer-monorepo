@@ -8,15 +8,8 @@ const nextConfig = {
       },
     ];
   },
-  // Serve SPA from public directory
-  async rewrites() {
-    return [
-      {
-        source: "/(.*)",
-        destination: "/public/index.html",
-      },
-    ];
-  },
+  // Remove problematic rewrites that were serving index.html for all routes
+  // Next.js will now properly serve static assets from public/ directory
 };
 
 export default nextConfig; 
