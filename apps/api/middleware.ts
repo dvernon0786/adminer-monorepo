@@ -4,7 +4,7 @@ import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
 // Public routes (static SPA + public API health)
 const isPublicRoute = createRouteMatcher([
   "/",               // SPA entry
-  "/dashboard(.*)",  // SPA client-routed pages must remain public at HTTP level
+  "/dashboard(.*)",  // SPA client-routed pages should be public at HTTP level
   "/sign-in(.*)",
   "/sign-up(.*)",
   "/api/consolidated", // allow health probe without auth (we gate by action below)
@@ -14,14 +14,14 @@ const isPublicRoute = createRouteMatcher([
 // Strict API protection (JSON 401 on unauthenticated)
 const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   const url = new URL(req.url);
 
   // Always stamp a "server-guard" cookie so the SPA knows middleware is active
   const res = NextResponse.next();
   res.cookies.set("sg", "1", {
     path: "/",
-    sameSite: "lax",  // lowercase
+    sameSite: "lax",  // lowercase per Next.js types
     httpOnly: false,  // readable by SPA
     secure: true,
     maxAge: 60 * 60,  // 1 hour
@@ -41,7 +41,7 @@ export default clerkMiddleware((auth, req) => {
 
   // For API routes, enforce auth and return JSON 401 when signed out (no HTML redirects)
   if (isApiRoute(req)) {
-    const { userId } = auth(); // NOTE: auth is a function
+    const { userId } = await auth(); // <-- await the Promise in your Clerk typing
     if (!userId) {
       return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
     }
