@@ -11,48 +11,72 @@ const isPublicRoute = createRouteMatcher([
   "/api/public/(.*)",
 ]);
 
-// Strict API protection (JSON 401 on unauthenticated)
+// API routes (enforce JSON 401 when unauthenticated)
 const isApiRoute = createRouteMatcher(["/api/(.*)"]);
+
+// Helper: is this a browser navigation (HTML doc request)?
+function isHtmlNav(req: Request) {
+  // Only GET requests with text/html in Accept are treated as navigations
+  if ((req as any).method !== "GET") return false;
+  const accept = req.headers.get("accept") || "";
+  return accept.includes("text/html");
+}
 
 export default clerkMiddleware(async (auth, req) => {
   const url = new URL(req.url);
 
-  // Always stamp a "server-guard" cookie so the SPA knows middleware is active
-  const res = NextResponse.next();
-  res.cookies.set("sg", "1", {
-    path: "/",
-    sameSite: "lax",  // lowercase per Next.js types
-    httpOnly: false,  // readable by SPA
-    secure: true,
-    maxAge: 60 * 60,  // 1 hour
-  });
+  // Default is "continue" the chain
+  let res: NextResponse | undefined;
 
-  // Let public routes pass without server-side auth redirects
-  if (isPublicRoute(req)) {
-    // Keep /api/consolidated?action=health public
-    if (
-      url.pathname.startsWith("/api/consolidated") &&
-      url.searchParams.get("action") === "health"
-    ) {
-      return res;
-    }
-    return res;
-  }
-
-  // For API routes, enforce auth and return JSON 401 when signed out (no HTML redirects)
+  // --- API handling (no cookie stamping here) ---
   if (isApiRoute(req)) {
-    const { userId } = await auth(); // <-- await the Promise in your Clerk typing
+    // Health probe remains public
+    if (url.pathname.startsWith("/api/consolidated") && url.searchParams.get("action") === "health") {
+      return; // continue
+    }
+    // Enforce auth; return JSON 401 (no redirects) if signed out
+    const { userId } = await auth();
     if (!userId) {
       return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
     }
+    return; // continue
+  }
+
+  // --- Non-API routes ---
+  // Let public routes pass; we only stamp the cookie for real HTML navigations
+  if (isPublicRoute(req)) {
+    if (isHtmlNav(req)) {
+      res = NextResponse.next();
+      // Stamp the "server-guard" cookie only on browser navigations
+      res.cookies.set("sg", "1", {
+        path: "/",
+        sameSite: "lax",
+        httpOnly: false, // readable by SPA
+        secure: true,
+        maxAge: 60 * 60,
+      });
+      return res;
+    }
+    return; // continue (no cookie on non-HTML requests)
+  }
+
+  // For non-public, non-API routes (rare in this layout), stay passive
+  if (isHtmlNav(req)) {
+    res = NextResponse.next();
+    res.cookies.set("sg", "1", {
+      path: "/",
+      sameSite: "lax",
+      httpOnly: false,
+      secure: true,
+      maxAge: 60 * 60,
+    });
     return res;
   }
 
-  // For any other (non-API) route, remain passive; SPA handles UX.
-  return res;
+  return; // continue
 });
 
 export const config = {
-  // Run middleware for all human-routable paths + all API endpoints
+  // Run middleware for human-routable paths + all API endpoints; exclude assets/_next
   matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/api/(.*)"],
 }; 
