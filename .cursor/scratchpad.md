@@ -229,12 +229,12 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Fixed, committed, and pushed - all guard checks now pass locally
 
-### **Edge Runtime Debugging - API-Only Middleware (Latest)**
-- **Issue**: Production `MIDDLEWARE_INVOCATION_FAILED` despite local success
-- **Root Cause**: Edge runtime compatibility issue in Vercel production environment
-- **Solution**: Implemented minimal API-only middleware to isolate HTML vs API branch issues
+### **Edge Runtime Debugging - Ultra-Minimal Middleware (Latest)**
+- **Issue**: Still getting `MIDDLEWARE_INVOCATION_FAILED` even with minimal middleware
+- **Root Cause**: Edge runtime compatibility issue persists - need to isolate exact breaking point
+- **Solution**: Implemented ultra-minimal middleware with no Clerk, no async, no complex logic
 - **Files Modified**: `adminer/apps/api/middleware.ts`
-- **Status**: ✅ Deployed minimal version - testing to determine if 500 is in HTML/cookie branch or API branch
+- **Status**: ✅ Deployed ultra-minimal version - testing to determine if issue is with Clerk, async operations, or basic structure
 
 ### **Root Cause Identified: Static Asset MIME Type Issue (Latest)**
 - **Issue**: JS/CSS files served as `text/html` instead of proper MIME types after API-only middleware
