@@ -194,6 +194,13 @@ The project has been fully recreated and all patches applied. The application is
   - `adminer/.github/workflows/guard.yml` - CI workflow for automated testing
 - **Status**: ✅ Implemented, tested locally, all guard checks passing, committed and pushed
 
+### **Next.js Cookie Typing Fix (Latest)**
+- **Issue**: Vercel build failed with cookie typing error in Next.js 14.2.10
+- **Root Cause**: `sameSite: "Lax"` (uppercase) instead of `sameSite: "lax"` (lowercase)
+- **Solution**: Fixed cookie syntax to use correct Next.js 14.2.10 typing
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Fixed, committed, and pushed - Vercel build should now succeed
+
 ## Authoritative Loop-Proof System Overview
 
 ### **What Was Implemented**
