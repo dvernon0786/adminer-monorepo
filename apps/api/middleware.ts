@@ -1,67 +1,60 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from "@clerk/nextjs/server";
+
+// Public routes (static SPA + public API health)
+const isPublicRoute = createRouteMatcher([
+  "/",               // SPA entry
+  "/dashboard(.*)",  // SPA client-routed pages must remain public at HTTP level
+  "/sign-in(.*)",
+  "/sign-up(.*)",
+  "/api/consolidated", // allow health probe without auth (we gate by action below)
+  "/api/public/(.*)",
+]);
+
+// Strict API protection (JSON 401 on unauthenticated)
+const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
 export default clerkMiddleware((auth, req) => {
-  const { pathname } = req.nextUrl;
+  const url = new URL(req.url);
 
-  // Never touch static, assets, or Next internals
-  if (
-    pathname.startsWith("/_next") ||
-    pathname.startsWith("/assets") ||
-    pathname.startsWith("/public") ||
-    pathname.startsWith("/favicon")
-  ) {
-    return NextResponse.next();
+  // Always stamp a "server-guard" cookie so the SPA knows middleware is active
+  const res = NextResponse.next();
+  res.cookies.set({
+    name: "sg",
+    value: "1",
+    path: "/",
+    sameSite: "Lax",
+    httpOnly: false, // readable by SPA
+    secure: true,
+    maxAge: 60 * 60, // 1 hour
+  });
+
+  // Let public routes pass without server-side auth redirects
+  if (isPublicRoute(req)) {
+    // Keep /api/consolidated?action=health public
+    if (
+      url.pathname.startsWith("/api/consolidated") &&
+      url.searchParams.get("action") === "health"
+    ) {
+      return res;
+    }
+    return res;
   }
 
-  // Handle API routes separately (protect but don't redirect)
-  if (pathname.startsWith("/api")) {
-    // Allow health endpoint to pass through (public)
-    if (pathname === "/api/consolidated" && req.nextUrl.searchParams.get("action") === "health") {
-      return NextResponse.next();
-    }
-    
-    // Protect all other API routes
-    if (!auth.userId) {
+  // For API routes, enforce auth and return JSON 401 when signed out (no HTML redirects)
+  if (isApiRoute(req)) {
+    const { userId } = auth(); // NOTE: auth is a function
+    if (!userId) {
       return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
     }
-    return NextResponse.next();
+    return res;
   }
 
-  // Handle page-level redirects (loop-proof)
-  const isSignedIn = Boolean(auth.userId);
-  const here = pathname + req.nextUrl.search;
-
-  // Helper function to prevent redirect loops
-  const go = (targetPath: string) => {
-    if (targetPath === here) {
-      return NextResponse.next(); // Prevent redirect to same path
-    }
-    return NextResponse.redirect(new URL(targetPath, req.url));
-  };
-
-  // Signed-in users shouldn't stay on sign-in/sign-up/home if you want dashboard
-  if (isSignedIn && (pathname === "/" || pathname === "/signin" || pathname === "/signup")) {
-    return go("/dashboard");
-  }
-
-  // Signed-out users shouldn't access /dashboard
-  if (!isSignedIn && pathname.startsWith("/dashboard")) {
-    return go(`/signin?redirect_url=${encodeURIComponent(here)}`);
-  }
-
-  return NextResponse.next();
+  // For any other (non-API) route, remain passive; SPA handles UX.
+  return res;
 });
 
 export const config = {
-  matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     * - public folder
-     */
-    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
-  ],
+  // Run middleware for all human-routable paths + all API endpoints
+  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/api/(.*)"],
 }; 

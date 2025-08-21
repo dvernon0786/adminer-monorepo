@@ -1,40 +1,38 @@
-import { useAuth } from '@clerk/clerk-react'
-import { useEffect } from 'react'
-import { useNavigate, useLocation } from 'react-router-dom'
-import { toast } from 'sonner'
+import { useEffect, useRef } from "react";
+import { useAuth } from "@clerk/clerk-react";
+
+// Read a simple cookie (no external deps)
+function hasServerGuardCookie() {
+  if (typeof document === "undefined") return false;
+  return document.cookie.split(";").some((v) => v.trim().startsWith("sg="));
+}
+
+const ONE_SHOT_KEY = "authredir:once";
 
 export default function AuthRedirector() {
-  const { isSignedIn, isLoaded } = useAuth()
-  const navigate = useNavigate()
-  const { pathname } = useLocation()
+  const { isSignedIn } = useAuth();
+  const didRun = useRef(false);
 
   useEffect(() => {
-    if (!isLoaded) return
+    if (didRun.current) return;
+    didRun.current = true;
 
-    // Helper function to prevent redirect loops
-    const go = (targetPath: string) => {
-      if (targetPath === pathname) {
-        return // Prevent redirect to same path
+    // If middleware is active, client stays passive (no auto-redirect)
+    if (hasServerGuardCookie()) return;
+
+    // Local dev (no middleware): do at most ONE auto-redirect per tab session
+    const once = sessionStorage.getItem(ONE_SHOT_KEY);
+    if (once === "1") return;
+
+    if (isSignedIn) {
+      // Signed-in users landing on "/" get a one-time nudge to dashboard
+      if (location.pathname === "/") {
+        sessionStorage.setItem(ONE_SHOT_KEY, "1");
+        location.replace("/dashboard");
       }
-      navigate(targetPath, { replace: true })
-      if (import.meta.env.DEV) console.log(`[AuthRedirector] ${pathname} → ${targetPath}`)
     }
+  }, [isSignedIn]);
 
-    // Signed-in users: redirect from public paths to dashboard
-    if (isSignedIn && (pathname === '/' || pathname === '/signin' || pathname === '/signup')) {
-      go('/dashboard')
-      toast.success('Welcome! Redirecting to dashboard...')
-      return
-    }
-
-    // Signed-out users: redirect from protected paths to signin
-    if (!isSignedIn && pathname.startsWith('/dashboard')) {
-      go(`/signin?redirect_url=${encodeURIComponent(pathname)}`)
-      return
-    }
-
-    // No redirect needed
-  }, [isLoaded, isSignedIn, pathname, navigate])
-
-  return null
+  // No UI; passive when sg cookie exists.
+  return null;
 } 
