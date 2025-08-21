@@ -1,0 +1,162 @@
+{
+  "include": [
+    "**/*.{ts,tsx,js,jsx,json,yaml,yml,env,sh,md,html,css,scss}",
+    "apps/**/*.{ts,tsx,js,jsx,json,yaml,yml,env,sh,md,html,css,scss}"
+  ],
+  "exclude": [
+    "**/*.lock",
+    "**/*.map",
+    "**/package-lock.json",
+    "**/node_modules/**",
+    "**/.next/**",
+    "**/dist/**",
+    "**/build/**",
+    "**/.vercel/**",
+    "**/.turbo/**",
+    "**/.git/**",
+    "**/.cache/**",
+    "**/coverage/**",
+    "**/apps/api/public/assets/**"
+  ],
+  "whitelist": [
+    "localhost:3000",
+    "127.0.0.1",
+    "example.com",
+    "www.adminer.online",
+    "adminer.online",
+    "^pk_test_[A-Za-z0-9]+$",
+    "^sk_test_[A-Za-z0-9]+$",
+    "test-org-",
+    "Test Organization",
+    "YOUR_TEST_KEY_HERE",
+    "YOUR_TEST_SECRET_KEY_HERE",
+    "YOUR_TEST_API_KEY_HERE",
+    "YOUR_GENERATED_WEBHOOK_SECRET_HERE",
+    "prod_FREE_PRODUCT_ID_HERE",
+    "prod_PRO_PRODUCT_ID_HERE",
+    "prod_ENTERPRISE_PRODUCT_ID_HERE",
+    "price_test_PRO_PRICE_ID_HERE",
+    "price_test_ENTERPRISE_PRICE_ID_HERE",
+    "price_live_PRO_PRICE_ID_HERE",
+    "price_live_ENTERPRISE_PRICE_ID_HERE",
+    "YOUR_DODO_API_KEY_HERE",
+    "YOUR_DODO_SECRET_KEY_HERE",
+    "YOUR_DODO_WEBHOOK_SECRET_HERE",
+    "YOUR_PRODUCTION_KEY_HERE",
+    "YOUR_PRODUCTION_SECRET_KEY_HERE",
+    "username:password@localhost:5432",
+    "postgresql://username:password@localhost:5432/adminer_dev",
+    "https://api.dodopayments.com",
+    "https://dashboard.clerk.com",
+    "https://clerk.com",
+    "https://reactjs.org",
+    "https://reactrouter.com",
+    "https://www.w3.org",
+    "https://fonts.googleapis.com",
+    "https://images.unsplash.com",
+    "https://reactjs.org/link/",
+    "https://clerk.com/docs/",
+    "https://clerk.com/support",
+    "https://reactrouter.com/en/main/",
+    "https://fonts.googleapis.com/css2",
+    "https://images.unsplash.com/photo-",
+    "http://www.w3.org/1999/xhtml",
+    "http://www.w3.org/1998/Math/MathML",
+    "http://www.w3.org/2000/svg",
+    "http://localhost",
+    "xmlns:http://www.w3.org/2000/svg",
+    "https://your-domain.com",
+    "https://dodopayments.com",
+    "https://checkout.dodopayments.com",
+    "https://docs.dodopayments.com",
+    "https://test.dodopayments.com",
+    "https://nextjs.org/docs",
+    "YOUR_CLERK_TOKEN",
+    "1494790108755",
+    "1472099645785",
+    "1438761681033",
+    "postgres://...",
+    "mongodb+srv://...",
+    "process.env.X || \"hardcoded-value\"",
+    "/Users/...",
+    "C:\\Users\\...",
+    "apiKey = \"sk_live_1234567890abcdef\"",
+    "https://regex101.com",
+    "https://github.com/micromatch/micromatch",
+    "https://owasp.org/www-project-top-ten"
+  ],
+  "patterns": [
+    {
+      "id": "PLACEHOLDER_GENERIC",
+      "regex": "(YOUR_|REPLACE_ME|<TO_BE_FILLED>|TBD|CHANGEME|__PLACEHOLDER__|FILL_ME_IN|UPDATE_THIS)"
+    },
+    {
+      "id": "TODO_FIXME",
+      "regex": "\\b(TODO|FIXME|HACK|XXX)\\b"
+    },
+    {
+      "id": "CLERK_KEYS",
+      "regex": "\\b(pk|sk)_[A-Za-z0-9]{10,}\\b"
+    },
+    {
+      "id": "OPENAI_KEY",
+      "regex": "\\bsk-[A-Za-z0-9]{20,}\\b"
+    },
+    {
+      "id": "GOOGLE_API",
+      "regex": "\\bAIza[0-9A-Za-z\\-_]{35}\\b"
+    },
+    {
+      "id": "AWS_KEY",
+      "regex": "\\bAKIA[0-9A-Z]{16}\\b"
+    },
+    {
+      "id": "GITHUB_TOKEN",
+      "regex": "\\bghp_[A-Za-z0-9]{30,}\\b"
+    },
+    {
+      "id": "SLACK_BOT",
+      "regex": "\\bxoxb-[0-9A-Za-z\\-]{20,}\\b"
+    },
+    {
+      "id": "PRIVATE_KEY",
+      "regex": "-----BEGIN (RSA|PRIVATE|OPENSSH) KEY-----"
+    },
+    {
+      "id": "DB_URLS",
+      "regex": "\\b(postgres|mysql|mongodb\\+srv|redis|amqp|kafka|smtp)://[^\\s\"']+"
+    },
+    {
+      "id": "JWT_BEARER",
+      "regex": "\\bBearer\\s+[A-Za-z0-9\\-_.]+\\b"
+    },
+    {
+      "id": "HARDCODED_TOKEN_WORD",
+      "regex": "\\b(token|secret|password|passwd|apikey|api_key|apiKey)\\s*[:=]\\s*['\\\"][^'\\\"]{8,}['\\\"]"
+    },
+    {
+      "id": "ENV_INLINE",
+      "regex": "process\\.env\\.[A-Z0-9_]+\\s*\\|\\|\\s*['\\\"][^'\\\"]+['\\\"]"
+    },
+    {
+      "id": "LOCAL_PATHS",
+      "regex": "(/Users/[^\\s\"']+|C:\\\\Users\\\\[^\\s\"']+)"
+    },
+    {
+      "id": "HARDCODED_URL",
+      "regex": "\\bhttps?://(localhost|127\\.0\\.0\\.1|[^\\s\"']+)\\b"
+    },
+    {
+      "id": "MAGIC_NUMBER_LONG",
+      "regex": "(?<![A-Za-z0-9_])(\\d{6,})(?![A-Za-z0-9_])"
+    },
+    {
+      "id": "DODO_KEYS",
+      "regex": "\\b(dodo_test_|dodo_live_)[A-Za-z0-9_]+\\b"
+    },
+    {
+      "id": "NEON_DB_URL",
+      "regex": "\\bneondb_[a-z0-9]+_[a-z0-9]+\\b"
+    }
+  ]
+} 

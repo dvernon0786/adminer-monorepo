@@ -1,6 +1,7 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAuth } from "@clerk/nextjs/server";
 import { unauth } from "../../lib/util";
+import { getQuotaInfo } from "../../src/lib/quota";
 
 type HealthPayload = {
   status: "healthy";
@@ -19,6 +20,8 @@ type QuotaPayload = {
     plan: string;
     used: number;
     limit: number;
+    remaining: number;
+    upgradeUrl: string;
   };
 };
 type ErrorPayload = { error: string };
@@ -48,16 +51,20 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       return;
     }
 
-    // For now, return mock data to test the endpoint
-    res.status(200).json({
-      status: "healthy",
-      quota: {
-        plan: "free",
-        used: 0,
-        limit: 10
-      }
-    });
-    return;
+    try {
+      // Get comprehensive quota information using the new quota system
+      const quotaInfo = await getQuotaInfo(orgId);
+      
+      res.status(200).json({
+        status: "healthy",
+        quota: quotaInfo
+      });
+      return;
+    } catch (error) {
+      console.error('Quota error:', error);
+      res.status(500).json({ error: "Failed to fetch quota information" });
+      return;
+    }
   }
 
   res.status(400).json({ error: "Unsupported action" });

@@ -19,32 +19,44 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       return res.status(400).json({ error: 'Missing plan or email' })
     }
 
-    // Map plan to Dodo product ID
-    const productId = 
-      plan === 'pro' ? process.env.DODO_PRODUCT_PRO :
-      plan === 'enterprise' ? process.env.DODO_PRODUCT_ENTERPRISE :
-      null
-
-    if (!productId) {
-      return res.status(500).json({ error: 'Product configuration missing' })
+    // Only allow pro and enterprise plans (free is handled by /api/dodo/free)
+    if (plan === 'free') {
+      return res.status(400).json({ error: 'Free plan should use /api/dodo/free endpoint' })
     }
 
+    // Map plan to Dodo price ID
+    const priceId = 
+      plan === 'pro' ? process.env.DODO_PRICE_PRO :
+      plan === 'enterprise' ? process.env.DODO_PRICE_ENTERPRISE :
+      null
+
+    if (!priceId) {
+      return res.status(500).json({ error: 'Price configuration missing for this plan' })
+    }
+
+    // Get Dodo configuration
+    const DODO_API_BASE = process.env.DODO_API_BASE || 'https://api.dodopayments.com'
+    const DODO_SECRET_KEY = process.env.DODO_SECRET_KEY!
+    const APP_BASE_URL = process.env.APP_BASE_URL || 'https://www.adminer.online'
+
     // Create subscription with payment link
-    const response = await fetch('https://api.dodopayments.com/v1/subscriptions', {
+    const response = await fetch(`${DODO_API_BASE}/subscriptions`, {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${process.env.DODO_API_KEY}`,
+        'Authorization': `Bearer ${DODO_SECRET_KEY}`,
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        product_id: productId,
+        price_id: priceId,  // Use price_id instead of product_id
         customer: { email },
         payment_link: true, // Returns hosted checkout URL
         metadata: { 
           orgId: userId,
           plan: plan,
           source: 'adminer-web'
-        }
+        },
+        success_url: `${APP_BASE_URL}/dashboard?upgrade=success`,
+        cancel_url: `${APP_BASE_URL}/pricing?upgrade=cancelled`
       })
     })
 

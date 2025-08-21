@@ -124,6 +124,33 @@ export default function Pricing() {
     }
   }
 
+  const handlePlanAction = async (planId: string) => {
+    if (planId === 'free') {
+      // Handle free plan creation
+      const orgId = organization?.id
+      const orgName = organization?.name || 'My Org'
+      
+      if (!orgId) {
+        toast.error('Please create or select an organization first')
+        return
+      }
+      
+      try {
+        setUpgrading('free')
+        await startFree(orgId, orgName)
+        toast.success('Free plan activated! Redirecting to dashboard...')
+        setTimeout(() => navigate('/dashboard'), 1000)
+      } catch (e) {
+        toast.error((e as Error).message || 'Failed to activate free plan')
+      } finally {
+        setUpgrading(null)
+      }
+    } else {
+      // Handle paid plan upgrades
+      handleUpgrade(planId)
+    }
+  }
+
   return (
     <section id="pricing" className="relative z-10 py-24 px-6 lg:px-10 bg-white/5 backdrop-blur-lg border-y border-white/10">
       <div className="max-w-7xl mx-auto">
@@ -195,32 +222,7 @@ export default function Pricing() {
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
                       : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
                   }`}
-                  onClick={async () => {
-                    if (plan.planId === 'free') {
-                      // Handle free plan creation
-                      const orgId = organization?.id
-                      const orgName = organization?.name || 'My Org'
-                      
-                      if (!orgId) {
-                        toast.error('Please create or select an organization first')
-                        return
-                      }
-                      
-                      try {
-                        setUpgrading('free')
-                        await startFree(orgId, orgName)
-                        toast.success('Free plan activated! Redirecting to dashboard...')
-                        setTimeout(() => navigate('/dashboard'), 1000)
-                      } catch (e) {
-                        toast.error((e as Error).message || 'Failed to activate free plan')
-                      } finally {
-                        setUpgrading(null)
-                      }
-                    } else {
-                      // Handle paid plan upgrades
-                      handleUpgrade(plan.planId)
-                    }
-                  }}
+                  onClick={() => handlePlanAction(plan.planId)}
                   disabled={upgrading === plan.planId}
                 >
                   {upgrading === plan.planId ? (
