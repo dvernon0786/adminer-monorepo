@@ -208,6 +208,13 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Fixed, committed, and pushed - resolves TypeScript compilation error
 
+### **Edge Runtime Middleware Hardening Fix (Latest)**
+- **Issue**: Runtime 500 MIDDLEWARE_INVOCATION_FAILED error on Vercel Edge
+- **Root Cause**: Middleware doing too much work on every request (cookies on preflights, HEAD/OPTIONS)
+- **Solution**: Hardened middleware to only stamp cookies on real browser navigations
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Fixed, committed, and pushed - eliminates Edge runtime failures
+
 ## Authoritative Loop-Proof System Overview
 
 ### **What Was Implemented**
