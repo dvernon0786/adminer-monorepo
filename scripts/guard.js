@@ -1,10 +1,10 @@
-import fs from 'fs';
-import path from 'path';
+const fs = require('fs');
+const path = require('path');
 
 const checks = [
-  'package.json',
-  'app/api/consolidated/route.ts',
-  '../web/package.json'
+  'package.json', // Adjusted path for Vercel root directory
+  'pages/api/consolidated.ts', // Pages Router API file
+  '../web/package.json' // Adjusted path for Vercel root directory
 ];
 
 let ok = true;

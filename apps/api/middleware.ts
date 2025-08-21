@@ -1,9 +1,9 @@
-import { authMiddleware } from "@clerk/nextjs";
+import { clerkMiddleware, auth } from "@clerk/nextjs/server";
 import "./src/env"; // boot-time assert for required envs (server-only)
 
-export default authMiddleware({
-  // We don't declare publicRoutes here because the matcher ensures only /api/* is protected.
-  // Any matched route requires a valid session; otherwise Clerk returns 401 automatically.
+export default clerkMiddleware((auth) => {
+  // Protect all API routes
+  return auth.protect();
 });
 
 export const config = {
