@@ -243,12 +243,12 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Fixed and deployed - middleware now only runs on API routes and SPA routes, not on static assets
 
-### **Root Cause Identified: Static Asset MIME Type Issue (Latest)**
-- **Issue**: JS/CSS files served as `text/html` instead of proper MIME types after API-only middleware
-- **Root Cause**: Removing SPA route handling caused Next.js to serve `index.html` for all routes including assets
-- **Solution**: Restored minimal SPA route handling while keeping middleware Edge-safe and simple
-- **Files Modified**: `adminer/apps/api/middleware.ts`
-- **Status**: ✅ Fixed and deployed - SPA routes restored with minimal Edge-safe logic
+### **Root Cause Identified: Next.js Rewrites Causing Static Asset MIME Type Issues (Latest)**
+- **Issue**: Static assets (JS/CSS) still served as `text/html` despite middleware matcher fix
+- **Root Cause**: Next.js rewrites() configuration was redirecting ALL routes to /public/index.html
+- **Solution**: Removed problematic rewrites() that were serving index.html for all routes including static assets
+- **Files Modified**: `adminer/apps/api/next.config.mjs`
+- **Status**: ✅ Fixed and deployed - Next.js will now properly serve static assets from public/ directory
 
 ## Authoritative Loop-Proof System Overview
 
