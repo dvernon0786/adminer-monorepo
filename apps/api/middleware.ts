@@ -22,15 +22,13 @@ function isPreflight(req: Request) {
 function isHtmlNav(req: Request) {
   if (req.method !== "GET") return false;
   const accept = req.headers.get("accept") || "";
-  return accept.includes("text/html");
+  // Accept: */* is common for browser requests, treat as HTML navigation
+  // No Accept header (null) is also common for direct browser navigation
+  return accept.includes("text/html") || accept === "*/*" || accept === "";
 }
 
 export default clerkMiddleware(async (auth, req) => {
   try {
-    // --- Early exits that often trip Edge ---
-    if (isPreflight(req)) return;         // no cookie, no auth, just continue
-    if (req.method === "HEAD") return;    // same: keep it ultra-minimal
-
     const url = new URL(req.url);
 
     // Default is "continue" the chain
@@ -67,6 +65,7 @@ export default clerkMiddleware(async (auth, req) => {
         res.headers.set("x-guard-active", "1");   // optional, helps verify quickly
         return res;
       }
+      // For non-HTML requests (OPTIONS, HEAD, etc.), just continue without headers
       return; // continue (no cookie on non-HTML requests)
     }
 
