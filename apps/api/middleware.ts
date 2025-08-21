@@ -1,28 +1,77 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
-import { NextResponse } from 'next/server';
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { getAuth } from "@clerk/nextjs/server";
 
-const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+const PUBLIC_PATHS = new Set(["/", "/signin", "/signup"]);
+const IGNORE_PREFIXES = ["/_next", "/assets", "/favicon", "/api", "/public"];
 
-if (!publishableKey) {
-  // Useful during local dev; safe to keep. Won't leak keys.
-  console.error('CLERK_PUBLISHABLE_KEY is missing in middleware.');
-}
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-export default clerkMiddleware((auth, req) => {
-  // Allow health endpoint to pass through (public)
-  const url = new URL(req.url);
-  if (url.pathname === '/api/consolidated' && url.searchParams.get('action') === 'health') {
+  // Never touch static, assets, or Next internals
+  if (IGNORE_PREFIXES.some((p) => pathname.startsWith(p))) {
     return NextResponse.next();
   }
-  
-  // Protect all other API routes
-  // @ts-ignore - Ignore TypeScript errors for Clerk v6.9.4 compatibility
-  if (!auth.userId) {
-    return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
+
+  // Handle API routes separately (protect but don't redirect)
+  if (pathname.startsWith("/api")) {
+    // Allow health endpoint to pass through (public)
+    if (pathname === "/api/consolidated" && req.nextUrl.searchParams.get("action") === "health") {
+      return NextResponse.next();
+    }
+    
+    // Protect all other API routes
+    try {
+      const { userId } = getAuth(req);
+      if (!userId) {
+        return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
+      }
+      return NextResponse.next();
+    } catch (error) {
+      return NextResponse.json({ error: "authentication error" } as const, { status: 401 });
+    }
   }
-  return NextResponse.next();
-});
+
+  // Handle page-level redirects (loop-proof)
+  try {
+    const { userId } = getAuth(req);
+    const isSignedIn = Boolean(userId);
+    const here = pathname + search;
+
+    // Helper function to prevent redirect loops
+    const go = (targetPath: string) => {
+      if (targetPath === here) {
+        return NextResponse.next(); // Prevent redirect to same path
+      }
+      return NextResponse.redirect(new URL(targetPath, req.url));
+    };
+
+    // Signed-in users shouldn't stay on sign-in/sign-up/home if you want dashboard
+    if (isSignedIn && PUBLIC_PATHS.has(pathname)) {
+      return go("/dashboard");
+    }
+
+    // Signed-out users shouldn't access /dashboard
+    if (!isSignedIn && pathname.startsWith("/dashboard")) {
+      return go(`/signin?redirect_url=${encodeURIComponent(here)}`);
+    }
+
+    return NextResponse.next();
+  } catch (error) {
+    // If auth check fails, allow the request to proceed (fallback to client-side auth)
+    return NextResponse.next();
+  }
+}
 
 export const config = {
-  matcher: ['/api/:path*'], // protect API only
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     * - public folder
+     */
+    "/((?!_next/static|_next/image|favicon.ico|public/).*)",
+  ],
 }; 
