@@ -222,6 +222,13 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Implemented, committed, and pushed - middleware now bulletproof in production
 
+### **isHtmlNav Browser Compatibility Fix (Latest)**
+- **Issue**: Guard checks failing because `isHtmlNav` wasn't recognizing common browser Accept headers
+- **Root Cause**: `isHtmlNav` function was too strict, not handling `Accept: */*` and `null` headers
+- **Solution**: Enhanced `isHtmlNav` to recognize `Accept: */*` and missing Accept headers as HTML navigation
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Fixed, committed, and pushed - all guard checks now pass locally
+
 ## Authoritative Loop-Proof System Overview
 
 ### **What Was Implemented**
