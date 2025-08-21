@@ -229,6 +229,13 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Fixed, committed, and pushed - all guard checks now pass locally
 
+### **Edge Runtime Debugging - API-Only Middleware (Latest)**
+- **Issue**: Production `MIDDLEWARE_INVOCATION_FAILED` despite local success
+- **Root Cause**: Edge runtime compatibility issue in Vercel production environment
+- **Solution**: Implemented minimal API-only middleware to isolate HTML vs API branch issues
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Deployed minimal version - testing to determine if 500 is in HTML/cookie branch or API branch
+
 ## Authoritative Loop-Proof System Overview
 
 ### **What Was Implemented**
