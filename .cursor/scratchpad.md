@@ -236,6 +236,13 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Deployed minimal version - testing to determine if 500 is in HTML/cookie branch or API branch
 
+### **Root Cause Identified: Static Asset MIME Type Issue (Latest)**
+- **Issue**: JS/CSS files served as `text/html` instead of proper MIME types after API-only middleware
+- **Root Cause**: Removing SPA route handling caused Next.js to serve `index.html` for all routes including assets
+- **Solution**: Restored minimal SPA route handling while keeping middleware Edge-safe and simple
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Fixed and deployed - SPA routes restored with minimal Edge-safe logic
+
 ## Authoritative Loop-Proof System Overview
 
 ### **What Was Implemented**
