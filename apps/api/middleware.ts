@@ -1,19 +1,21 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware } from '@clerk/nextjs/server';
+import { NextResponse } from 'next/server';
 
-// Fail fast if required envs are missing (Edge-safe: only reads process.env)
-const required = ["CLERK_PUBLISHABLE_KEY", "CLERK_SECRET_KEY"] as const;
-for (const key of required) {
-  const v = process.env[key];
-  if (!v || String(v).trim() === "") {
-    throw new Error(
-      `Missing required env var: ${key}. Set it in Vercel (Preview & Production) or run "vercel pull" locally.`
-    );
-  }
+const publishableKey = process.env.CLERK_PUBLISHABLE_KEY;
+
+if (!publishableKey) {
+  // Useful during local dev; safe to keep. Won't leak keys.
+  console.error('CLERK_PUBLISHABLE_KEY is missing in middleware.');
 }
 
-// Protect only /api/*; return stable 401 JSON when unauthenticated
-export default clerkMiddleware((auth) => {
+export default clerkMiddleware((auth, req) => {
+  // Allow health endpoint to pass through (public)
+  const url = new URL(req.url);
+  if (url.pathname === '/api/consolidated' && url.searchParams.get('action') === 'health') {
+    return NextResponse.next();
+  }
+  
+  // Protect all other API routes
   // @ts-ignore - Ignore TypeScript errors for Clerk v6.9.4 compatibility
   if (!auth.userId) {
     return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
@@ -22,5 +24,5 @@ export default clerkMiddleware((auth) => {
 });
 
 export const config = {
-  matcher: ["/api/:path*"]
+  matcher: ['/api/:path*'], // protect API only
 }; 

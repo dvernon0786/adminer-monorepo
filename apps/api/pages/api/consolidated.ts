@@ -4,22 +4,26 @@ import { unauth } from "../../lib/util";
 
 type HealthPayload = {
   status: "healthy";
-  auth: { userId: string; orgId: string | null };
+  message: string;
 };
 type ErrorPayload = { error: string };
 type Data = HealthPayload | ErrorPayload;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
-  // Middleware enforces auth, but keep a defensive check for clarity/tests:
-  const { userId, orgId } = getAuth(req);
-  if (!userId) return unauth(res);
-
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
 
+  // Health endpoint is public (no auth required)
   if (action === "health") {
-    res.status(200).json({ status: "healthy", auth: { userId, orgId: orgId ?? null } });
+    res.status(200).json({ 
+      status: "healthy", 
+      message: "API is working - health endpoint is public" 
+    });
     return;
   }
+
+  // All other actions require authentication
+  const { userId, orgId } = getAuth(req);
+  if (!userId) return unauth(res);
 
   if (action === "quota/status") {
     if (!orgId) {
