@@ -135,6 +135,7 @@ export default function HeroSection() {
                   <Button
                     type="button"
                     className="h-14 px-8 text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
+                    // Remove redirectUrl from DOM element
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Sign In to Analyze
