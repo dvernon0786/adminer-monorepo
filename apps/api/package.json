@@ -5,9 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
-    "prebuild": "node ../../scripts/guard.js && node ./src/env-check.cjs",
+    "prebuild": "node scripts/guard.js && node ./src/env-check.cjs",
     "build": "next build",
-    "prestart": "node ../../scripts/guard.js && node ./src/env-check.cjs",
+    "prestart": "node scripts/guard.js && node ./src/env-check.cjs",
     "start": "next start -p 3000"
   },
   "dependencies": {
