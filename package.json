@@ -1,0 +1,15 @@
+{
+  "name": "adminer",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": ["apps/*"],
+  "scripts": {
+    "build": "npm run -w @adminer/web build && npm run -w @adminer/api build",
+    "dev:api": "npm run -w @adminer/api dev",
+    "dev:web": "npm run -w @adminer/web dev",
+    "guard": "node scripts/guard.js"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  }
+} 
