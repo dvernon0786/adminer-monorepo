@@ -14,66 +14,88 @@ const isPublicRoute = createRouteMatcher([
 // API routes (enforce JSON 401 when unauthenticated)
 const isApiRoute = createRouteMatcher(["/api/(.*)"]);
 
-// Helper: is this a browser navigation (HTML doc request)?
+// Add near top (helpers)
+function isPreflight(req: Request) {
+  return req.method === "OPTIONS";
+}
+
 function isHtmlNav(req: Request) {
-  // Only GET requests with text/html in Accept are treated as navigations
-  if ((req as any).method !== "GET") return false;
+  if (req.method !== "GET") return false;
   const accept = req.headers.get("accept") || "";
   return accept.includes("text/html");
 }
 
 export default clerkMiddleware(async (auth, req) => {
-  const url = new URL(req.url);
+  try {
+    // --- Early exits that often trip Edge ---
+    if (isPreflight(req)) return;         // no cookie, no auth, just continue
+    if (req.method === "HEAD") return;    // same: keep it ultra-minimal
 
-  // Default is "continue" the chain
-  let res: NextResponse | undefined;
+    const url = new URL(req.url);
 
-  // --- API handling (no cookie stamping here) ---
-  if (isApiRoute(req)) {
-    // Health probe remains public
-    if (url.pathname.startsWith("/api/consolidated") && url.searchParams.get("action") === "health") {
+    // Default is "continue" the chain
+    let res: NextResponse | undefined;
+
+    // --- API handling (no cookie stamping here) ---
+    if (isApiRoute(req)) {
+      // Health probe remains public
+      if (url.pathname.startsWith("/api/consolidated") && url.searchParams.get("action") === "health") {
+        return; // continue
+      }
+      // Enforce auth; return JSON 401 (no redirects) if signed out
+      const { userId } = await auth();
+      if (!userId) {
+        return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
+      }
       return; // continue
     }
-    // Enforce auth; return JSON 401 (no redirects) if signed out
-    const { userId } = await auth();
-    if (!userId) {
-      return NextResponse.json({ error: "unauthenticated" } as const, { status: 401 });
-    }
-    return; // continue
-  }
 
-  // --- Non-API routes ---
-  // Let public routes pass; we only stamp the cookie for real HTML navigations
-  if (isPublicRoute(req)) {
+    // --- Non-API routes ---
+    // Let public routes pass; we only stamp the cookie for real HTML navigations
+    if (isPublicRoute(req)) {
+      if (isHtmlNav(req)) {
+        res = NextResponse.next();
+        // Stamp the "server-guard" cookie only on browser navigations
+        res.cookies.set("sg", "1", {
+          path: "/",
+          sameSite: "lax",
+          httpOnly: false, // readable by SPA
+          secure: true,
+          maxAge: 60 * 60,
+        });
+        // When you *do* return a response, add a tiny marker header for debugging:
+        res.headers.set("x-guard-active", "1");   // optional, helps verify quickly
+        return res;
+      }
+      return; // continue (no cookie on non-HTML requests)
+    }
+
+    // For non-public, non-API routes (rare in this layout), stay passive
     if (isHtmlNav(req)) {
       res = NextResponse.next();
-      // Stamp the "server-guard" cookie only on browser navigations
       res.cookies.set("sg", "1", {
         path: "/",
         sameSite: "lax",
-        httpOnly: false, // readable by SPA
+        httpOnly: false,
         secure: true,
         maxAge: 60 * 60,
       });
+      // When you *do* return a response, add a tiny marker header for debugging:
+      res.headers.set("x-guard-active", "1");   // optional, helps verify quickly
       return res;
     }
-    return; // continue (no cookie on non-HTML requests)
-  }
 
-  // For non-public, non-API routes (rare in this layout), stay passive
-  if (isHtmlNav(req)) {
-    res = NextResponse.next();
-    res.cookies.set("sg", "1", {
-      path: "/",
-      sameSite: "lax",
-      httpOnly: false,
-      secure: true,
-      maxAge: 60 * 60,
-    });
-    return res;
+    return; // continue
+  } catch (e) {
+    // Never throw from Edge middleware; surface as 500 page would do.
+    // Convert to JSON only for API routes; otherwise just continue.
+    const isApi = isApiRoute(req);
+    if (isApi) {
+      return NextResponse.json({ error: "middleware_failed" }, { status: 500 });
+    }
+    // For HTML navs, don't brick the whole request—let Next handle it.
+    return; 
   }
-
-  return; // continue
 });
 
 export const config = {
