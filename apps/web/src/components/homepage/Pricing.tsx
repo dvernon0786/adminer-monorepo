@@ -1,10 +1,15 @@
-import { Check, ArrowRight } from 'lucide-react'
+import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
 import { SignedIn, SignedOut, SignUpButton, useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
+import { useState } from 'react'
+import { toast } from 'sonner'
 
 export default function Pricing() {
   const navigate = useNavigate()
+  const { user } = useAuth()
+  const [upgrading, setUpgrading] = useState<string | null>(null)
+  
   const plans = [
     {
       name: 'Starter',
@@ -21,6 +26,7 @@ export default function Pricing() {
       buttonText: 'Start Free',
       buttonStyle: 'outline',
       popular: false,
+      planId: 'free'
     },
     {
       name: 'Professional',
@@ -39,6 +45,7 @@ export default function Pricing() {
       buttonText: 'Start Free Trial',
       buttonStyle: 'primary',
       popular: true,
+      planId: 'pro'
     },
     {
       name: 'Enterprise',
@@ -58,8 +65,45 @@ export default function Pricing() {
       buttonText: 'Start Free Trial',
       buttonStyle: 'outline',
       popular: false,
+      planId: 'enterprise'
     },
   ]
+
+  const handleUpgrade = async (planId: string) => {
+    if (!user?.emailAddresses?.[0]?.emailAddress) {
+      toast.error('Please sign in with a valid email address')
+      return
+    }
+
+    setUpgrading(planId)
+    
+    try {
+      const response = await fetch('/api/dodo/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          plan: planId, 
+          email: user.emailAddresses[0].emailAddress 
+        })
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        throw new Error(error.error || 'Failed to create checkout session')
+      }
+
+      const { url } = await response.json()
+      
+      // Redirect to Dodo hosted checkout
+      window.location.href = url
+      
+    } catch (error) {
+      console.error('Upgrade error:', error)
+      toast.error('Failed to start upgrade process. Please try again.')
+    } finally {
+      setUpgrading(null)
+    }
+  }
 
   return (
     <section id="pricing" className="relative z-10 py-24 px-6 lg:px-10 bg-white/5 backdrop-blur-lg border-y border-white/10">
@@ -132,10 +176,20 @@ export default function Pricing() {
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
                       : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
                   }`}
-                  onClick={() => navigate('/dashboard')}
+                  onClick={() => plan.planId === 'free' ? navigate('/dashboard') : handleUpgrade(plan.planId)}
+                  disabled={upgrading === plan.planId}
                 >
-                  Go to Dashboard
-                  {plan.buttonStyle === 'primary' && <ArrowRight className="w-4 h-4 ml-2" />}
+                  {upgrading === plan.planId ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                      Processing...
+                    </>
+                  ) : plan.planId === 'free' ? (
+                    'Go to Dashboard'
+                  ) : (
+                    `Upgrade to ${plan.name}`
+                  )}
+                  {plan.buttonStyle === 'primary' && !upgrading && <ArrowRight className="w-4 h-4 ml-2" />}
                 </Button>
               </SignedIn>
             </div>

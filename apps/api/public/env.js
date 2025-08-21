@@ -1,1 +1,0 @@
-window.__env__={VITE_CLERK_PUBLISHABLE_KEY:""};
