@@ -1,5 +1,6 @@
 import { Button } from '../ui/button'
 import { useNavigate } from 'react-router-dom'
+import { SignedIn, SignedOut, SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react'
 
 export default function PlatformShowcase() {
   const navigate = useNavigate()
@@ -34,9 +35,18 @@ export default function PlatformShowcase() {
               <p className="text-gray-400 text-sm mb-4">
                 Full competitor analysis available with strategic insights and recommendations
               </p>
-              <Button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors" onClick={() => navigate('/dashboard')}>
-                Try Now
-              </Button>
+              <SignedIn>
+                <Button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors" onClick={() => navigate('/dashboard')}>
+                  Try Now
+                </Button>
+              </SignedIn>
+              <SignedOut>
+                <SignInButton mode="modal" redirectUrl="/">
+                  <Button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                    Try Now
+                  </Button>
+                </SignInButton>
+              </SignedOut>
             </div>
           </div>
 
@@ -59,9 +69,21 @@ export default function PlatformShowcase() {
           </div>
 
           <div className="mt-12 fade-in fade-4">
-            <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all hover:scale-105">
-              Join Early Access for New Platforms
-            </Button>
+            <SignedOut>
+              <SignUpButton mode="modal" redirectUrl="/">
+                <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all hover:scale-105">
+                  Join Early Access for New Platforms
+                </Button>
+              </SignUpButton>
+            </SignedOut>
+            <SignedIn>
+              <Button 
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all hover:scale-105"
+                onClick={() => navigate('/dashboard')}
+              >
+                Access New Platforms
+              </Button>
+            </SignedIn>
           </div>
         </div>
       </div>

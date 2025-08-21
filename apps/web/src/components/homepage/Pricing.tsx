@@ -1,7 +1,10 @@
 import { Check, ArrowRight } from 'lucide-react'
 import { Button } from '../ui/button'
+import { SignedIn, SignedOut, SignUpButton, useAuth } from '@clerk/clerk-react'
+import { useNavigate } from 'react-router-dom'
 
 export default function Pricing() {
+  const navigate = useNavigate()
   const plans = [
     {
       name: 'Starter',
@@ -108,16 +111,33 @@ export default function Pricing() {
                 ))}
               </ul>
 
-              <Button
-                className={`w-full py-3 font-medium transition-all ${
-                  plan.buttonStyle === 'primary'
-                    ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
-                    : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
-                }`}
-              >
-                {plan.buttonText}
-                {plan.buttonStyle === 'primary' && <ArrowRight className="w-4 h-4 ml-2" />}
-              </Button>
+              <SignedOut>
+                <SignUpButton mode="modal" redirectUrl="/">
+                  <Button
+                    className={`w-full py-3 font-medium transition-all ${
+                      plan.buttonStyle === 'primary'
+                        ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
+                        : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
+                    }`}
+                  >
+                    {plan.buttonText}
+                    {plan.buttonStyle === 'primary' && <ArrowRight className="w-4 h-4 ml-2" />}
+                  </Button>
+                </SignUpButton>
+              </SignedOut>
+              <SignedIn>
+                <Button
+                  className={`w-full py-3 font-medium transition-all ${
+                    plan.buttonStyle === 'primary'
+                      ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
+                      : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
+                  }`}
+                  onClick={() => navigate('/dashboard')}
+                >
+                  Go to Dashboard
+                  {plan.buttonStyle === 'primary' && <ArrowRight className="w-4 h-4 ml-2" />}
+                </Button>
+              </SignedIn>
             </div>
           ))}
         </div>

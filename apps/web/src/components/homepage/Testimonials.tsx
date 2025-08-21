@@ -65,6 +65,8 @@ export default function Testimonials() {
                 <img 
                   src={testimonial.avatar} 
                   alt={testimonial.name}
+                  crossOrigin="anonymous"
+                  loading="lazy"
                   className="w-12 h-12 rounded-full object-cover border-2 border-white/20"
                 />
                 <div>

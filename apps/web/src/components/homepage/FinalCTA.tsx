@@ -1,5 +1,5 @@
 import { Search } from 'lucide-react'
-import { useAuth, SignInButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui/button'
 
@@ -29,17 +29,17 @@ export default function FinalCTA() {
         
         {/* CTA Buttons */}
         <div className="mt-10 flex flex-col sm:flex-row gap-4 justify-center fade-in fade-2">
-          {isLoaded && !isSignedIn ? (
-            <SignInButton mode="modal">
+          <SignedOut>
+            <SignUpButton mode="modal" redirectUrl="/">
               <Button 
                 className="bg-white text-black px-8 py-4 rounded-md font-medium hover:bg-gray-100 active:scale-95 transition-all text-lg"
-                onClick={handleAnalyzeClick}
               >
                 <Search className="w-5 h-5 mr-2" />
                 Get Started - Sign Up Free
               </Button>
-            </SignInButton>
-          ) : (
+            </SignUpButton>
+          </SignedOut>
+          <SignedIn>
             <Button 
               className="bg-white text-black px-8 py-4 rounded-md font-medium hover:bg-gray-100 active:scale-95 transition-all text-lg"
               onClick={handleAnalyzeClick}
@@ -47,7 +47,7 @@ export default function FinalCTA() {
               <Search className="w-5 h-5 mr-2" />
               Start Keyword Analysis
             </Button>
-          )}
+          </SignedIn>
         </div>
 
         {/* Trust Indicators */}
@@ -69,18 +69,31 @@ export default function FinalCTA() {
         </div>
 
         {/* Additional Auth Options */}
-        {isLoaded && !isSignedIn && (
+        <SignedOut>
           <div className="mt-8 fade-in fade-3">
             <p className="text-sm text-gray-400">
               Already have an account?{' '}
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" redirectUrl="/">
                 <button className="text-blue-400 hover:text-blue-300 underline font-medium">
                   Sign in here
                 </button>
               </SignInButton>
             </p>
           </div>
-        )}
+        </SignedOut>
+        <SignedIn>
+          <div className="mt-8 fade-in fade-3">
+            <p className="text-sm text-gray-400">
+              Ready to analyze?{' '}
+              <button 
+                className="text-blue-400 hover:text-blue-300 underline font-medium"
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to Dashboard
+              </button>
+            </p>
+          </div>
+        </SignedIn>
       </div>
     </section>
   )

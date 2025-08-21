@@ -3,7 +3,7 @@ import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { toast } from 'sonner'
-import { useAuth, SignInButton } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignInButton, useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
@@ -130,18 +130,18 @@ export default function HeroSection() {
                 </div>
               </div>
               
-              {isLoaded && !isSignedIn ? (
-                <SignInButton mode="modal">
+              <SignedOut>
+                <SignInButton mode="modal" redirectUrl="/">
                   <Button
                     type="button"
                     className="h-14 px-8 text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                    onClick={() => console.log('SignInButton clicked')}
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Sign In to Analyze
                   </Button>
                 </SignInButton>
-              ) : (
+              </SignedOut>
+              <SignedIn>
                 <Button
                   type="submit"
                   disabled={isSubmitting || !isLoaded}
@@ -159,7 +159,7 @@ export default function HeroSection() {
                     </>
                   )}
                 </Button>
-              )}
+              </SignedIn>
             </div>
 
             {/* Country and Ad Count Selection */}
@@ -202,16 +202,27 @@ export default function HeroSection() {
           </form>
           
           {/* Authentication Prompt */}
-          {isLoaded && !isSignedIn && (
+          <SignedOut>
             <p className="text-sm text-gray-400 mt-4">
               Already have an account?{' '}
-              <SignInButton mode="modal">
+              <SignInButton mode="modal" redirectUrl="/">
                 <button className="text-blue-400 hover:text-blue-300 underline">
                   Sign in here
                 </button>
               </SignInButton>
             </p>
-          )}
+          </SignedOut>
+          <SignedIn>
+            <p className="text-sm text-gray-400 mt-4">
+              Ready to analyze?{' '}
+              <button 
+                className="text-blue-400 hover:text-blue-300 underline"
+                onClick={() => navigate('/dashboard')}
+              >
+                Go to Dashboard
+              </button>
+            </p>
+          </SignedIn>
         </div>
       </div>
     </section>
