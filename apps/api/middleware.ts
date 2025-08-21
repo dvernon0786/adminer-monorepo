@@ -19,14 +19,12 @@ export default clerkMiddleware((auth, req) => {
 
   // Always stamp a "server-guard" cookie so the SPA knows middleware is active
   const res = NextResponse.next();
-  res.cookies.set({
-    name: "sg",
-    value: "1",
+  res.cookies.set("sg", "1", {
     path: "/",
-    sameSite: "Lax",
-    httpOnly: false, // readable by SPA
+    sameSite: "lax",  // lowercase
+    httpOnly: false,  // readable by SPA
     secure: true,
-    maxAge: 60 * 60, // 1 hour
+    maxAge: 60 * 60,  // 1 hour
   });
 
   // Let public routes pass without server-side auth redirects
