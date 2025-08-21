@@ -2,9 +2,9 @@ import fs from 'fs';
 import path from 'path';
 
 const checks = [
-  'apps/api/package.json',
-  'apps/api/app/api/consolidated/route.ts',
-  'apps/web/package.json'
+  'package.json',
+  'app/api/consolidated/route.ts',
+  '../web/package.json'
 ];
 
 let ok = true;
