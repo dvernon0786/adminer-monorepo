@@ -13,9 +13,20 @@ The Hardcoded Value Scanner is a security tool that automatically detects potent
 npm run scan:hardcoded
 ```
 
+### Setup Husky (Local Development Only)
+
+**Important**: Husky is only set up for local development to avoid build issues in production.
+
+```bash
+# Set up Husky for local development (run once after cloning)
+npm run setup:husky
+
+# This will install pre-commit hooks that run the scanner automatically
+```
+
 ### Pre-commit Hook
 
-The scanner automatically runs before each commit via Husky. If any issues are found, the commit will be blocked until resolved.
+After running `npm run setup:husky`, the scanner automatically runs before each commit via Husky. If any issues are found, the commit will be blocked until resolved.
 
 ### CI/CD Integration
 
@@ -103,7 +114,7 @@ Regex patterns for different types of issues:
 
 ### Adding New Patterns
 
-1. Edit `hardcoded-scan.config.json`
+1. Edit `tools/hardcoded-scan.config.json`
 2. Add a new pattern to the `patterns` array:
 
 ```json
@@ -139,17 +150,11 @@ Regex patterns for different types of issues:
 
 📊 Scan complete!
    Files scanned: 73
-   Files with issues: 2
-   Total findings: 27
+   Files with issues: 0
+   Total findings: 0
 
-❌ Hardcoded/placeholder findings detected:
-==========================================
-
-🔴 PLACEHOLDER_GENERIC (22 findings):
-----------------------------------------
-  📍 config.env:15
-     Match: YOUR_API_KEY
-     Context: ...API_KEY=YOUR_API_KEY...
+✅ No hardcoded values/placeholders detected.
+🎉 Your repository is clean!
 ```
 
 ### Interpreting Results
@@ -238,14 +243,17 @@ API_KEY=sk_live_1234567890abcdef
 
 ## 🔄 Integration
 
-### Pre-commit Hook
+### Pre-commit Hook (Local Development)
 
-Automatically runs on every commit:
-
+**Setup**:
 ```bash
-# .husky/pre-commit
-#!/usr/bin/env sh
-npm run scan:hardcoded
+npm run setup:husky
+```
+
+**Usage**: Automatically runs on every commit:
+```bash
+git commit -m "your message"
+# Scanner runs automatically, blocks commit if issues found
 ```
 
 ### CI/CD Pipeline
@@ -351,4 +359,6 @@ console.log('Pattern match:', matched);
 
 **Status**: 🎯 **Production Ready**
 
-The scanner is actively protecting your repository from security risks and configuration issues! 
+The scanner is actively protecting your repository from security risks and configuration issues!
+
+**Note**: Husky setup is manual to avoid production build issues. Run `npm run setup:husky` after cloning for local development. 

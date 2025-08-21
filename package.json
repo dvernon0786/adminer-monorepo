@@ -11,7 +11,7 @@
     "dev:web": "npm run -w @adminer/web dev",
     "guard": "node scripts/guard.js",
     "scan:hardcoded": "tsx tools/hardcoded-scan.ts",
-    "prepare": "husky"
+    "setup:husky": "node scripts/setup-husky.js"
   },
   "devDependencies": {
     "fast-glob": "^3.3.2",
