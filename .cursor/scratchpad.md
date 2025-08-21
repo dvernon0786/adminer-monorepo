@@ -236,6 +236,13 @@ The project has been fully recreated and all patches applied. The application is
 - **Files Modified**: `adminer/apps/api/middleware.ts`
 - **Status**: ✅ Deployed ultra-minimal version - testing to determine if issue is with Clerk, async operations, or basic structure
 
+### **Critical Discovery: Middleware Matcher Intercepting Static Assets (Latest)**
+- **Issue**: Static assets (JS/CSS) served as `text/html` instead of proper MIME types
+- **Root Cause**: Middleware matcher was intercepting static asset requests, causing Next.js to serve them incorrectly
+- **Solution**: Fixed middleware matcher to properly exclude static assets and files with extensions
+- **Files Modified**: `adminer/apps/api/middleware.ts`
+- **Status**: ✅ Fixed and deployed - middleware now only runs on API routes and SPA routes, not on static assets
+
 ### **Root Cause Identified: Static Asset MIME Type Issue (Latest)**
 - **Issue**: JS/CSS files served as `text/html` instead of proper MIME types after API-only middleware
 - **Root Cause**: Removing SPA route handling caused Next.js to serve `index.html` for all routes including assets
