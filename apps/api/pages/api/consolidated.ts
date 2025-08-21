@@ -6,8 +6,15 @@ type HealthPayload = {
   status: "healthy";
   message: string;
 };
+type AuthPayload = {
+  status: "healthy";
+  auth: {
+    userId: string;
+    orgId: string | null;
+  };
+};
 type ErrorPayload = { error: string };
-type Data = HealthPayload | ErrorPayload;
+type Data = HealthPayload | AuthPayload | ErrorPayload;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
