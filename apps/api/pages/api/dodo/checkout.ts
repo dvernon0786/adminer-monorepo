@@ -23,7 +23,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const productId = 
       plan === 'pro' ? process.env.DODO_PRODUCT_PRO :
       plan === 'enterprise' ? process.env.DODO_PRODUCT_ENTERPRISE :
-      process.env.DODO_PRODUCT_FREE
+      null
 
     if (!productId) {
       return res.status(500).json({ error: 'Product configuration missing' })

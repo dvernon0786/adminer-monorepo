@@ -13,8 +13,16 @@ type AuthPayload = {
     orgId: string | null;
   };
 };
+type QuotaPayload = {
+  status: "healthy";
+  quota: {
+    plan: string;
+    used: number;
+    limit: number;
+  };
+};
 type ErrorPayload = { error: string };
-type Data = HealthPayload | AuthPayload | ErrorPayload;
+type Data = HealthPayload | AuthPayload | QuotaPayload | ErrorPayload;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
@@ -39,7 +47,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
         .json({ error: "Organization context is required for this endpoint. Please select or join an organization." });
       return;
     }
-    res.status(200).json({ status: "healthy", auth: { userId, orgId } });
+
+    // For now, return mock data to test the endpoint
+    res.status(200).json({
+      status: "healthy",
+      quota: {
+        plan: "free",
+        used: 0,
+        limit: 10
+      }
+    });
     return;
   }
 

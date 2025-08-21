@@ -1,6 +1,6 @@
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
-import { SignedIn, SignedOut, SignUpButton, useAuth } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignUpButton, useAuth, useOrganization } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
@@ -8,6 +8,7 @@ import { toast } from 'sonner'
 export default function Pricing() {
   const navigate = useNavigate()
   const { user } = useAuth()
+  const { organization } = useOrganization()
   const [upgrading, setUpgrading] = useState<string | null>(null)
   
   const plans = [
@@ -105,6 +106,24 @@ export default function Pricing() {
     }
   }
 
+  const startFree = async (orgId?: string, orgName?: string) => {
+    try {
+      const res = await fetch('/api/dodo/free', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ orgId, orgName })
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err?.error || 'Failed to start Free')
+      }
+      return res.json()
+    } catch (error) {
+      console.error('Free plan error:', error)
+      throw error
+    }
+  }
+
   return (
     <section id="pricing" className="relative z-10 py-24 px-6 lg:px-10 bg-white/5 backdrop-blur-lg border-y border-white/10">
       <div className="max-w-7xl mx-auto">
@@ -176,7 +195,32 @@ export default function Pricing() {
                       ? 'bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700 hover:scale-105'
                       : 'border border-white/20 text-white hover:border-white/40 hover:bg-white/5'
                   }`}
-                  onClick={() => plan.planId === 'free' ? navigate('/dashboard') : handleUpgrade(plan.planId)}
+                  onClick={async () => {
+                    if (plan.planId === 'free') {
+                      // Handle free plan creation
+                      const orgId = organization?.id
+                      const orgName = organization?.name || 'My Org'
+                      
+                      if (!orgId) {
+                        toast.error('Please create or select an organization first')
+                        return
+                      }
+                      
+                      try {
+                        setUpgrading('free')
+                        await startFree(orgId, orgName)
+                        toast.success('Free plan activated! Redirecting to dashboard...')
+                        setTimeout(() => navigate('/dashboard'), 1000)
+                      } catch (e) {
+                        toast.error((e as Error).message || 'Failed to activate free plan')
+                      } finally {
+                        setUpgrading(null)
+                      }
+                    } else {
+                      // Handle paid plan upgrades
+                      handleUpgrade(plan.planId)
+                    }
+                  }}
                   disabled={upgrading === plan.planId}
                 >
                   {upgrading === plan.planId ? (
@@ -185,7 +229,7 @@ export default function Pricing() {
                       Processing...
                     </>
                   ) : plan.planId === 'free' ? (
-                    'Go to Dashboard'
+                    'Start Free'
                   ) : (
                     `Upgrade to ${plan.name}`
                   )}
