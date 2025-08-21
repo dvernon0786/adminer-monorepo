@@ -25,5 +25,9 @@ export default function middleware(req: Request) {
 }
 
 export const config = {
-  matcher: ["/((?!.+\\.[\\w]+$|_next).*)", "/api/(.*)"],
+  // Only run middleware on API routes and SPA routes, NOT on static assets
+  matcher: [
+    "/api/(.*)",
+    "/((?!_next|.*\\..*).*)", // Exclude _next and files with extensions
+  ],
 }; 
