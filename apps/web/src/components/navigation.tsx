@@ -112,12 +112,20 @@ const Navigation = () => {
             ) : (
               // User is not authenticated - show sign in buttons
               <>
-                <SignInButton mode="modal">
+                <SignInButton 
+                  mode="modal"
+                  afterSignInUrl="/dashboard"
+                  afterSignUpUrl="/dashboard"
+                >
                   <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
                     Sign In
                   </Button>
                 </SignInButton>
-                <SignInButton mode="modal">
+                <SignInButton 
+                  mode="modal"
+                  afterSignInUrl="/dashboard"
+                  afterSignUpUrl="/dashboard"
+                >
                   <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700">
                     Get Started
                   </Button>

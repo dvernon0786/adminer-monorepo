@@ -1,20 +1,29 @@
-import { SignedIn, SignedOut, SignInButton } from "@clerk/clerk-react";
+import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/clerk-react";
 import { DashboardHeader } from "@/components/dashboard";
 import EnhancedAnalysisForm from "@/components/dashboard/EnhancedAnalysisForm";
 import { JobsTable } from "@/components/dashboard/JobsTable";
 import { ResultsTabs } from "@/components/dashboard/ResultsTabs";
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { AnalysisResult, DashboardStats } from "@/types/dashboard";
 import CodeEditorModal from "@/components/dashboard/CodeEditorModal";
 import PricingModal from "@/components/dashboard/PricingModal";
 import BootstrapFree from "@/components/BootstrapFree";
 
 export default function Dashboard() {
+  const { isLoaded, isSignedIn } = useUser();
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState<"filtering" | "today" | "all">("filtering");
   const [searchTerm, setSearchTerm] = useState("");
   const [analyses, setAnalyses] = useState<AnalysisResult[]>([]);
   const [selected, setSelected] = useState<AnalysisResult | null>(null);
   const [openPricing, setOpenPricing] = useState(false);
+
+  // Guard route: bounce unsigned users home
+  useEffect(() => {
+    if (!isLoaded) return; // Wait for auth to load
+    if (!isSignedIn) navigate("/", { replace: true });
+  }, [isLoaded, isSignedIn, navigate]);
 
   const stats: DashboardStats = useMemo(() => {
     const images = analyses.filter(a => a.contentType === "image").length;
@@ -44,7 +53,11 @@ export default function Dashboard() {
           <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-8 text-center space-y-3">
             <h1 className="text-2xl font-semibold">Sign in to analyze ads</h1>
             <p className="text-neutral-400">Run cross‑platform competitive analysis in minutes.</p>
-            <SignInButton mode="modal">
+            <SignInButton 
+              mode="modal"
+              afterSignInUrl="/dashboard"
+              afterSignUpUrl="/dashboard"
+            >
               <button className="gradient-btn px-5 py-2 rounded-lg font-medium">Sign in</button>
             </SignInButton>
           </section>

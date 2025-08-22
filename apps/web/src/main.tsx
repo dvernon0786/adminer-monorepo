@@ -1,6 +1,7 @@
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { ClerkProvider } from '@clerk/clerk-react'
+import { BrowserRouter as Router, useNavigate } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 
@@ -20,10 +21,26 @@ if (!publishableKey) {
   console.error('Clerk publishable key missing from runtime environment')
 }
 
+function ClerkWithRouter({ children }: { children: React.ReactNode }) {
+  const navigate = useNavigate();
+  return (
+    <ClerkProvider
+      publishableKey={publishableKey!}
+      // Make Clerk use your SPA router instead of full reloads
+      routerPush={(to) => navigate(to)}
+      routerReplace={(to) => navigate(to, { replace: true })}
+    >
+      {children}
+    </ClerkProvider>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={publishableKey!}>
-      <App />
-    </ClerkProvider>
+    <Router>
+      <ClerkWithRouter>
+        <App />
+      </ClerkWithRouter>
+    </Router>
   </React.StrictMode>,
 ) 

@@ -73,7 +73,11 @@ export default function FinalCTA() {
           <div className="mt-8 fade-in fade-3">
             <p className="text-sm text-gray-400">
               Already have an account?{' '}
-              <SignInButton mode="modal" redirectUrl="/">
+              <SignInButton 
+                mode="modal" 
+                afterSignInUrl="/dashboard"
+                afterSignUpUrl="/dashboard"
+              >
                 <button className="text-blue-400 hover:text-blue-300 underline font-medium">
                   Sign in here
                 </button>

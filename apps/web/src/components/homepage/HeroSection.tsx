@@ -33,6 +33,14 @@ export default function HeroSection() {
     console.log('HeroSection - isLoaded:', isLoaded, 'isSignedIn:', isSignedIn)
   }
   
+  // Programmatic redirect after authentication
+  useEffect(() => {
+    if (!isLoaded) return; // Wait for auth to load
+    if (isSignedIn) {
+      navigate('/dashboard', { replace: true }); // Replace to avoid back-button loops
+    }
+  }, [isLoaded, isSignedIn, navigate]);
+  
   const {
     register,
     handleSubmit,
@@ -131,11 +139,14 @@ export default function HeroSection() {
               </div>
               
               <SignedOut>
-                <SignInButton mode="modal" redirectUrl="/">
+                <SignInButton 
+                  mode="modal" 
+                  afterSignInUrl="/dashboard"
+                  afterSignUpUrl="/dashboard"
+                >
                   <Button
                     type="button"
                     className="h-14 px-8 text-base font-semibold bg-gradient-to-r from-blue-500 to-purple-600 hover:from-blue-600 hover:to-purple-700"
-                    // Remove redirectUrl from DOM element
                   >
                     <Search className="w-5 h-5 mr-2" />
                     Sign In to Analyze
@@ -206,7 +217,11 @@ export default function HeroSection() {
           <SignedOut>
             <p className="text-sm text-gray-400 mt-4">
               Already have an account?{' '}
-              <SignInButton mode="modal" redirectUrl="/">
+              <SignInButton 
+                mode="modal" 
+                afterSignInUrl="/dashboard"
+                afterSignUpUrl="/dashboard"
+              >
                 <button className="text-blue-400 hover:text-blue-300 underline">
                   Sign in here
                 </button>

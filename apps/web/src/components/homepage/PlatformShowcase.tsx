@@ -41,7 +41,11 @@ export default function PlatformShowcase() {
                 </Button>
               </SignedIn>
               <SignedOut>
-                <SignInButton mode="modal" redirectUrl="/">
+                <SignInButton 
+              mode="modal" 
+              afterSignInUrl="/dashboard"
+              afterSignUpUrl="/dashboard"
+            >
                   <Button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
                     Try Now
                   </Button>
