@@ -1,5 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next'
-import crypto from 'crypto'
+import * as crypto from 'crypto'
 import { eq, or } from 'drizzle-orm'
 import { db } from '../../../src/db/client'
 import { orgs, webhook_events } from '../../../src/db/schema'
@@ -7,9 +7,9 @@ import { orgs, webhook_events } from '../../../src/db/schema'
 // Disable body parsing for webhook signature verification
 export const config = {
   api: {
-    bodyParser: false,
+    bodyParser: false, // we need the raw body for signature verification
   },
-}
+} as const;
 
 // ---- Types (adapt to your actual Dodo event payloads) ----
 
@@ -52,13 +52,10 @@ function parseSignatureHeader(sigHeader: string | null) {
   return { ts, v1 }
 }
 
-function safeEqual(a: string, b: string) {
-  if (a.length !== b.length) return false
-  let result = 0
-  for (let i = 0; i < a.length; i++) {
-    result |= a.charCodeAt(i) ^ b.charCodeAt(i)
-  }
-  return result === 0
+function timingSafeEq(a: string, b: string) {
+  const A = Buffer.from(a)
+  const B = Buffer.from(b)
+  return A.length === B.length && crypto.timingSafeEqual(new Uint8Array(A), new Uint8Array(B))
 }
 
 function verifySignature({ rawBody, sigHeader, secret, toleranceSec = 5 * 60 }: {
@@ -74,7 +71,7 @@ function verifySignature({ rawBody, sigHeader, secret, toleranceSec = 5 * 60 }: 
   }
   const payload = ts ? `${ts}.${rawBody}` : rawBody
   const computed = crypto.createHmac("sha256", secret).update(payload, "utf8").digest("hex")
-  return safeEqual(computed, v1)
+  return timingSafeEq(computed, v1)
 }
 
 function planFromPriceId(priceId?: string | null): "free" | "pro" | "enterprise" {

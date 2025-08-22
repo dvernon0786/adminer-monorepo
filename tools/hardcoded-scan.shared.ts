@@ -1,4 +1,4 @@
-function isDocsFile(p: string): boolean {
+export function isDocsFile(p: string): boolean {
   const lower = p.replace(/\\/g, "/").toLowerCase();
 
   // Documentation & prose
@@ -17,4 +17,3 @@ function isDocsFile(p: string): boolean {
 
   return false;
 }
-module.exports = { isDocsFile };

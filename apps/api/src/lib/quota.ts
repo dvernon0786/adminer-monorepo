@@ -1,6 +1,7 @@
 import { db } from '../db/client'
-import { orgs, quota_usage } from '../db/schema'
+import { orgs, quota_usage, jobs } from '../db/schema'
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
+import crypto from 'crypto'
 
 export interface QuotaInfo {
   plan: string
@@ -35,6 +36,12 @@ export function getCurrentBillingPeriod(): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 }
 
+// Get start of billing period for current date
+export function startOfBillingPeriod(d: Date): Date {
+  // Simple monthly buckets; align with Dodo if you prefer using currentPeriodEnd on orgs
+  return new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), 1, 0, 0, 0))
+}
+
 // Get quota information for an organization
 export async function getQuotaInfo(orgId: string): Promise<QuotaInfo> {
   const org = await db.select().from(orgs).where(eq(orgs.id, orgId)).limit(1)
@@ -61,7 +68,15 @@ export async function getQuotaInfo(orgId: string): Promise<QuotaInfo> {
   const orgData = org[0]
   const plan = orgData.plan as PlanType || 'free'
   const limit = orgData.quota_limit || PLAN_LIMITS[plan]
-  const used = orgData.quota_used || 0
+  
+  // Get current period usage from jobs table (production-ready approach)
+  const periodStart = startOfBillingPeriod(new Date())
+  const [{ count }] = (await db
+    .select({ count: sql`COUNT(*)` })
+    .from(jobs)
+    .where(and(eq(jobs.org_id, orgId), gte(jobs.created_at, periodStart)))) as unknown as [{ count: number }]
+  
+  const used = Number(count ?? 0)
   const remaining = Math.max(0, limit - used)
 
   // Generate upgrade URL based on current plan
@@ -124,6 +139,24 @@ export async function incrementQuota(orgId: string, jobId?: string): Promise<voi
     .where(eq(orgs.id, orgId))
 }
 
+// Create a job and track quota usage (production-ready approach)
+export async function createJob(orgId: string, jobType: string): Promise<string> {
+  const jobId = crypto.randomUUID()
+  
+  await db.insert(jobs).values({
+    id: jobId,
+    org_id: orgId,
+    job_type: jobType,
+    status: 'pending',
+    created_at: new Date()
+  })
+
+  // Increment quota usage
+  await incrementQuota(orgId, jobId)
+  
+  return jobId
+}
+
 // Reset quota for new billing period (called by webhook)
 export async function resetQuotaForNewPeriod(orgId: string): Promise<void> {
   await db.update(orgs)
@@ -148,4 +181,16 @@ export async function getCurrentPeriodUsage(orgId: string): Promise<number> {
     )
   
   return Number(result[0]?.count) || 0
+}
+
+// Get current period usage from jobs table (production-ready approach)
+export async function getCurrentPeriodUsageFromJobs(orgId: string): Promise<number> {
+  const periodStart = startOfBillingPeriod(new Date())
+  
+  const [{ count }] = (await db
+    .select({ count: sql`COUNT(*)` })
+    .from(jobs)
+    .where(and(eq(jobs.org_id, orgId), gte(jobs.created_at, periodStart)))) as unknown as [{ count: number }]
+  
+  return Number(count ?? 0)
 } 

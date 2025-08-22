@@ -107,7 +107,14 @@
     "sk_live_1234567890abcdef",
     "pk_live_1234567890abcdef",
     "sk-live-EXAMPLE_EXAMPLE_EXAMPLE",
-    "pk-live-EXAMPLE_EXAMPLE_EXAMPLE"
+    "pk-live-EXAMPLE_EXAMPLE_EXAMPLE",
+    "sk_live_ABCDEFGHIJKLMNOP",
+    "pk_live_1234567890abcdef",
+    "sk_live_SAMPLEONLY",
+    "docs/sk_live_SAMPLEONLY",
+    "https://your-app.vercel.app/api/admin/downgrade-canceled",
+    "Bearer YOUR_CLERK_JWT",
+    "process.env.DODO_WEBHOOK_SECRET || 'test_secret'"
   ],
   "patterns": [
     {

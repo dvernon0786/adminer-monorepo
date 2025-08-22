@@ -12,12 +12,17 @@
     "guard": "node scripts/guard.js",
     "scan:hardcoded": "tsx tools/hardcoded-scan.ts",
     "scan:hardcoded:diff": "tsx tools/hardcoded-scan.diff.ts",
-    "setup:husky": "node scripts/setup-husky.js"
+    "setup:husky": "node scripts/setup-husky.js",
+    "test": "jest",
+    "test:watch": "jest --watch"
   },
   "devDependencies": {
+    "@types/jest": "^30.0.0",
     "fast-glob": "^3.3.3",
     "husky": "^9.1.7",
+    "jest": "^30.0.5",
     "lint-staged": "^15.5.2",
+    "ts-jest": "^29.4.1",
     "tsx": "^4.20.4"
   },
   "engines": {

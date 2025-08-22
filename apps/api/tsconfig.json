@@ -1,9 +1,10 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": ["ES2022", "DOM", "DOM.Iterable"],
+    "lib": ["ES2022", "DOM"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
+    "jsx": "preserve",
     "strict": true,
     "resolveJsonModule": true,
     "allowSyntheticDefaultImports": true,
@@ -12,12 +13,13 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "noEmit": true,
+    "types": ["node"],
+    "baseUrl": ".",
     "plugins": [
       {
         "name": "next"
       }
     ],
-    "jsx": "preserve",
     "allowJs": true,
     "incremental": true
   },
