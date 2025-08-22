@@ -69,5 +69,39 @@ function tryRun(cmd, opts = {}) {
   mkdirSync(publicDir, { recursive: true });
   cpSync(distDir, publicDir, { recursive: true });
 
-  console.log("[spa:integrate] Copied SPA build to /public ✅");
+  // Debug: Check what was actually copied and verify paths
+  console.log(`[spa:integrate] Copied SPA build to ${publicDir} ✅`);
+  console.log(`[spa:integrate] Current working directory: ${process.cwd()}`);
+  console.log(`[spa:integrate] API directory: ${apiCwd}`);
+  console.log(`[spa:integrate] Web directory: ${webDir}`);
+  console.log(`[spa:integrate] Dist directory: ${distDir}`);
+  
+  // List what was actually copied
+  const copiedFiles = readdirSync(publicDir);
+  console.log(`[spa:integrate] Files in public directory:`, copiedFiles);
+  
+  // Check if assets directory exists and what's in it
+  const assetsDir = join(publicDir, "assets");
+  if (existsSync(assetsDir)) {
+    const assetFiles = readdirSync(assetsDir);
+    console.log(`[spa:integrate] Files in assets directory:`, assetFiles);
+  }
+  
+  // Verify the copied index.html has correct asset paths
+  const copiedIndexPath = join(publicDir, "index.html");
+  if (existsSync(copiedIndexPath)) {
+    const copiedHtml = readFileSync(copiedIndexPath, "utf8");
+    const assetMatches = copiedHtml.match(/(src|href)=["']([^"']+)["']/g) || [];
+    console.log(`[spa:integrate] Asset paths in copied index.html:`);
+    assetMatches.forEach(match => {
+      if (match.includes('/assets/') || match.includes('/public/')) {
+        console.log(`  ${match}`);
+      }
+    });
+    
+    // Check for any /public/ references that shouldn't be there
+    if (copiedHtml.includes('/public/')) {
+      console.warn(`[spa:integrate] WARNING: Found /public/ references in index.html!`);
+    }
+  }
 })(); 
