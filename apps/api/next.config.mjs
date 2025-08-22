@@ -18,6 +18,12 @@ const cspDirectives = [
 const nextConfig = {
   reactStrictMode: true,
 
+  // Ensure static files are served correctly
+  experimental: {
+    // Force Next.js to serve static files from public/
+    staticPageGenerationTimeout: 120,
+  },
+
   async headers() {
     return [
       {
@@ -46,6 +52,11 @@ const nextConfig = {
       // 2) afterFiles: let filesystem (_next, assets, api, etc.) win first,
       // then send all app routes to SPA index.html
       afterFiles: [
+        // Explicitly serve static assets first
+        { source: '/assets/:path*', destination: '/assets/:path*' },
+        { source: '/env.js', destination: '/env.js' },
+        
+        // SPA routes
         { source: '/', destination: '/index.html' },
         { source: '/dashboard', destination: '/index.html' },
         { source: '/dashboard/:path*', destination: '/index.html' },
