@@ -7,6 +7,8 @@
     "dev": "next dev -p 3000",
     "prebuild": "node scripts/guard-env.js && node ./scripts/write-env.cjs && node ./src/env-check.cjs",
     "build": "next build",
+    "spa:integrate": "node scripts/spa-integrate.cjs",
+    "postbuild": "node scripts/check-spa-paths.cjs",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000"
   },
