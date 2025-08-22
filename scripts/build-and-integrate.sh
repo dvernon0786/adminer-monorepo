@@ -89,8 +89,19 @@ fi
 log_info "Fixing asset prefixes in dist/index.html..."
 # Vercel serves /public/* at /*, so /public/assets/* must be /assets/*
 if command -v sed >/dev/null 2>&1; then
+    # Fix multiple variations of the asset path issue
     sed -i.bak 's|/public/assets/|/assets/|g' "$BUILD_DIR/index.html" || true
+    sed -i.bak 's|href="/public/assets/|href="/assets/|g' "$BUILD_DIR/index.html" || true
+    sed -i.bak 's|src="/public/assets/|src="/assets/|g' "$BUILD_DIR/index.html" || true
     log_success "Asset prefixes fixed in index.html"
+    
+    # Verify the fix
+    if grep -q "/public/assets/" "$BUILD_DIR/index.html"; then
+        log_warning "Some /public/assets/ references may still exist"
+        grep -n "/public/assets/" "$BUILD_DIR/index.html" || true
+    else
+        log_success "All /public/assets/ references successfully removed"
+    fi
 else
     log_warning "sed not available, asset prefixes may need manual fixing"
 fi
