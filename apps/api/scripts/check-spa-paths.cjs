@@ -1,63 +1,78 @@
-/* apps/api/scripts/check-spa-paths.cjs */
-const fs = require("node:fs");
-const fsp = fs.promises;
-const path = require("node:path");
+#!/usr/bin/env node
 
-const apiPublic = path.resolve(__dirname, "..", "public");
-const indexPath = path.join(apiPublic, "index.html");
+/**
+ * Post-build sanity checks for SPA assets.
+ * Fails the build if:
+ *  - /public/index.html is missing
+ *  - /public/assets is missing or empty
+ *  - Any src/href in index.html begins with "/public/"
+ *  - Any referenced "/assets/*" file is missing
+ *  - /public/env.js is missing
+ */
 
-const log = (...a) => console.log("[check-spa-paths]", ...a);
+const fs = require('fs');
+const path = require('path');
 
-(async () => {
-  try {
-    if (!fs.existsSync(indexPath)) {
-      throw new Error(`Missing ${indexPath}. Did spa:integrate run?`);
-    }
-    let html = await fsp.readFile(indexPath, "utf8");
+const apiDir = process.cwd(); // run from apps/api
+const publicDir = path.join(apiDir, 'public');
+const indexHtml = path.join(publicDir, 'index.html');
+const assetsDir = path.join(publicDir, 'assets');
+const envJs = path.join(publicDir, 'env.js');
 
-    // Enhanced validation: Hard fail if any bad prefixes remain
-    const BAD_PREFIXES = ["/public/assets/", "public/assets/"];
-    for (const bad of BAD_PREFIXES) {
-      if (html.includes(bad)) {
-        throw new Error(`Found bad asset prefix "${bad}" in index.html`);
-      }
-    }
+function fail(msg, details) {
+  console.error(`[check-spa-paths] ERROR: ${msg}`);
+  if (details) console.error(details);
+  process.exit(1);
+}
 
-    // Additional check: Look for any URLs that incorrectly start with /public/
-    const publicUrlMatches = (html.match(/["'`](\/public\/[^"'`]+)["'`]/g) || []);
-    if (publicUrlMatches.length) {
-      console.error('[check-spa-paths] ERROR: One or more URLs are incorrectly prefixed with /public/:', publicUrlMatches);
-      process.exit(1);
-    }
+function ok(msg) {
+  console.log(`[check-spa-paths] ${msg}`);
+}
 
-    // Extract assets referenced via href/src that begin with /assets/
-    const assetPaths = new Set();
-    const re = /\s(?:href|src)=["'](\/assets\/[^"']+)["']/g;
-    let m;
-    while ((m = re.exec(html))) assetPaths.add(m[1]);
+if (!fs.existsSync(publicDir)) fail('Missing /public directory.');
 
-    // Verify each asset exists under apps/api/public
-    const missing = [];
-    for (const a of assetPaths) {
-      const fsPath = path.join(apiPublic, a);
-      if (!fs.existsSync(fsPath)) missing.push(a);
-    }
+if (!fs.existsSync(indexHtml)) fail('Missing /public/index.html.');
 
-    if (missing.length) {
-      throw new Error(
-        `Missing ${missing.length} asset(s):\n` + missing.map((x) => ` - ${x}`).join("\n")
-      );
-    }
+if (!fs.existsSync(envJs)) fail('Missing /public/env.js (written by prebuild).');
 
-    // Final validation: Confirm assets path prefix is correct
-    if (html.includes('/public/assets/')) {
-      console.error('[check-spa-paths] ERROR: Found "/public/assets/" in index.html — must be "/assets/".');
-      process.exit(1);
-    }
+if (!fs.existsSync(assetsDir)) fail('Missing /public/assets directory.');
 
-    log(`OK: ${assetPaths.size} assets validated, assets path prefix is "/assets/", index.html clean ✅`);
-  } catch (err) {
-    console.error("Post-build SPA path check failed ❌\n", err?.message || err);
-    process.exit(1);
+const assets = fs.readdirSync(assetsDir).filter(Boolean);
+if (assets.length === 0) fail('No assets found in /public/assets.');
+
+const html = fs.readFileSync(indexHtml, 'utf8');
+
+// 1) forbid "/public/" in any src/href
+const attrRegex = /\b(?:src|href)\s*=\s*"(.*?)"/g;
+let m;
+const bad = [];
+const assetRefs = new Set();
+
+while ((m = attrRegex.exec(html)) !== null) {
+  const url = m[1].trim();
+  if (!url) continue;
+
+  if (url.startsWith('/public/')) {
+    bad.push(url);
   }
-})(); 
+  if (url.startsWith('/assets/')) {
+    assetRefs.add(url.replace('/assets/', ''));
+  }
+}
+
+if (bad.length) {
+  fail('index.html references /public/* paths. They must be /assets/* or root.', bad.join('\n'));
+}
+
+// 2) ensure each referenced /assets/* exists
+const missing = [];
+for (const rel of assetRefs) {
+  const f = path.join(assetsDir, rel);
+  if (!fs.existsSync(f)) missing.push(`/assets/${rel}`);
+}
+if (missing.length) {
+  fail('index.html references missing assets:', missing.join('\n'));
+}
+
+ok(`OK: ${assets.length} assets validated, assets path prefix is "/assets/", index.html clean ✅`);
+process.exit(0); 

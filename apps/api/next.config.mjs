@@ -1,39 +1,62 @@
 /** @type {import('next').NextConfig} */
+const isPreview = process.env.VERCEL_ENV === 'preview';
+
+const cspDirectives = [
+  "default-src 'self'",
+  // In preview, allow vercel.live script to avoid console noise; keep prod tighter
+  `script-src 'self' 'unsafe-inline'${isPreview ? ' https://vercel.live' : ''}`,
+  "style-src 'self' 'unsafe-inline'",
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  // Clerk + payments + vercel live in preview for ws/events
+  `connect-src 'self' https://api.clerk.com https://*.clerk.com https://api.dodopayments.com${isPreview ? ' https://*.vercel.live' : ''}`,
+  "frame-ancestors 'none'",
+  "base-uri 'self'",
+  "form-action 'self'",
+].join('; ');
+
 const nextConfig = {
   reactStrictMode: true,
+
   async headers() {
     return [
       {
-        source: "/:path*",
+        source: '/:path*',
         headers: [
-          { key: "x-guard-active", value: "1" },
-          // Content Security Policy to catch path mistakes quickly
-          {
-            key: "Content-Security-Policy",
-            value: "default-src 'self'; script-src 'self' 'unsafe-inline' 'unsafe-eval'; style-src 'self' 'unsafe-inline'; img-src 'self' data: https:; font-src 'self' data:; connect-src 'self' https:; frame-ancestors 'none';"
-          }
+          { key: 'Content-Security-Policy', value: cspDirectives },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },
     ];
   },
-  // Ensure SPA assets and index are served correctly
+
   async rewrites() {
-    return [
-      // strip any accidental /public prefix in URLs
-      { source: '/public/:path*', destination: '/:path*' },
+    return {
+      // 1) beforeFiles: strip accidental /public prefix in URLs (fixes current deploy)
+      beforeFiles: [
+        { source: '/public/env.js', destination: '/env.js' },
+        { source: '/public/assets/:path*', destination: '/assets/:path*' },
+      ],
 
-      // serve the SPA index for your app routes
-      { source: '/', destination: '/index.html' },
-      { source: '/dashboard', destination: '/index.html' },
+      // 2) afterFiles: let filesystem (_next, assets, api, etc.) win first,
+      // then send all app routes to SPA index.html
+      afterFiles: [
+        { source: '/', destination: '/index.html' },
+        { source: '/dashboard', destination: '/index.html' },
+        { source: '/dashboard/:path*', destination: '/index.html' },
 
-      // SPA fallback for any non-API, non-next, non-asset path
-      {
-        source: '/:path((?!api|_next|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|env\\.js).*)',
-        destination: '/index.html',
-      },
-    ];
+        // catch-all SPA routes except known system/asset paths
+        // path-to-regexp syntax: named param with negative lookahead group
+        { source: '/:path((?!api|_next|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|env\\.js).*)', destination: '/index.html' },
+      ],
+
+      // no fallback rewrites
+      fallback: [],
+    };
   },
-  // (Optional) no redirects needed; rewrites keep the URL nice
 };
 
 export default nextConfig; 
