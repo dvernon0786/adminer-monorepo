@@ -8,7 +8,8 @@ const __dirname = path.dirname(__filename);
 // In production builds, environment variables are already set by Vercel
 // We don't need to load .env files, just check if the variables exist
 
-// Check required Dodo environment variables
+console.log("\n==== [Prebuild Guard: Dodo] ====\n");
+
 const required = [
   "DODO_API_KEY",
   "DODO_WEBHOOK_SECRET",
@@ -35,4 +36,15 @@ if (missing.length) {
 }
 
 console.log("✅ Dodo environment variables are set.");
-console.log(`Environment variables found: [${required.join(', ')}]`); 
+console.log(`Environment variables found: [${required.join(', ')}]`);
+
+// Add self-auditing summary table
+const summary = Object.keys(process.env)
+  .filter((k) => /^DODO_/.test(k))
+  .sort()
+  .map((k) => ({ key: k, value: process.env[k] ? "***" : "" }));
+
+if (summary.length) {
+  console.log("\n— Dodo Env Summary (masked) —");
+  console.table(summary);
+} 

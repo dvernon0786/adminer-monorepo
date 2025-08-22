@@ -1,3 +1,5 @@
+console.log("\n==== [Prebuild Guard: Clerk] ====\n");
+
 const required = [
   // Server side (only if your API needs it at build time)
   "CLERK_SECRET_KEY",
@@ -34,4 +36,15 @@ if (!process.env.CLERK_SECRET_KEY) {
 console.log(
   "✅ Clerk environment variables are set:",
   present.map((k) => `${k}=***`).join(", ")
-); 
+);
+
+// Add self-auditing summary table
+const summary = Object.keys(process.env)
+  .filter((k) => /^(CLERK_|NEXT_PUBLIC_CLERK_)/.test(k))
+  .sort()
+  .map((k) => ({ key: k, value: process.env[k] ? "***" : "" }));
+
+if (summary.length) {
+  console.log("\n— Clerk Env Summary (masked) —");
+  console.table(summary);
+} 
