@@ -5,7 +5,7 @@ import { orgs } from "../../../src/db/schema";
 import { eq } from "drizzle-orm";
 
 const DODO_API_BASE = process.env.DODO_API_BASE!;
-const DODO_SECRET_KEY = process.env.DODO_SECRET_KEY!;
+const DODO_SECRET_KEY = process.env.DODO_API_KEY!;
 const DODO_FREE_PRODUCT_ID = process.env.DODO_FREE_PRODUCT_ID!;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
