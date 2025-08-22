@@ -1,51 +1,51 @@
-import { pgTable, text, integer, timestamp, boolean, jsonb } from 'drizzle-orm/pg-core'
+// apps/api/src/db/schema.ts
+import { pgEnum, pgTable, text, timestamp, varchar, integer, boolean, primaryKey } from "drizzle-orm/pg-core";
+import { relations } from "drizzle-orm";
 
-export const orgs = pgTable('orgs', {
-  id: text('id').primaryKey(),          // Clerk orgId or internal
-  name: text('name'),
-  plan: text('plan').default('free'),   // 'free', 'pro', 'enterprise'
-  status: text('status').default('active'), // 'active', 'canceled', 'past_due', 'trialing'
-  billing_status: text('billing_status'), // 'active', 'canceled', 'past_due' - for Dodo webhook
-  quota_limit: integer('quota_limit').default(10),
-  quota_used: integer('quota_used').default(0),
-  dodo_customer_id: text('dodo_customer_id'),
-  dodo_subscription_id: text('dodo_subscription_id'),
-  external_customer_id: text('external_customer_id'), // For Dodo webhook correlation
-  current_period_end: timestamp('current_period_end'),
-  cancel_at_period_end: boolean('cancel_at_period_end').default(false),
-  created_at: timestamp('created_at').defaultNow(),
-  updated_at: timestamp('updated_at').defaultNow(),
-})
+export const planEnum = pgEnum("plan", ["free", "pro", "enterprise"]);
 
-export const webhook_events = pgTable('webhook_events', {
-  id: text('id').primaryKey(),          // Dodo event ID for idempotency
-  type: text('type').notNull(),         // Event type (subscription.activated, etc.)
-  payload: jsonb('payload').notNull(),  // Full webhook payload
-  received_at: timestamp('received_at').defaultNow(), // When webhook was received
-})
+export const orgs = pgTable("orgs", {
+  id: varchar("id", { length: 64 }).primaryKey(),                  // your org id (Clerk org ID or internal)
+  name: varchar("name", { length: 256 }).notNull(),
+  // Billing
+  plan: planEnum("plan").notNull().default("free"),
+  dodoCustomerId: varchar("dodo_customer_id", { length: 128 }),     // external customer
+  dodoSubscriptionId: varchar("dodo_subscription_id", { length: 128 }),
+  subscriptionStatus: varchar("subscription_status", { length: 64 }).default("inactive"),
+  currentPeriodEnd: timestamp("current_period_end"),                // next renewal / grace calc
+  canceledAt: timestamp("canceled_at"),                             // cancellation timestamp
+  // Quota counters (reset daily or monthly by your job if needed)
+  monthlyUsage: integer("monthly_usage").notNull().default(0),
+  monthlyLimit: integer("monthly_limit").notNull().default(10),     // free=10, pro=500, enterprise=2000
+  // Bookkeeping
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
 
-export const quota_usage = pgTable('quota_usage', {
-  id: text('id').primaryKey(),          // UUID
-  org_id: text('org_id').notNull(),
-  job_id: text('job_id'),               // Reference to actual job
-  created_at: timestamp('created_at').defaultNow(),
-  billing_period: text('billing_period').notNull(), // YYYY-MM format
-})
+export const webhookEvents = pgTable("webhook_events", {
+  id: varchar("id", { length: 128 }).primaryKey(),                  // event id from Dodo
+  source: varchar("source", { length: 64 }).notNull().default("dodo"),
+  seenAt: timestamp("seen_at").notNull().defaultNow(),
+});
 
-export const jobs = pgTable('jobs', {
-  id: text('id').primaryKey(),
-  org_id: text('org_id').notNull(),
-  created_at: timestamp('created_at').defaultNow(),
-  job_type: text('job_type'),
-  status: text('status').default('pending'),
-  result: jsonb('result'),
-})
+// Example jobs (if not already present)
+export const jobs = pgTable("jobs", {
+  id: varchar("id", { length: 64 }).primaryKey(),
+  orgId: varchar("org_id", { length: 64 }).notNull(),
+  status: varchar("status", { length: 32 }).notNull().default("queued"),
+  raw: text("raw"),
+  analysis: text("analysis"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const orgsRelations = relations(orgs, ({ many }) => ({
+  // if you relate jobs -> orgs
+}));
 
 export type Org = typeof orgs.$inferSelect
 export type NewOrg = typeof orgs.$inferInsert
-export type WebhookEvent = typeof webhook_events.$inferSelect
-export type NewWebhookEvent = typeof webhook_events.$inferInsert
-export type QuotaUsage = typeof quota_usage.$inferSelect
-export type NewQuotaUsage = typeof quota_usage.$inferInsert
+export type WebhookEvent = typeof webhookEvents.$inferSelect
+export type NewWebhookEvent = typeof webhookEvents.$inferInsert
 export type Job = typeof jobs.$inferSelect
 export type NewJob = typeof jobs.$inferInsert 

@@ -11,12 +11,9 @@ const __dirname = path.dirname(__filename);
 console.log("\n==== [Prebuild Guard: Dodo] ====\n");
 
 const required = [
-  "DODO_API_KEY",
   "DODO_WEBHOOK_SECRET",
-  "DODO_FREE_PRODUCT_ID",
-  // add PRO/ENTERPRISE if you guard them at build time:
-  "DODO_PRO_PRODUCT_ID",
-  "DODO_ENT_PRODUCT_ID",
+  "DODO_CHECKOUT_PRO_URL",
+  "DODO_CHECKOUT_ENT_URL",
 ];
 
 // Detect when running on Vercel vs local for clearer messages

@@ -1,81 +1,100 @@
 import type { NextApiRequest, NextApiResponse } from "next";
-import crypto from "node:crypto";
-import getRawBody from "raw-body";
-import { db } from "../../../src/db/client"; // your Drizzle client
-import { orgs, webhook_events } from "../../../src/db/schema"; // see migration below
+const getRawBody = require("raw-body");
+import * as crypto from "crypto";
+import { db } from "../../../src/db/client";
+import { orgs, webhookEvents } from "../../../src/db/schema";
 import { eq } from "drizzle-orm";
 
-export const config = { api: { bodyParser: false } };
+export const config = {
+  api: { bodyParser: false }, // raw body required for HMAC
+};
 
-const headerCandidates = ["x-dodo-signature", "dodo-signature"];
+function safeTimingEqual(a: string, b: string) {
+  const aBuf = new Uint8Array(Buffer.from(a, "utf8"));
+  const bBuf = new Uint8Array(Buffer.from(b, "utf8"));
+  if (aBuf.length !== bBuf.length) return false;
+  return crypto.timingSafeEqual(aBuf, bBuf);
+}
 
-function safeEqual(a: string, b: string) {
-  const ab = new Uint8Array(Buffer.from(a));
-  const bb = new Uint8Array(Buffer.from(b));
-  return ab.length === bb.length && crypto.timingSafeEqual(ab, bb);
+type DodoEvent = {
+  id: string;
+  type: string; // e.g., "subscription.created" | "subscription.updated" | "subscription.canceled"
+  data: any;
+};
+
+const PLAN_LIMITS: Record<"free" | "pro" | "enterprise", number> = {
+  free: 10,
+  pro: 500,
+  enterprise: 2000,
+};
+
+function planFromProduct(product: string): "free" | "pro" | "enterprise" {
+  const p = product.toLowerCase();
+  if (p.includes("enterprise")) return "enterprise";
+  if (p.includes("pro")) return "pro";
+  return "free";
 }
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") return res.status(405).end();
 
-  try {
-    const raw = (await getRawBody(req)).toString("utf8");
-    const sig = headerCandidates
-      .map((h) => req.headers[h] as string | undefined)
-      .find(Boolean);
+  const secret = process.env.DODO_WEBHOOK_SECRET;
+  if (!secret) return res.status(500).json({ error: "Missing DODO_WEBHOOK_SECRET" });
 
-    const secret = process.env.DODO_WEBHOOK_SECRET;
-    if (!secret || !sig) {
-      return res.status(400).json({ error: "Missing signature/secret" });
-    }
+  const raw = (await getRawBody(req)).toString("utf8");
+  const sig = req.headers["x-dodo-signature"];
+  if (typeof sig !== "string") return res.status(400).json({ error: "Missing signature" });
 
-    const expected = crypto.createHmac("sha256", secret).update(raw).digest("hex");
-    if (!safeEqual(sig, expected)) {
-      return res.status(400).json({ error: "Invalid signature" });
-    }
-
-    const evt = JSON.parse(raw);
-    const { id: eventId, type, data } = evt;
-
-    // Idempotency: insert-if-not-exists
-    try {
-      await db.insert(webhook_events).values({
-        id: eventId,
-        type,
-        payload: evt,
-        received_at: new Date(),
-      });
-    } catch {
-      return res.status(200).json({ ok: true, duplicate: true });
-    }
-
-    // Map product_id -> plan
-    const FREE = process.env.DODO_FREE_PRODUCT_ID!;
-    const PRO = process.env.DODO_PRO_PRODUCT_ID!;
-    const ENT = process.env.DODO_ENT_PRODUCT_ID!;
-    const toPlan = (productId: string) =>
-      productId === PRO ? "pro" : productId === ENT ? "enterprise" : "free";
-
-    // Handle subscription events
-    if (type === "subscription.activated" || type === "subscription.updated") {
-      const productId = data?.product_id as string;
-      const externalCustomerId = data?.customer?.customer_id as string; // you set this on creation
-      const plan = toPlan(productId);
-      if (externalCustomerId && plan) {
-        await db.update(orgs).set({ plan }).where(eq(orgs.external_customer_id, externalCustomerId));
-      }
-    }
-
-    if (type === "subscription.canceled" || type === "subscription.past_due") {
-      const externalCustomerId = data?.customer?.customer_id as string;
-      if (externalCustomerId) {
-        await db.update(orgs).set({ plan: "free" }).where(eq(orgs.external_customer_id, externalCustomerId));
-      }
-    }
-
-    return res.status(200).json({ ok: true });
-  } catch (error) {
-    console.error("Webhook processing error:", error);
-    return res.status(500).json({ error: "Internal server error" });
+  const expected = crypto.createHmac("sha256", secret).update(raw).digest("hex");
+  if (!safeTimingEqual(expected, sig)) {
+    return res.status(400).json({ error: "Invalid signature" });
   }
+
+  let evt: DodoEvent;
+  try {
+    evt = JSON.parse(raw);
+  } catch {
+    return res.status(400).json({ error: "Invalid JSON" });
+  }
+
+  // Idempotency
+  const exists = await db.query.webhookEvents.findFirst({ where: eq(webhookEvents.id, evt.id) });
+  if (exists) return res.status(200).json({ ok: true, idempotent: true });
+
+  const { type, data } = evt;
+
+  await db.transaction(async (tx: any) => {
+    await tx.insert(webhookEvents).values({ id: evt.id, source: "dodo" });
+
+    // Map payload (adjust field names to your Dodo payload)
+    const orgId: string = data?.metadata?.orgId ?? data?.orgId;
+    const customerId: string | undefined = data?.customerId;
+    const subscriptionId: string | undefined = data?.subscriptionId;
+    const status: string = data?.status ?? "active";
+    const product: string = data?.product ?? "pro";
+    const periodEnd: string | undefined = data?.currentPeriodEnd;
+
+    if (!orgId) throw new Error("Missing orgId in webhook data");
+
+    const nextPlan = type === "subscription.canceled"
+      ? "free"
+      : planFromProduct(product);
+
+    const nextLimit = PLAN_LIMITS[nextPlan as keyof typeof PLAN_LIMITS];
+
+    const patch: Partial<typeof orgs.$inferInsert> = {
+      plan: nextPlan as any,
+      subscriptionStatus: status,
+      monthlyLimit: nextLimit,
+      dodoCustomerId: customerId,
+      dodoSubscriptionId: subscriptionId,
+      currentPeriodEnd: periodEnd ? new Date(periodEnd) : null,
+      canceledAt: type === "subscription.canceled" ? new Date() : null,
+      updatedAt: new Date(),
+    };
+
+    await tx.update(orgs).set(patch).where(eq(orgs.id, orgId));
+  });
+
+  return res.status(200).json({ ok: true });
 } 

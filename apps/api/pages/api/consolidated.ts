@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAuth } from "@clerk/nextjs/server";
-import { unauth } from "../../lib/util";
-import { getQuotaInfo } from "../../src/lib/quota";
+import { db } from "../../src/db/client";
+import { orgs } from "../../src/db/schema";
+import { eq } from "drizzle-orm";
 
 type HealthPayload = {
   status: "healthy";
@@ -15,28 +16,14 @@ type AuthPayload = {
   };
 };
 type QuotaPayload = {
-  status: "healthy";
-  quota: {
-    plan: string;
-    used: number;
-    limit: number;
-    remaining: number;
-    upgradeUrl: string;
-  };
-};
-type QuotaExceededPayload = {
-  error: "quota_exceeded";
+  plan: string;
   usage: number;
   limit: number;
-  plan: string;
-  upgrade: {
-    pro: string;
-    enterprise: string;
-    docs: string;
-  };
+  remaining: number;
+  upgradeUrl: string | null;
 };
 type ErrorPayload = { error: string };
-type Data = HealthPayload | AuthPayload | QuotaPayload | QuotaExceededPayload | ErrorPayload;
+type Data = HealthPayload | AuthPayload | QuotaPayload | ErrorPayload;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
@@ -52,7 +39,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
 
   // All other actions require authentication
   const { userId, orgId } = getAuth(req);
-  if (!userId) return unauth(res);
+  if (!userId) return res.status(401).json({ error: "Unauthorized" });
 
   if (action === "quota/status") {
     if (!orgId) {
@@ -63,30 +50,29 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
     }
 
     try {
-      // Get comprehensive quota information using the new quota system
-      const quotaInfo = await getQuotaInfo(orgId);
-      
-      // Check if quota is exceeded
-      if (quotaInfo.used > quotaInfo.limit) {
-        // Return 402 Payment Required with upgrade hints
-        return res.status(402).json({
-          error: "quota_exceeded",
-          usage: quotaInfo.used,
-          limit: quotaInfo.limit,
-          plan: quotaInfo.plan,
-          upgrade: {
-            pro: "/api/billing/upgrade?plan=pro",
-            enterprise: "/api/billing/upgrade?plan=enterprise",
-            docs: "Upgrade to increase limits",
-          },
-        });
+      const org = await db.select().from(orgs).where(eq(orgs.id, orgId)).limit(1).then(rows => rows[0]);
+      if (!org) return res.status(404).json({ error: "Org not found" });
+
+      const remaining = Math.max(0, org.monthlyLimit - org.monthlyUsage);
+      const exceeded = remaining <= 0;
+
+      const upgradeUrl = org.plan === "enterprise"
+        ? null
+        : (org.plan === "pro" ? process.env.DODO_CHECKOUT_ENT_URL : process.env.DODO_CHECKOUT_PRO_URL);
+
+      const payload: QuotaPayload = {
+        plan: org.plan,
+        usage: org.monthlyUsage,
+        limit: org.monthlyLimit,
+        remaining,
+        upgradeUrl: upgradeUrl || null,
+      };
+
+      if (exceeded) {
+        res.status(402).json({ ...payload, error: "Quota exceeded. Consider upgrading." });
+      } else {
+        res.status(200).json(payload);
       }
-      
-      // Quota is within limits, return normal response
-      res.status(200).json({
-        status: "healthy",
-        quota: quotaInfo
-      });
       return;
     } catch (error) {
       console.error('Quota error:', error);
