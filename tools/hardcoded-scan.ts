@@ -28,6 +28,11 @@ function isWhitelisted(s: string): boolean {
   return whitelistRegexes.some((re) => re.test(s));
 }
 
+// Add this small helper near the top:
+function isDocsFile(file: string) {
+  return file.endsWith(".md") || file.includes("/docs/");
+}
+
 function* iterLines(content: string) {
   const lines = content.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
@@ -46,6 +51,15 @@ async function main() {
 
   console.log(`📋 Found ${entries.length} files to scan`);
   console.log(`🔍 Using ${patterns.length} detection patterns`);
+  
+  // Show what patterns we're looking for
+  console.log("\n🎯 Detection patterns:");
+  for (const pattern of config.patterns.slice(0, 10)) { // Show first 10 patterns
+    console.log(`   • ${pattern.id}: ${pattern.regex.substring(0, 50)}${pattern.regex.length > 50 ? '...' : ''}`);
+  }
+  if (config.patterns.length > 10) {
+    console.log(`   • ... and ${config.patterns.length - 10} more patterns`);
+  }
   console.log("");
 
   const findings: Array<{
@@ -58,6 +72,17 @@ async function main() {
 
   let filesScanned = 0;
   let filesWithIssues = 0;
+
+  // Show sample files being scanned
+  console.log("📄 Sample files being scanned:");
+  for (let i = 0; i < Math.min(5, entries.length); i++) {
+    const relativePath = path.relative(root, entries[i]);
+    console.log(`   • ${relativePath}`);
+  }
+  if (entries.length > 5) {
+    console.log(`   • ... and ${entries.length - 5} more files`);
+  }
+  console.log("");
 
   for (const file of entries) {
     if (!fs.existsSync(file) || fs.statSync(file).isDirectory()) continue;
@@ -72,6 +97,8 @@ async function main() {
       continue;
     }
 
+
+
     let fileHasIssues = false;
 
     for (const { num, text } of iterLines(content)) {
@@ -84,6 +111,11 @@ async function main() {
           
           // Skip matches that are in whitelist
           if (isWhitelisted(matched)) continue;
+          
+          // Skip placeholder noise in docs, but still catch other patterns (keys/urls etc.)
+          if (isDocsFile(file) && (id === "PLACEHOLDER_GENERIC")) {
+            continue;
+          }
           
           // Get some context around the match
           const start = Math.max(0, m.index - 20);
@@ -131,8 +163,7 @@ async function main() {
       
       for (const f of groupFindings) {
         const relativePath = path.relative(root, f.file);
-        console.error(`  📍 ${relativePath}:${f.line}`);
-        console.error(`     Match: ${f.match}`);
+        console.error(`  📍 ${relativePath}:${f.line} | ${f.match}`);
         console.error(`     Context: ${f.context}`);
         console.error("");
       }
