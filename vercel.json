@@ -1,0 +1,10 @@
+{
+  "rootDirectory": "apps/api",
+  "buildCommand": "npm run prebuild && npm run build",
+  "installCommand": "npm ci",
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/index.html" },
+    { "source": "/dashboard/:path*", "destination": "/index.html" }
+  ]
+} 

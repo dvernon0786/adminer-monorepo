@@ -85,6 +85,16 @@ else
     exit 1
 fi
 
+# Fix asset prefixes in built index.html
+log_info "Fixing asset prefixes in dist/index.html..."
+# Vercel serves /public/* at /*, so /public/assets/* must be /assets/*
+if command -v sed >/dev/null 2>&1; then
+    sed -i.bak 's|/public/assets/|/assets/|g' "$BUILD_DIR/index.html" || true
+    log_success "Asset prefixes fixed in index.html"
+else
+    log_warning "sed not available, asset prefixes may need manual fixing"
+fi
+
 # Verify build output
 if [ ! -d "$BUILD_DIR" ]; then
     log_error "Build output directory not found: $BUILD_DIR"

@@ -9,5 +9,7 @@ export const config = {
     "/api/:path*",
     // exclude webhook from auth (it uses HMAC):
     // { source: "/api/dodo/webhook", missing: [] } // if you need an explicit allowlist, otherwise just let it pass and ignore auth inside handler
+    // ✅ Static assets (/assets/*, /_next/*, etc.) are automatically excluded
+    // ✅ Only API routes are protected by Clerk middleware
   ],
 }; 
