@@ -1,6 +1,6 @@
 import { db } from '../db/client'
 import { orgs, quota_usage } from '../db/schema'
-import { eq, and, gte, lte } from 'drizzle-orm'
+import { eq, and, gte, lte, sql } from 'drizzle-orm'
 
 export interface QuotaInfo {
   plan: string
@@ -118,7 +118,7 @@ export async function incrementQuota(orgId: string, jobId?: string): Promise<voi
   // Update org quota_used count
   await db.update(orgs)
     .set({
-      quota_used: db.raw(`quota_used + 1`),
+      quota_used: sql`${orgs.quota_used} + 1`,
       updated_at: new Date()
     })
     .where(eq(orgs.id, orgId))
@@ -138,7 +138,7 @@ export async function resetQuotaForNewPeriod(orgId: string): Promise<void> {
 export async function getCurrentPeriodUsage(orgId: string): Promise<number> {
   const billingPeriod = getCurrentBillingPeriod()
   
-  const result = await db.select({ count: db.raw('COUNT(*)') })
+  const result = await db.select({ count: sql`COUNT(*)` })
     .from(quota_usage)
     .where(
       and(
@@ -147,5 +147,5 @@ export async function getCurrentPeriodUsage(orgId: string): Promise<number> {
       )
     )
   
-  return result[0]?.count || 0
+  return Number(result[0]?.count) || 0
 } 

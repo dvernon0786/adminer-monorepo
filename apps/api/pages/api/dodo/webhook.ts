@@ -32,7 +32,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   try {
     // Read raw body for signature verification
-    const chunks: Buffer[] = []
+    const chunks: Uint8Array[] = []
     for await (const chunk of req) chunks.push(chunk)
     const rawBody = Buffer.concat(chunks)
     const body = rawBody.toString('utf8')
@@ -47,7 +47,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     const webhookSecret = process.env.DODO_WEBHOOK_SECRET!
     const expectedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(rawBody)
+      .update(body, 'utf8')
       .digest('hex')
 
     if (signature !== expectedSignature) {

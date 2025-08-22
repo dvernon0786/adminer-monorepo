@@ -20,9 +20,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     }
 
     // Only allow pro and enterprise plans (free is handled by /api/dodo/free)
-    if (plan === 'free') {
-      return res.status(400).json({ error: 'Free plan should use /api/dodo/free endpoint' })
-    }
+    // Note: plan is already typed as 'pro' | 'enterprise', so no need to check for 'free'
 
     // Map plan to Dodo price ID
     const priceId = 
