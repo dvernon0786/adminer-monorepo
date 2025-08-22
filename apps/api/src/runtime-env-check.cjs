@@ -18,6 +18,10 @@
   console.log("✅ Runtime env check passed.");
   console.log("✅ Server can start safely.");
   
+  // Add scope hint for debugging
+  const scope = process.env.VERCEL_ENV || (process.env.VERCEL ? "unknown" : "local");
+  console.log(`ℹ️  Environment scope: ${scope}`);
+  
   // Add runtime summary table
   const summary = Object.keys(process.env)
     .filter((k) => /^(DODO_|CLERK_)/.test(k))

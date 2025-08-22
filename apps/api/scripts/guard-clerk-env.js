@@ -38,6 +38,10 @@ console.log(
   present.map((k) => `${k}=***`).join(", ")
 );
 
+// Add scope hint for debugging
+const scope = process.env.VERCEL_ENV || (process.env.VERCEL ? "unknown" : "local");
+console.log(`ℹ️  Environment scope: ${scope}`);
+
 // Add self-auditing summary table
 const summary = Object.keys(process.env)
   .filter((k) => /^(CLERK_|NEXT_PUBLIC_CLERK_)/.test(k))
