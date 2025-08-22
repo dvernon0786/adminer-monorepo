@@ -30,7 +30,7 @@ function isWhitelisted(s: string): boolean {
 
 // Add this small helper near the top:
 function isDocsFile(file: string) {
-  return file.endsWith(".md") || file.includes("/docs/");
+  return file.endsWith(".md") || file.includes("/docs/") || file.includes("hardcoded-scan.config.json");
 }
 
 function* iterLines(content: string) {
