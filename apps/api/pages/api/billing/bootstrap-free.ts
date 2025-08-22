@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import { getAuth } from "@clerk/nextjs/server";
-import { db } from "../../../src/db";
+import { db } from "../../../src/db/client";
 import { orgs } from "../../../src/db/schema";
 import { eq } from "drizzle-orm";
 
