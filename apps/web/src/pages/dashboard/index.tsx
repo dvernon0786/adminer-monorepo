@@ -7,6 +7,7 @@ import { useMemo, useState } from "react";
 import { AnalysisResult, DashboardStats } from "@/types/dashboard";
 import CodeEditorModal from "@/components/dashboard/CodeEditorModal";
 import PricingModal from "@/components/dashboard/PricingModal";
+import BootstrapFree from "@/components/BootstrapFree";
 
 export default function Dashboard() {
   const [activeTab, setActiveTab] = useState<"filtering" | "today" | "all">("filtering");
@@ -35,6 +36,7 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-[#0B0B0F] text-neutral-200">
+      <BootstrapFree />
       <DashboardHeader backendStatus="connected" onOpenPricing={() => setOpenPricing(true)} />
       <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
         {/* Signed out → hero sign-in gate */}
