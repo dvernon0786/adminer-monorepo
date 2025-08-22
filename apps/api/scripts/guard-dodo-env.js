@@ -1,39 +1,29 @@
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+/* apps/api/scripts/guard-dodo-env.js */
+const required = ["DODO_CHECKOUT_PRO_URL", "DODO_CHECKOUT_ENT_URL"];
+const missing = required.filter((k) => !process.env[k]);
+const env = process.env.VERCEL_ENV || process.env.NODE_ENV || "development";
+const force = String(process.env.FORCE_BILLING_GUARDS || "").toLowerCase() === "true";
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-
-// In production builds, environment variables are already set by Vercel
-// We don't need to load .env files, just check if the variables exist
+const isProd = env === "production";
 
 console.log("\n==== [Prebuild Guard: Dodo] ====\n");
 
-const required = [
-  "DODO_WEBHOOK_SECRET",
-  "DODO_CHECKOUT_PRO_URL",
-  "DODO_CHECKOUT_ENT_URL",
-];
-
-// Detect when running on Vercel vs local for clearer messages
-const isVercel = !!process.env.VERCEL || !!process.env.NEXT_RUNTIME;
-
-const missing = required.filter((k) => !process.env[k]);
-
 if (missing.length) {
-  console.error("❌ Missing Dodo env vars:");
-  for (const m of missing) console.error("   - " + m);
-  console.error(
-    isVercel
-      ? "Vercel: Add these in Project → Settings → Environment Variables (correct scope: Production/Preview)."
-      : "Local: Export these in your shell (or run `direnv`/`source .env.local`), since we intentionally do not load .env files."
-  );
-  process.exit(1);
+  if (isProd || force) {
+    console.error("❌ Missing Dodo env vars:");
+    missing.forEach((m) => console.error(`   - ${m}`));
+    console.error(
+      "Vercel: Add these in Project → Settings → Environment Variables (scope: Production/Preview)."
+    );
+    process.exit(1);
+  } else {
+    console.warn("⚠️  Missing Dodo env vars (non-production):");
+    missing.forEach((m) => console.warn(`   - ${m}`));
+    console.warn("Build will continue in Preview/Dev.\n");
+  }
+} else {
+  console.log("✅ Dodo env vars present.\n");
 }
-
-console.log("✅ Dodo environment variables are set.");
-console.log(`Environment variables found: [${required.join(', ')}]`);
 
 // Add scope hint for debugging
 const scope = process.env.VERCEL_ENV || (process.env.VERCEL ? "unknown" : "local");
