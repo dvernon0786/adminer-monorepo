@@ -15,12 +15,19 @@ const log = (...a) => console.log("[check-spa-paths]", ...a);
     }
     let html = await fsp.readFile(indexPath, "utf8");
 
-    // Hard fail if any bad prefixes remain
-    const BAD = ["/public/assets/", "public/assets/"];
-    for (const bad of BAD) {
+    // Enhanced validation: Hard fail if any bad prefixes remain
+    const BAD_PREFIXES = ["/public/assets/", "public/assets/"];
+    for (const bad of BAD_PREFIXES) {
       if (html.includes(bad)) {
         throw new Error(`Found bad asset prefix "${bad}" in index.html`);
       }
+    }
+
+    // Additional check: Look for any URLs that incorrectly start with /public/
+    const publicUrlMatches = (html.match(/["'`](\/public\/[^"'`]+)["'`]/g) || []);
+    if (publicUrlMatches.length) {
+      console.error('[check-spa-paths] ERROR: One or more URLs are incorrectly prefixed with /public/:', publicUrlMatches);
+      process.exit(1);
     }
 
     // Extract assets referenced via href/src that begin with /assets/
@@ -42,7 +49,13 @@ const log = (...a) => console.log("[check-spa-paths]", ...a);
       );
     }
 
-    log(`OK: ${assetPaths.size} assets validated, index.html clean ✅`);
+    // Final validation: Confirm assets path prefix is correct
+    if (html.includes('/public/assets/')) {
+      console.error('[check-spa-paths] ERROR: Found "/public/assets/" in index.html — must be "/assets/".');
+      process.exit(1);
+    }
+
+    log(`OK: ${assetPaths.size} assets validated, assets path prefix is "/assets/", index.html clean ✅`);
   } catch (err) {
     console.error("Post-build SPA path check failed ❌\n", err?.message || err);
     process.exit(1);
