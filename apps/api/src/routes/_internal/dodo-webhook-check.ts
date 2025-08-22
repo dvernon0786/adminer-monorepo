@@ -84,8 +84,8 @@ function handler(req: NextApiRequest, res: NextApiResponse) {
         .digest("hex");
       
       if (!crypto.timingSafeEqual(
-        Buffer.from(sigHex, "hex"),
-        Buffer.from(expectedSig, "hex")
+        new Uint8Array(Buffer.from(sigHex, "hex")),
+        new Uint8Array(Buffer.from(expectedSig, "hex"))
       )) {
         return res.status(400).json({ 
           ok: false, 

@@ -1,5 +1,4 @@
 import { NextApiRequest, NextApiResponse } from 'next';
-import { getSafeEnv } from '../../lib/security';
 
 // In-memory rate limiting (simple but effective for internal endpoints)
 const rateLimitStore = new Map<string, { count: number; resetTime: number }>();
