@@ -1,28 +1,34 @@
-/* apps/api/scripts/guard-dodo-env.js */
-const required = ["DODO_CHECKOUT_PRO_URL", "DODO_CHECKOUT_ENT_URL"];
-const missing = required.filter((k) => !process.env[k]);
+/* apps/api/scripts/guard-dodo-env.js
+ * Purpose: Fail builds in Production if paid checkout URLs are missing.
+ * Notes:
+ *  - Free never requires a checkout URL.
+ *  - In Preview/Dev, only warn (unless FORCE_BILLING_GUARDS=true).
+ */
+const requiredPaid = ["DODO_CHECKOUT_PRO_URL", "DODO_CHECKOUT_ENT_URL"];
+const missing = requiredPaid.filter((k) => !process.env[k]);
+
 const env = process.env.VERCEL_ENV || process.env.NODE_ENV || "development";
 const force = String(process.env.FORCE_BILLING_GUARDS || "").toLowerCase() === "true";
-
 const isProd = env === "production";
 
 console.log("\n==== [Prebuild Guard: Dodo] ====\n");
+console.log("Info: Free plan does not require any checkout URL.");
 
 if (missing.length) {
   if (isProd || force) {
-    console.error("❌ Missing Dodo env vars:");
+    console.error("❌ Missing required checkout URLs for paid plans:");
     missing.forEach((m) => console.error(`   - ${m}`));
     console.error(
-      "Vercel: Add these in Project → Settings → Environment Variables (scope: Production/Preview)."
+      "Vercel: Add these in Project → Settings → Environment Variables (scope: Production)."
     );
     process.exit(1);
   } else {
-    console.warn("⚠️  Missing Dodo env vars (non-production):");
+    console.warn("⚠️  Missing paid checkout URLs (non-production):");
     missing.forEach((m) => console.warn(`   - ${m}`));
-    console.warn("Build will continue in Preview/Dev.\n");
+    console.warn("Continuing build in Preview/Dev.\n");
   }
 } else {
-  console.log("✅ Dodo env vars present.\n");
+  console.log("✅ Paid checkout URLs present.\n");
 }
 
 // Add scope hint for debugging
