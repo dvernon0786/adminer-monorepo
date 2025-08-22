@@ -24,15 +24,15 @@ export const downgradeCanceledOrgs = inngest.createFunction(
       const canceledOrgs = await db
         .select({
           id: orgs.id,
-          externalCustomerId: orgs.external_customer_id,
-          currentPeriodEnd: orgs.current_period_end,
+          dodoCustomerId: orgs.dodoCustomerId,
+          currentPeriodEnd: orgs.currentPeriodEnd,
           plan: orgs.plan,
         })
         .from(orgs)
         .where(
           and(
-            eq(orgs.status, "canceled"),
-            lt(orgs.current_period_end, now)
+            eq(orgs.subscriptionStatus, "canceled"),
+            lt(orgs.currentPeriodEnd, now)
           )
         );
       
@@ -51,8 +51,8 @@ export const downgradeCanceledOrgs = inngest.createFunction(
         .update(orgs)
         .set({ 
           plan: "free",
-          status: "active", // Reset status since they're now on free plan
-          updated_at: new Date()
+          subscriptionStatus: "active", // Reset status since they're now on free plan
+          updatedAt: new Date()
         })
         .where(eq(orgs.id, orgIds[0])); // Note: This updates one at a time, consider batch update if needed
       

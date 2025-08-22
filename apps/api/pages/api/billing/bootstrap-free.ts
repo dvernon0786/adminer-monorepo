@@ -103,10 +103,10 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     await db.update(orgs)
       .set({ 
         plan: "free", 
-        quota_limit: 10,
-        dodo_customer_id: customerId,
-        dodo_subscription_id: subscriptionId,
-        updated_at: new Date()
+        monthlyLimit: 10,
+        dodoCustomerId: customerId,
+        dodoSubscriptionId: subscriptionId,
+        updatedAt: new Date()
       })
       .where(eq(orgs.id, orgId));
 

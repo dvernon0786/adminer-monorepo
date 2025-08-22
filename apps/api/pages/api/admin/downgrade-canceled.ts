@@ -63,8 +63,8 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
           id: org.id, 
           name: org.name, 
           plan: org.plan,
-          billing_status: org.billing_status,
-          current_period_end: org.current_period_end
+          subscription_status: org.subscriptionStatus,
+          current_period_end: org.currentPeriodEnd
         })) 
       });
     }

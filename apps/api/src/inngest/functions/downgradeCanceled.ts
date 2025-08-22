@@ -25,7 +25,7 @@ export const downgradeNightly = inngest.createFunction(
       logger.info("Scanning for downgrade candidates", { now: now.toISOString(), dryRun });
     });
 
-    const candidates = await step.run("query-db", () => findDowngradeCandidates(now)) as Candidate[];
+    const candidates = await step.run("query-db", () => findDowngradeCandidates(now));
 
     if (!candidates.length) {
       await step.run("no-op", async () => {

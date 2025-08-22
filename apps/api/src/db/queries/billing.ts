@@ -7,23 +7,23 @@ type Candidate = typeof orgs.$inferSelect;
 
 export async function findDowngradeCandidates(now = new Date()): Promise<Candidate[]> {
   // Adjust these column names to match your schema exactly:
-  // billing_status, cancel_at_period_end, current_period_end
+  // subscriptionStatus, canceledAt, currentPeriodEnd
   return db
     .select()
     .from(orgs)
     .where(
       or(
-        eq(orgs.billing_status, "canceled"),
-        eq(orgs.billing_status, "incomplete_expired"),
+        eq(orgs.subscriptionStatus, "canceled"),
+        eq(orgs.subscriptionStatus, "incomplete_expired"),
         // Past-due + period ended:
         and(
-          eq(orgs.cancel_at_period_end, true),
-          lt(orgs.current_period_end, now)
+          isNotNull(orgs.canceledAt),
+          lt(orgs.currentPeriodEnd, now)
         ),
         // Safety: some providers mark ended subs without 'canceled'
         and(
-          lt(orgs.current_period_end, now),
-          isNotNull(orgs.dodo_subscription_id)
+          lt(orgs.currentPeriodEnd, now),
+          isNotNull(orgs.dodoSubscriptionId)
         )
       )
     );
@@ -35,9 +35,9 @@ export async function downgradeOrgToFree(orgId: string) {
     .update(orgs)
     .set({
       plan: "free",
-      quota_limit: 10,           // match your Free tier
-      billing_status: "canceled_downgraded",
-      updated_at: new Date(),
+      monthlyLimit: 10,           // match your Free tier
+      subscriptionStatus: "canceled_downgraded",
+      updatedAt: new Date(),
     })
     .where(eq(orgs.id, orgId));
 }

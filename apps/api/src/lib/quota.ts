@@ -1,5 +1,5 @@
 import { db } from '../db/client'
-import { orgs, quota_usage, jobs } from '../db/schema'
+import { orgs, jobs } from '../db/schema'
 import { eq, and, gte, lte, sql } from 'drizzle-orm'
 import crypto from 'crypto'
 
@@ -52,8 +52,8 @@ export async function getQuotaInfo(orgId: string): Promise<QuotaInfo> {
       id: orgId,
       name: 'My Org',
       plan: 'free',
-      quota_limit: PLAN_LIMITS.free,
-      quota_used: 0,
+      monthlyLimit: PLAN_LIMITS.free,
+      monthlyUsage: 0,
     })
     
     return {
@@ -67,14 +67,14 @@ export async function getQuotaInfo(orgId: string): Promise<QuotaInfo> {
 
   const orgData = org[0]
   const plan = orgData.plan as PlanType || 'free'
-  const limit = orgData.quota_limit || PLAN_LIMITS[plan]
+  const limit = orgData.monthlyLimit || PLAN_LIMITS[plan]
   
   // Get current period usage from jobs table (production-ready approach)
   const periodStart = startOfBillingPeriod(new Date())
   const [{ count }] = (await db
     .select({ count: sql`COUNT(*)` })
     .from(jobs)
-    .where(and(eq(jobs.org_id, orgId), gte(jobs.created_at, periodStart)))) as unknown as [{ count: number }]
+    .where(and(eq(jobs.orgId, orgId), gte(jobs.createdAt, periodStart)))) as unknown as [{ count: number }]
   
   const used = Number(count ?? 0)
   const remaining = Math.max(0, limit - used)
@@ -120,21 +120,11 @@ export async function checkQuota(orgId: string): Promise<QuotaCheckResult> {
 
 // Increment quota usage for an organization
 export async function incrementQuota(orgId: string, jobId?: string): Promise<void> {
-  const billingPeriod = getCurrentBillingPeriod()
-  
-  // Add quota usage record
-  await db.insert(quota_usage).values({
-    id: crypto.randomUUID(),
-    org_id: orgId,
-    job_id: jobId,
-    billing_period: billingPeriod
-  })
-
-  // Update org quota_used count
+  // Update org monthlyUsage count directly
   await db.update(orgs)
     .set({
-      quota_used: sql`${orgs.quota_used} + 1`,
-      updated_at: new Date()
+      monthlyUsage: sql`${orgs.monthlyUsage} + 1`,
+      updatedAt: new Date()
     })
     .where(eq(orgs.id, orgId))
 }
@@ -145,10 +135,10 @@ export async function createJob(orgId: string, jobType: string): Promise<string>
   
   await db.insert(jobs).values({
     id: jobId,
-    org_id: orgId,
-    job_type: jobType,
+    orgId: orgId,
+    raw: jobType, // Using 'raw' field for job type since 'job_type' doesn't exist
     status: 'pending',
-    created_at: new Date()
+    createdAt: new Date()
   })
 
   // Increment quota usage
@@ -161,26 +151,16 @@ export async function createJob(orgId: string, jobType: string): Promise<string>
 export async function resetQuotaForNewPeriod(orgId: string): Promise<void> {
   await db.update(orgs)
     .set({
-      quota_used: 0,
-      updated_at: new Date()
+      monthlyUsage: 0,
+      updatedAt: new Date()
     })
     .where(eq(orgs.id, orgId))
 }
 
 // Get quota usage for current billing period
 export async function getCurrentPeriodUsage(orgId: string): Promise<number> {
-  const billingPeriod = getCurrentBillingPeriod()
-  
-  const result = await db.select({ count: sql`COUNT(*)` })
-    .from(quota_usage)
-    .where(
-      and(
-        eq(quota_usage.org_id, orgId),
-        eq(quota_usage.billing_period, billingPeriod)
-      )
-    )
-  
-  return Number(result[0]?.count) || 0
+  // Use the jobs table approach since quota_usage table doesn't exist
+  return getCurrentPeriodUsageFromJobs(orgId)
 }
 
 // Get current period usage from jobs table (production-ready approach)
@@ -190,7 +170,7 @@ export async function getCurrentPeriodUsageFromJobs(orgId: string): Promise<numb
   const [{ count }] = (await db
     .select({ count: sql`COUNT(*)` })
     .from(jobs)
-    .where(and(eq(jobs.org_id, orgId), gte(jobs.created_at, periodStart)))) as unknown as [{ count: number }]
+    .where(and(eq(jobs.orgId, orgId), gte(jobs.createdAt, periodStart)))) as unknown as [{ count: number }]
   
   return Number(count ?? 0)
 } 
