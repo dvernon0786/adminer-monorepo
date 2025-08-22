@@ -73,4 +73,28 @@
       left: 100%;
     }
   }
+  
+  /* Gradient utilities for dashboard */
+  .gradient-btn {
+    background-image: linear-gradient(90deg, #3B82F6, #7C3AED);
+    color: #fff;
+    transition: filter .2s ease, transform .1s ease;
+  }
+  .gradient-btn:hover { 
+    filter: brightness(1.05); 
+  }
+  .gradient-btn:active { 
+    transform: translateY(1px); 
+  }
+
+  .gradient-underline {
+    background-image: linear-gradient(90deg, #3B82F6, #7C3AED);
+  }
+
+  .gradient-text {
+    background: linear-gradient(90deg, #3B82F6, #7C3AED);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
 } 
