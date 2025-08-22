@@ -23,7 +23,14 @@ The SPA integration was failing because Vite wasn't available in the Vercel buil
 - ✅ Improved error handling and logging
 - ✅ **Production-ready**: Tested successfully in both local and simulated production scenarios
 
-### 3. Build Process
+### 3. **Comprehensive SPA Routing & Security** (NEW!)
+- ✅ **Next.js Rewrites**: Proper SPA routing for `/`, `/dashboard`, and deep links
+- ✅ **URL Stripping**: Automatically strips `/public/` prefix from URLs to prevent asset path issues
+- ✅ **Enhanced Validation**: Strengthened post-build checks with comprehensive `/public/` regression prevention
+- ✅ **Content Security Policy**: Added CSP headers for additional security and path mistake detection
+- ✅ **Vite Optimization**: Added `data-no-optimize` to env.js script to silence build warnings
+
+### 4. Build Process
 - ✅ No changes needed to Vercel build command
 - ✅ Script automatically handles both local development and production environments
 - ✅ Maintains existing `prebuild` → `build` → `spa:integrate` → `postbuild` flow
@@ -43,11 +50,19 @@ The SPA integration was failing because Vite wasn't available in the Vercel buil
    - Builds SPA using package script
    - Copies built SPA to `apps/api/public/`
 
+### **SPA Routing (NEW!)**
+- **Root routes**: `/` and `/dashboard` → serve `index.html`
+- **Deep links**: Any non-API path → serve `index.html` (SPA handles routing)
+- **Asset serving**: `/assets/*` → served directly from `public/assets/`
+- **URL cleanup**: `/public/assets/*` → automatically rewritten to `/assets/*`
+
 ## What to Expect in Next Deploy
 
 ✅ **Next.js builds successfully** (already working)
 ✅ **SPA integration succeeds** (robust fallback mechanism)
 ✅ **SPA served at `/` and `/dashboard`** from `apps/api/public/`
+✅ **Deep linking works** for all SPA routes
+✅ **Asset paths are correct** (no more `/public/assets/` issues)
 ✅ **All billing and quota functionality preserved** (no changes to existing logic)
 
 ## Testing Completed
@@ -62,11 +77,17 @@ The SPA integration was failing because Vite wasn't available in the Vercel buil
 - SPA built and integrated successfully
 - Post-build validation passed
 
+### ✅ **Enhanced Validation Test**
+- Comprehensive `/public/` regression checks
+- Asset path validation
+- CSP header validation
+- All security checks passed
+
 ### ✅ **Final Verification**
 - `apps/api/public/index.html` exists
 - `apps/api/public/assets/*` contains CSS and JS files
 - `check-spa-paths.cjs` passes validation
-- Asset paths in `index.html` are correctly formatted
+- Asset paths in `index.html` are correctly formatted as `/assets/*`
 
 ## Testing Locally
 
@@ -80,7 +101,27 @@ npm run -w @adminer/api postbuild        # Should validate SPA paths
 # Test fallback mechanism (simulate production)
 cd apps/web && rm -rf node_modules && cd ../..
 npm run -w @adminer/api spa:integrate    # Should use fallback and succeed
+
+# Test enhanced validation
+node apps/api/scripts/check-spa-paths.cjs  # Should pass all checks
 ```
+
+## **Production Benefits (NEW!)**
+
+### 🚀 **SPA Routing**
+- **Deep linking**: `/dashboard/settings` → SPA handles routing
+- **Asset serving**: `/assets/index-ABC123.js` → served with correct MIME types
+- **URL cleanup**: Old `/public/assets/*` links automatically work
+
+### 🔒 **Security & Validation**
+- **CSP headers**: Catch path mistakes quickly
+- **Regression prevention**: Multiple layers of `/public/` checks
+- **Asset validation**: Ensure all referenced assets exist
+
+### 📱 **User Experience**
+- **Clean URLs**: No more broken asset links
+- **Fast navigation**: SPA routing for all app paths
+- **Reliable assets**: Proper MIME types and caching
 
 ## No Breaking Changes
 
@@ -99,5 +140,15 @@ The fix is **production-ready** and has been tested in scenarios that mirror Ver
 - ✅ **Multiple fallback layers**
 - ✅ **Environment-aware configuration**
 - ✅ **Comprehensive error handling**
+- ✅ **SPA routing configuration**
+- ✅ **Security headers and validation**
 
-The next Vercel deployment should now successfully build and integrate the SPA, resolving the "vite: command not found" error with a robust, production-tested solution. 
+## **Next Steps for Vercel Deployment**
+
+1. **Push changes** ✅ (completed)
+2. **Deploy to Vercel** - SPA integration should now succeed
+3. **Verify routing** - Test `/`, `/dashboard`, and deep links
+4. **Check assets** - Verify `/assets/*` files load correctly
+5. **Monitor logs** - Should see successful SPA integration
+
+The next Vercel deployment should now successfully build and integrate the SPA, resolving the "vite: command not found" error with a robust, production-tested solution that includes comprehensive routing and security improvements. 
