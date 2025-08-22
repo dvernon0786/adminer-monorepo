@@ -1,12 +1,9 @@
 import type { NextApiRequest, NextApiResponse } from "next";
+import { withInternalSecurity } from "../../middleware/internal-security";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "GET") {
     return res.status(405).json({ error: "Method not allowed" });
-  }
-
-  if (process.env.INTERNAL_ENDPOINTS_ENABLED !== "true") {
-    return res.status(404).end();
   }
 
   const mem = process.memoryUsage();
@@ -20,4 +17,7 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   };
 
   res.json(info);
-} 
+}
+
+// Export with security middleware
+export default withInternalSecurity(handler); 

@@ -16,7 +16,18 @@
     "test": "jest",
     "test:watch": "jest --watch",
     "test:billing": "vitest run",
-    "test:billing:watch": "vitest"
+    "test:billing:watch": "vitest",
+    "build:all": "npm run -w @adminer/api run prebuild && npm run -w @adminer/api run build",
+    "dev:api:env": "cd apps/api && (./scripts/dev-with-env.sh || bash scripts/dev-with-env.sh)",
+    "smoke": "./scripts/smoke-test-production.sh || sh scripts/smoke-test-production.sh",
+    "health": "curl -s https://www.adminer.online/api/consolidated?action=health || echo 'Health check failed'",
+    "billing": "curl -s https://www.adminer.online/api/consolidated?action=billing | jq . || echo 'Billing check failed'",
+    "candidates": "curl -s https://www.adminer.online/api/consolidated?action=candidates | jq . || echo 'Candidates check failed'",
+    "env:check": "cd apps/api && node scripts/guard-env.js",
+    "preflight": "cd apps/api && npm run prebuild",
+    "micro:smoke": "./scripts/micro-smoke.sh || sh scripts/micro-smoke.sh",
+    "vercel:validate": "./scripts/vercel-env-validate.sh || sh scripts/vercel-env-validate.sh",
+    "spa:integrate": "./scripts/build-and-integrate.sh || sh scripts/build-and-integrate.sh"
   },
   "devDependencies": {
     "@types/jest": "^30.0.0",

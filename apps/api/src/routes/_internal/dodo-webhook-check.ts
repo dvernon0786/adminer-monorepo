@@ -1,7 +1,8 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 import crypto from "node:crypto";
+import { withInternalSecurity } from "../../middleware/internal-security";
 
-export default function handler(req: NextApiRequest, res: NextApiResponse) {
+function handler(req: NextApiRequest, res: NextApiResponse) {
   if (req.method !== "POST") {
     return res.status(405).json({ error: "Method not allowed" });
   }
@@ -99,8 +100,11 @@ export default function handler(req: NextApiRequest, res: NextApiResponse) {
   } catch (error) {
     return res.status(400).json({ 
       ok: false, 
-      reason: "invalid-signature",
+      reason: "validation-error",
       error: error instanceof Error ? error.message : "Unknown error"
     });
   }
-} 
+}
+
+// Export with security middleware
+export default withInternalSecurity(handler); 
