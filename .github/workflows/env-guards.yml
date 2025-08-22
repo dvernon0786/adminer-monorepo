@@ -1,0 +1,66 @@
+name: Env Guards
+on:
+  pull_request:
+    branches: [ main, develop ]
+  push:
+    branches: [ main, develop ]
+
+jobs:
+  check-guards:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/api
+    steps:
+      - uses: actions/checkout@v4
+      
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
+          cache: 'npm'
+          cache-dependency-path: 'apps/api/package-lock.json'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run guards (expect failure without envs)
+        run: |
+          set +e
+          node scripts/guard-dodo-env.js && node scripts/guard-clerk-env.js
+          status=$?
+          if [ $status -eq 0 ]; then
+            echo "ERROR: Guards passed with no envs; they should fail." && exit 1
+          else
+            echo "OK: Guards correctly failed without envs."
+          fi
+      
+      - name: Run guards with minimal dummy envs (expect success)
+        env:
+          DODO_API_KEY: dummy_key_for_testing
+          DODO_WEBHOOK_SECRET: dummy_webhook_secret
+          DODO_FREE_PRODUCT_ID: pdt_dummy_free
+          DODO_PRO_PRODUCT_ID: pdt_dummy_pro
+          DODO_ENT_PRODUCT_ID: pdt_dummy_enterprise
+          CLERK_SECRET_KEY: sk_dummy_secret_key
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_dummy_publishable_key
+          VITE_CLERK_PUBLISHABLE_KEY: pk_dummy_publishable_key
+        run: |
+          echo "Testing guards with dummy environment variables..."
+          node scripts/guard-dodo-env.js
+          node scripts/guard-clerk-env.js
+          echo "✅ All guards passed with dummy environment variables"
+      
+      - name: Verify prebuild chain
+        env:
+          DODO_API_KEY: dummy_key_for_testing
+          DODO_WEBHOOK_SECRET: dummy_webhook_secret
+          DODO_FREE_PRODUCT_ID: pdt_dummy_free
+          DODO_PRO_PRODUCT_ID: pdt_dummy_pro
+          DODO_ENT_PRODUCT_ID: pdt_dummy_enterprise
+          CLERK_SECRET_KEY: sk_dummy_secret_key
+          NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: pk_dummy_publishable_key
+          VITE_CLERK_PUBLISHABLE_KEY: pk_dummy_publishable_key
+        run: |
+          echo "Testing complete prebuild chain..."
+          npm run prebuild
+          echo "✅ Prebuild chain completed successfully" 
