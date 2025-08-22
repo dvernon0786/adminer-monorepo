@@ -10,6 +10,7 @@ export const orgs = pgTable('orgs', {
   quota_used: integer('quota_used').default(0),
   dodo_customer_id: text('dodo_customer_id'),
   dodo_subscription_id: text('dodo_subscription_id'),
+  external_customer_id: text('external_customer_id'), // For Dodo webhook correlation
   current_period_end: timestamp('current_period_end'),
   cancel_at_period_end: boolean('cancel_at_period_end').default(false),
   created_at: timestamp('created_at').defaultNow(),
@@ -18,13 +19,9 @@ export const orgs = pgTable('orgs', {
 
 export const webhook_events = pgTable('webhook_events', {
   id: text('id').primaryKey(),          // Dodo event ID for idempotency
-  event_type: text('event_type').notNull(), // Legacy field
-  type: text('type'),                   // New field for production-ready version
-  org_id: text('org_id').notNull(),
-  processed_at: timestamp('processed_at').defaultNow(), // Legacy field
-  received_at: timestamp('received_at'), // New field for production-ready version
-  data: text('data'),                   // Legacy JSON string field
-  payload: jsonb('payload'),            // New JSONB field for production-ready version
+  type: text('type').notNull(),         // Event type (subscription.activated, etc.)
+  payload: jsonb('payload').notNull(),  // Full webhook payload
+  received_at: timestamp('received_at').defaultNow(), // When webhook was received
 })
 
 export const quota_usage = pgTable('quota_usage', {

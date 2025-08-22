@@ -24,8 +24,19 @@ type QuotaPayload = {
     upgradeUrl: string;
   };
 };
+type QuotaExceededPayload = {
+  error: "quota_exceeded";
+  usage: number;
+  limit: number;
+  plan: string;
+  upgrade: {
+    pro: string;
+    enterprise: string;
+    docs: string;
+  };
+};
 type ErrorPayload = { error: string };
-type Data = HealthPayload | AuthPayload | QuotaPayload | ErrorPayload;
+type Data = HealthPayload | AuthPayload | QuotaPayload | QuotaExceededPayload | ErrorPayload;
 
 export default async function handler(req: NextApiRequest, res: NextApiResponse<Data>) {
   const action = typeof req.query.action === "string" ? req.query.action : undefined;
@@ -55,6 +66,23 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse<
       // Get comprehensive quota information using the new quota system
       const quotaInfo = await getQuotaInfo(orgId);
       
+      // Check if quota is exceeded
+      if (quotaInfo.used > quotaInfo.limit) {
+        // Return 402 Payment Required with upgrade hints
+        return res.status(402).json({
+          error: "quota_exceeded",
+          usage: quotaInfo.used,
+          limit: quotaInfo.limit,
+          plan: quotaInfo.plan,
+          upgrade: {
+            pro: "/api/billing/upgrade?plan=pro",
+            enterprise: "/api/billing/upgrade?plan=enterprise",
+            docs: "Upgrade to increase limits",
+          },
+        });
+      }
+      
+      // Quota is within limits, return normal response
       res.status(200).json({
         status: "healthy",
         quota: quotaInfo
