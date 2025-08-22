@@ -39,6 +39,8 @@ const nextConfig = {
       beforeFiles: [
         { source: '/public/env.js', destination: '/env.js' },
         { source: '/public/assets/:path*', destination: '/assets/:path*' },
+        // Catch any other /public/* paths and strip the prefix
+        { source: '/public/:path*', destination: '/:path*' },
       ],
 
       // 2) afterFiles: let filesystem (_next, assets, api, etc.) win first,
@@ -56,6 +58,24 @@ const nextConfig = {
       // no fallback rewrites
       fallback: [],
     };
+  },
+
+  // Add redirects to force browser to use correct URLs
+  async redirects() {
+    return [
+      // Force redirect from /public/assets/* to /assets/* to update browser URLs
+      {
+        source: '/public/assets/:path*',
+        destination: '/assets/:path*',
+        permanent: false, // Use 307/308 to avoid caching issues
+      },
+      // Catch any other /public/* paths
+      {
+        source: '/public/:path*',
+        destination: '/:path*',
+        permanent: false,
+      },
+    ];
   },
 };
 
