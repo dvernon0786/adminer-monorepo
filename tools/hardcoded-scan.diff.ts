@@ -3,6 +3,8 @@ import fs from "fs";
 import path from "path";
 import { execSync } from "child_process";
 
+const { isDocsFile } = require("./hardcoded-scan.shared");
+
 type Pattern = { id: string; regex: string };
 type Config = {
   include: string[];
@@ -23,21 +25,6 @@ function isWhitelisted(s: string): boolean {
 }
 
 // Keep docs/config placeholder noise out of the diff scanner too
-function isDocsFile(file: string): boolean {
-  const lower = file.replace(/\\/g, "/").toLowerCase();
-  if (lower.includes("/docs/")) return true;
-  if (lower.includes("/doc/")) return true;
-  if (/readme(\.[^/]+)?$/i.test(lower)) return true;
-  if (/\.(md|mdx|adoc|rst|txt)$/i.test(lower)) return true;
-  if (/\.env\.example$/i.test(lower)) return true;
-  if (/(^|\/)(example|samples?)\//i.test(lower)) return true;
-  // NEW: the scanner's own config
-  if (/(^|\/)(tools|scripts)\/hardcoded-scan\.config\.json$/.test(lower)) return true;
-  // NEW: also treat scanner files themselves as docs
-  if (/(^|\/)(tools|scripts)\/hardcoded-scan.*\.ts$/.test(lower)) return true;
-  return false;
-}
-
 function* iterLines(content: string) {
   const lines = content.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) yield { num: i + 1, text: lines[i] };

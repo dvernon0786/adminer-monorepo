@@ -4,6 +4,8 @@ import fg from "fast-glob";
 import fs from "fs";
 import path from "path";
 
+const { isDocsFile } = require("./hardcoded-scan.shared");
+
 type Pattern = { id: string; regex: string };
 type Config = {
   include: string[];
@@ -29,10 +31,6 @@ function isWhitelisted(s: string): boolean {
 }
 
 // Add this small helper near the top:
-function isDocsFile(file: string) {
-  return file.endsWith(".md") || file.includes("/docs/") || file.includes("hardcoded-scan.config.json");
-}
-
 function* iterLines(content: string) {
   const lines = content.split(/\r?\n/);
   for (let i = 0; i < lines.length; i++) {
@@ -148,7 +146,7 @@ async function main() {
 
   if (findings.length > 0) {
     console.error("❌ Hardcoded/placeholder findings detected:");
-    console.error("=" * 80);
+    console.error("=".repeat(80));
     
     // Group findings by type
     const groupedFindings = findings.reduce((acc, finding) => {
@@ -159,7 +157,7 @@ async function main() {
 
     for (const [id, groupFindings] of Object.entries(groupedFindings)) {
       console.error(`\n🔴 ${id} (${groupFindings.length} findings):`);
-      console.error("-" * 40);
+      console.error("-".repeat(40));
       
       for (const f of groupFindings) {
         const relativePath = path.relative(root, f.file);
