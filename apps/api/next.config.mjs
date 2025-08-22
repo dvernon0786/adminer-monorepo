@@ -21,7 +21,7 @@ const nextConfig = {
   // Ensure static files are served correctly
   experimental: {
     // Force Next.js to serve static files from public/
-    staticPageGenerationTimeout: 120,
+    // Note: staticPageGenerationTimeout is not a valid option in Next.js 14
   },
 
   async headers() {

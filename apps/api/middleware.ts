@@ -1,9 +1,8 @@
 import { clerkMiddleware } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
 
 // Custom middleware for static asset handling
-function staticAssetMiddleware(request: NextRequest) {
+function staticAssetMiddleware(request: any) {
   const { pathname } = request.nextUrl
 
   // Explicitly handle static assets with correct MIME types
