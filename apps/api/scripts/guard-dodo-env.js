@@ -1,16 +1,12 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { config } from 'dotenv';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Load environment variables from .env.local if it exists
-const envPath = path.resolve(__dirname, '../.env.local');
-if (fs.existsSync(envPath)) {
-  config({ path: envPath, override: true });
-}
+// In production builds, environment variables are already set by Vercel
+// We don't need to load .env files, just check if the variables exist
 
 // Check required Dodo environment variables
 const required = [
@@ -35,6 +31,7 @@ for (const key of required) {
 
 if (missing.length > 0) {
   console.error(`❌ Missing required Dodo environment variables: ${missing.join(', ')}`);
+  console.error(`Please ensure these are set in your Vercel environment variables.`);
   process.exit(1);
 }
 
