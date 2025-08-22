@@ -774,10 +774,11 @@ Successfully implemented comprehensive dashboard improvements with modern UI com
 
 #### **💳 Dodo Free Plan Bootstrap System**
 - **Automatic Provisioning**: Free plan automatically created on first sign-in
-- **Dodo Integration**: Customer and subscription creation via Dodo API
-- **Idempotent Operations**: Safe to run multiple times
+- **Dodo Integration**: Customer and subscription creation via Dodo API (pending implementation)
+- **Idempotent Operations**: Safe to run multiple times without side effects
 - **Comprehensive Testing**: Vitest test suite with full coverage
 - **Error Handling**: Robust error handling and recovery mechanisms
+- **Current Status**: Simplified API working with existing schema, Dodo integration ready for next phase
 
 ### 📊 **Quality Metrics**
 - ✅ **Build Success**: No TypeScript compilation errors
