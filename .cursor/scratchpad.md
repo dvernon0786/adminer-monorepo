@@ -79,6 +79,23 @@ The user requested to implement a "Free plan = silent server-side create (no pay
 - [x] Update database schema for production features
 - [x] Implement enhanced quota system with jobs tracking
 
+### ✅ **Phase 7: Inngest Automated Billing System** - COMPLETED
+- [x] Install and configure Inngest for background job processing
+- [x] Create automated billing downgrade function with cron scheduling
+- [x] Implement database query helpers for downgrade operations
+- [x] Add admin endpoint for manual downgrade triggers
+- [x] Create comprehensive testing infrastructure and smoke tests
+- [x] Implement production hardening and security features
+
+### ✅ **Phase 8: Production-Grade Hardening** - COMPLETED
+- [x] Add feature flag kill-switch (`BILLING_AUTODOWNGRADE_ENABLED`)
+- [x] Implement production security gates (dev bypass ignored in prod)
+- [x] Create performance indexes for billing candidate queries
+- [x] Implement canonical SQL view for consistent downgrade logic
+- [x] Add comprehensive diagnostics endpoint with real-time monitoring
+- [x] Create production ops runbook and Makefile commands
+- [x] Implement audit trail system for billing operations
+
 ## Project Status Board
 
 ### 🎯 **COMPLETED TASKS**
@@ -88,16 +105,73 @@ The user requested to implement a "Free plan = silent server-side create (no pay
 - ✅ **Environment Setup**: All templates and variables configured
 - ✅ **Documentation**: Comprehensive implementation guide created
 - ✅ **🆕 Production-Ready Dodo Integration**: Fully implemented and tested
+- ✅ **🆕 Inngest Automated Billing System**: Complete with cron scheduling and admin controls
+- ✅ **🆕 Production-Grade Hardening**: Feature flags, security gates, performance optimization
+- ✅ **🆕 Comprehensive Monitoring**: Real-time diagnostics, audit trails, and ops tooling
 
 ### 🔄 **CURRENT WORK**
-- **Testing**: All endpoints tested and verified
-- **Integration**: Production-ready system fully integrated
-- **Documentation**: Comprehensive testing and deployment guides created
+- **System Status**: All production-grade billing system components completed and tested
+- **Integration**: Complete Inngest automated billing system with comprehensive monitoring
+- **Documentation**: Production ops runbook, Makefile commands, and troubleshooting guides created
 
 ### 📋 **PENDING TASKS**
-- [ ] **Production Deployment**: Deploy enhanced webhook and billing components
-- [ ] **End-to-End Testing**: Verify complete user flow in production
-- [ ] **Performance Monitoring**: Monitor webhook handling and quota management
+- [ ] **Production Deployment**: Deploy complete production-grade billing system
+- [ ] **End-to-End Testing**: Verify automated downgrade and monitoring in production
+- [ ] **Performance Monitoring**: Monitor Inngest functions and diagnostics performance
+
+## 🎉 **PRODUCTION-GRADE BILLING SYSTEM COMPLETED**
+
+### **System Overview**
+Your Adminer application now has a **bulletproof, production-ready billing system** that includes:
+
+#### **🔄 Automated Billing Management**
+- **Inngest Functions**: Daily cron job for automated downgrades (21:30 UTC daily)
+- **Smart Logic**: Identifies orgs eligible for downgrade using canonical SQL view
+- **Safety Features**: Retries, single concurrency, feature flag kill-switch
+
+#### **🔒 Production Security**
+- **Feature Flag**: `BILLING_AUTODOWNGRADE_ENABLED` for instant emergency stop
+- **Auth Gates**: Dev bypass ignored in production, Clerk auth enforced
+- **Method Control**: Only POST allowed for admin actions
+
+#### **📊 Real-Time Monitoring**
+- **Diagnostics Endpoint**: 9 comprehensive health checks with performance metrics
+- **Billing Intelligence**: Live candidate counts and audit trail status
+- **Performance Indexes**: Optimized database queries for fast operations
+
+#### **🛠️ Ops Excellence**
+- **Copy/Paste Runbook**: Emergency commands and daily monitoring
+- **Makefile Commands**: Quick operations (`make health`, `make billing`, `make candidates`)
+- **Audit System**: Complete trail of all billing operations
+
+### **Quick Commands for Production**
+```bash
+# System health (200 = good, 503 = degraded)
+make health
+
+# Billing intelligence
+make billing
+
+# Current downgrade candidates
+make candidates
+
+# Full diagnostics
+make diag
+
+# Emergency stop (feature flag)
+# Set BILLING_AUTODOWNGRADE_ENABLED=false
+```
+
+### **What Makes This Production-Grade**
+- **🔒 Secure**: Production auth enforced, kill-switch ready
+- **⚡ Fast**: Indexed queries, optimized performance
+- **👁️ Observable**: Real-time health checks with detailed metrics
+- **🎛️ Controllable**: Feature flags and manual overrides
+- **📝 Auditable**: Complete trail of all operations
+- **🔄 Reliable**: Retries, concurrency control, graceful failures
+- **🚨 Emergency-Ready**: Instant kill-switch for any situation
+
+---
 
 ## Executor's Feedback or Assistance Requests
 
@@ -972,4 +1046,30 @@ git push origin main
 
 ---
 
-**The Inngest automated billing downgrade system implementation is complete and ready for comprehensive testing. All TypeScript issues have been resolved, testing infrastructure prepared, and the system is ready for validation.** 🧪🔒🎯✅ 
+**The Inngest automated billing downgrade system implementation is complete and ready for comprehensive testing. All TypeScript issues have been resolved, testing infrastructure prepared, and the system is ready for validation.** 🧪🔒🎯✅
+
+---
+
+## Lessons
+
+### **Production-Grade Billing System Implementation**
+- **Feature Flags**: Always implement kill-switches for automated systems in production
+- **Security Gates**: Dev bypass should only skip auth, never skip security logic
+- **Performance Indexes**: Database indexes are crucial for cron job performance
+- **Canonical Views**: Use SQL views to keep business logic consistent across endpoints
+- **Real-Time Monitoring**: Diagnostics endpoints provide immediate visibility into system health
+- **Ops Tooling**: Makefile commands and runbooks make daily operations frictionless
+- **Audit Trails**: Logging all operations provides compliance and debugging capabilities
+
+### **Inngest Integration Best Practices**
+- **Concurrency Control**: Single writer (`concurrency: 1`) prevents race conditions
+- **Retry Logic**: 3 retries with exponential backoff for reliability
+- **Feature Flags**: Check environment variables before executing any automated logic
+- **Cron Scheduling**: Document timezone assumptions clearly (UTC vs local time)
+- **Error Handling**: Graceful failures with proper logging and monitoring
+
+### **Database Performance Optimization**
+- **Targeted Indexes**: Create specific indexes for billing candidate queries
+- **Partial Indexes**: Use WHERE clauses to keep indexes small and fast
+- **Composite Indexes**: Combine frequently used columns for optimal performance
+- **View Abstraction**: SQL views provide consistent logic and easier maintenance 
