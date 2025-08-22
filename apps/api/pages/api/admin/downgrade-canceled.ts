@@ -14,9 +14,18 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
     });
   }
 
-  // DEV ONLY bypass: set ALLOW_UNAUTH_DEV=true in .env.local to allow local testing without JWT
+  // Production security: enforce auth in prod, dev bypass only skips auth
+  const isProd = process.env.NODE_ENV === "production";
+  const allowUnAuth = process.env.ALLOW_UNAUTH_DEV === "true";
+  const autoEnabled = process.env.BILLING_AUTODOWNGRADE_ENABLED === "true";
+
+  // auth fence: dev may bypass, prod must be authenticated by middleware (already set up)
+  if (isProd && allowUnAuth) {
+    console.warn("[Admin Downgrade] ALLOW_UNAUTH_DEV is ignored in production");
+  }
+
   let userId = null;
-  if (process.env.ALLOW_UNAUTH_DEV === "true") {
+  if (!isProd && allowUnAuth) {
     console.log("[Admin Downgrade] Dev bypass enabled - skipping authentication");
     userId = "dev-bypass-user";
   } else {
@@ -31,6 +40,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   // TODO: Add your admin check here
   // if (!isAdmin(userId)) return res.status(403).json({ error: "Forbidden - Admin access required" });
+
+  // feature flag: hard stop if disabled
+  if (!autoEnabled) {
+    return res.status(200).json({ ok: true, skipped: true, reason: "feature_flag_off" });
+  }
 
   const dryRun = req.query.dryRun === "1";
   const now = new Date();

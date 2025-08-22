@@ -9,20 +9,14 @@ const payloadSchema = z.object({
   now: z.string().datetime().optional(),
 });
 
-export const downgradeCanceled = inngest.createFunction(
-  {
-    id: "downgrade-canceled-orgs",
-    name: "Downgrade Canceled/Expired Orgs",
-    concurrency: { limit: 5 },
-  },
-  // Runs 03:00 IST daily => 21:30 UTC cron
-  // Note: Inngest cron uses UTC timezone. This translates to:
-  // - UTC: 21:30 (9:30 PM)
-  // - IST: 03:00 (3:00 AM next day)
-  // - EST: 16:30 (4:30 PM)
-  // - PST: 13:30 (1:30 PM)
+export const downgradeNightly = inngest.createFunction(
+  { id: "billing-downgrade-nightly", retries: 3, concurrency: 1 },
   { cron: "30 21 * * *" },
   async ({ step, event, logger }) => {
+    if (process.env.BILLING_AUTODOWNGRADE_ENABLED !== "true") {
+      return { ok: true, skipped: true, reason: "feature_flag_off" };
+    }
+
     const input = payloadSchema.parse((event as any)?.data ?? {});
     const now = input.now ? new Date(input.now) : new Date();
     const dryRun = input.dryRun ?? false;
