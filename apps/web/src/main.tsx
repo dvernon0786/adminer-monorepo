@@ -12,16 +12,16 @@ declare global {
   }
 }
 
-// Resolve Clerk publishable key from runtime environment
+// Resolve Clerk configuration from runtime environment
+const ENV = (typeof window !== 'undefined' && (window as any).ENV) || {};
+
 const PUBLISHABLE_KEY =
-  (typeof window !== 'undefined' && window?.ENV?.VITE_CLERK_PUBLISHABLE_KEY) ||
+  ENV.VITE_CLERK_PUBLISHABLE_KEY ||
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 // If you are intentionally proxying Clerk via a custom domain, set this:
-const PROXY_URL =
-  (typeof window !== 'undefined' && window?.ENV?.CLERK_PROXY_URL) ||
-  import.meta.env.VITE_CLERK_PROXY_URL ||
-  undefined
+const PROXY_URL = ENV.CLERK_PROXY_URL || import.meta.env.VITE_CLERK_PROXY_URL;
+const CLERK_JS_URL = ENV.CLERK_JS_URL || import.meta.env.VITE_CLERK_JS_URL;
 
 if (!PUBLISHABLE_KEY) {
   console.error('Missing Clerk publishable key')
@@ -33,6 +33,7 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY!}
       {...(PROXY_URL ? { proxyUrl: PROXY_URL } : {})}
+      {...(CLERK_JS_URL ? { clerkJSUrl: CLERK_JS_URL } : {})}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       afterSignInUrl="/dashboard"

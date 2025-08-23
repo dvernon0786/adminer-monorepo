@@ -2,7 +2,7 @@ import { SignInButton, SignUpButton } from '@clerk/clerk-react'
 import { Button } from '../ui/button'
 
 export const SignInBtn = ({ to = '/dashboard', children = 'Sign in', variant = 'outline', size = 'sm', className = '' }) => (
-  <SignInButton afterSignInUrl={to}>
+  <SignInButton fallbackRedirectUrl={to}>
     <Button variant={variant} size={size} className={className} asChild={false}>
       {children}
     </Button>
@@ -10,7 +10,7 @@ export const SignInBtn = ({ to = '/dashboard', children = 'Sign in', variant = '
 )
 
 export const SignUpBtn = ({ to = '/dashboard', children = 'Get started', variant = 'default', size = 'sm', className = '' }) => (
-  <SignUpButton afterSignUpUrl={to}>
+  <SignUpButton fallbackRedirectUrl={to}>
     <Button variant={variant} size={size} className={className} asChild={false}>
       {children}
     </Button>
