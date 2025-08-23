@@ -44,8 +44,7 @@ const nextConfig = {
       "'self'",
       "'unsafe-inline'",
       ...clerkHosts,
-      // Allow Clerk JS from our proxy
-      "'self'",
+      // Allow Clerk JS from jsdelivr CDN
       "https://cdn.jsdelivr.net"
     ].join(' ');
 
@@ -144,10 +143,6 @@ const nextConfig = {
       {
         source: "/clerk/npm/@clerk/clerk-js@5/dist/:file*",
         destination: "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/:file*",
-        headers: [
-          { key: 'Content-Type', value: 'application/javascript' },
-          { key: 'Cache-Control', value: 'public, max-age=31536000' }
-        ]
       },
       // Normalize old URLs early (works even if HTML is cached somewhere)
       { source: '/public/assets/:path*', destination: '/assets/:path*' },
