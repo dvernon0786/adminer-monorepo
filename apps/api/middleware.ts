@@ -1,10 +1,21 @@
-import { clerkMiddleware } from '@clerk/nextjs/server';
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-export default clerkMiddleware({ debug: true });
+const isApi = createRouteMatcher(['/api/(.*)', '/trpc/(.*)']);
+const isDashboard = createRouteMatcher(['/dashboard(.*)']);
+
+export default clerkMiddleware(
+  async (auth, req) => {
+    if (isApi(req) || isDashboard(req)) {
+      await auth.protect(); // 401 when signed out
+    }
+  },
+  { debug: true }
+);
 
 export const config = {
   matcher: [
-    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
-    '/(api|trpc)(.*)',
+    '/api/(.*)',
+    '/trpc/(.*)',
+    '/dashboard/(.*)',
   ],
 }; 
