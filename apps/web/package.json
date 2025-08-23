@@ -5,7 +5,6 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "prebuild": "node ./scripts/copy-clerk-js.mjs",
     "build": "vite build",
     "preview": "vite preview --port 5173"
   },

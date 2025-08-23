@@ -62,10 +62,11 @@ const nextConfig = {
       "data:"
     ].join(' ');
 
-    // Since we're now proxying Clerk through /clerk/*, we only need 'self' for connect-src
+    // Since we're now using official Clerk auth, we need to allow Clerk's API
     const connectSrc = [
       "'self'",
-      "https://api.dodopayments.com"
+      "https://api.dodopayments.com",
+      "https://api.clerk.com"
     ].join(' ');
 
     const frameSrc = [
