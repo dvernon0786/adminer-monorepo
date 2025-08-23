@@ -43,7 +43,10 @@ const nextConfig = {
     const scriptSrcElem = [
       "'self'",
       "'unsafe-inline'",
-      ...clerkHosts
+      ...clerkHosts,
+      // Allow Clerk JS from our proxy
+      "'self'",
+      "https://cdn.jsdelivr.net"
     ].join(' ');
 
     // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
@@ -67,7 +70,8 @@ const nextConfig = {
     // Since we're now proxying Clerk through /clerk/*, we only need 'self' for connect-src
     const connectSrc = [
       "'self'",
-      "https://api.dodopayments.com"
+      "https://api.dodopayments.com",
+      "https://cdn.jsdelivr.net"
     ].join(' ');
 
     const frameSrc = [
@@ -136,10 +140,14 @@ const nextConfig = {
         source: "/clerk/:path*",
         destination: "https://clerk.adminer.online/:path*",
       },
-      // (optional) harden: proxy the exact Clerk JS asset via your origin as well
+      // Ensure Clerk JS loads from CDN with proper MIME types
       {
         source: "/clerk/npm/@clerk/clerk-js@5/dist/:file*",
         destination: "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/:file*",
+        headers: [
+          { key: 'Content-Type', value: 'application/javascript' },
+          { key: 'Cache-Control', value: 'public, max-age=31536000' }
+        ]
       },
       // Normalize old URLs early (works even if HTML is cached somewhere)
       { source: '/public/assets/:path*', destination: '/assets/:path*' },
