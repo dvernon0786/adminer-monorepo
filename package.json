@@ -1,0 +1,9 @@
+{
+  "name": "adminer-final",
+  "version": "1.0.0",
+  "description": "Adminer Final Project",
+  "scripts": {
+    "debug:clerk": "node scripts/debug-clerk.mjs"
+  },
+  "type": "module"
+} 
