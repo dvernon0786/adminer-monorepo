@@ -49,8 +49,10 @@ console.log('- Final key length:', key.length);
 
 const envContent = {
   VITE_CLERK_PUBLISHABLE_KEY: key,
+  // For v5 + proxy, the SPA must receive the full proxy URL and pass it as `proxyUrl`
   ...(proxyUrl && { CLERK_PROXY_URL: proxyUrl }),
-  ...(frontendApi && { CLERK_FRONTEND_API: frontendApi }),
+  // Optional: still expose host purely for human-readable debugging in the browser console
+  ...(frontendApi && { CLERK_PROXY_HOST: frontendApi }),
   ...(clerkJsUrl && { CLERK_JS_URL: clerkJsUrl })
 };
 
