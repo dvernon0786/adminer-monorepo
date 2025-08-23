@@ -25,7 +25,16 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
   const action = String(req.query.action || "health");
 
   if (action === "health") {
-    return res.status(200).json({ status: "healthy" });
+    return res.status(200).json({ 
+      status: "healthy",
+      clerk: {
+        mode: process.env.CLERK_FRONTEND_API ? 'keyless' : 'missing',
+        frontendApi: process.env.CLERK_FRONTEND_API ?? null,
+        hasSecretKey: !!process.env.CLERK_SECRET_KEY,
+        hasProxyUrl: !!process.env.CLERK_PROXY_URL,
+        timestamp: new Date().toISOString()
+      }
+    });
   }
 
   // Both new and legacy flags
