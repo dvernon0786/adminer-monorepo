@@ -15,6 +15,12 @@ declare global {
 // Resolve Clerk configuration from runtime environment
 const ENV = (typeof window !== 'undefined' && (window as any).ENV) || {};
 
+// Debug logging to see what's in window.ENV
+if (typeof window !== 'undefined') {
+  console.log('🔍 Debug: window.ENV contents:', window.ENV);
+  console.log('🔍 Debug: ENV.CLERK_PROXY_URL:', ENV.CLERK_PROXY_URL);
+}
+
 const PUBLISHABLE_KEY =
   ENV.VITE_CLERK_PUBLISHABLE_KEY ||
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
@@ -22,6 +28,10 @@ const PUBLISHABLE_KEY =
 // If you are intentionally proxying Clerk via a custom domain, set this:
 const PROXY_URL = ENV.CLERK_PROXY_URL || import.meta.env.VITE_CLERK_PROXY_URL;
 const CLERK_JS_URL = ENV.CLERK_JS_URL || import.meta.env.VITE_CLERK_JS_URL;
+
+// Debug logging for resolved values
+console.log('🔍 Debug: Resolved PROXY_URL:', PROXY_URL);
+console.log('🔍 Debug: Resolved CLERK_JS_URL:', CLERK_JS_URL);
 
 if (!PUBLISHABLE_KEY) {
   console.error('Missing Clerk publishable key')
