@@ -41,7 +41,9 @@ const nextConfig = {
     // Note: 'unsafe-eval' is not valid in script-src-elem, only in script-src
     const scriptSrcElem = [
       "'self'",
-      "'unsafe-inline'"
+      "'unsafe-inline'",
+      "https://clerk.adminer.online",
+      "https://*.clerk.com"
     ].join(' ');
 
     // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
@@ -66,7 +68,9 @@ const nextConfig = {
     const connectSrc = [
       "'self'",
       "https://api.dodopayments.com",
-      "https://api.clerk.com"
+      "https://api.clerk.com",
+      "https://clerk.adminer.online",
+      "https://*.clerk.com"
     ].join(' ');
 
     const frameSrc = [
@@ -77,7 +81,8 @@ const nextConfig = {
       "'self'",
       "data:",
       "blob:",
-      "https:"
+      "https:",
+      "https://img.clerk.com"
     ].join(' ');
 
     const workerSrc = [
