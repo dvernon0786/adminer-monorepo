@@ -1,1 +1,1 @@
-window.ENV={"CLERK_FRONTEND_API":"clerk.adminer.online","CLERK_PROXY_URL":"https://clerk.adminer.online"};
+window.ENV={"CLERK_FRONTEND_API":"clerk.adminer.online"};

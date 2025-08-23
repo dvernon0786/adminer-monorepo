@@ -34,17 +34,12 @@ const mask = (val) => (val ? "*".repeat(3) : "NOT SET");
 // Mandatory hard guard for Clerk essentials in Preview/Production
 if (scope === "preview" || scope === "production") {
   const requiredKeys = {
-    CLERK_PROXY_URL: env.CLERK_PROXY_URL,
     CLERK_SECRET_KEY: env.CLERK_SECRET_KEY,
   };
 
   for (const [key, value] of Object.entries(requiredKeys)) {
     if (!value) {
       console.error(`❌ ERROR: ${key} is required in ${scope} environment but is NOT set.`);
-      process.exit(1);
-    }
-    if (key === "CLERK_PROXY_URL" && !value.startsWith("https://")) {
-      console.error(`❌ ERROR: CLERK_PROXY_URL must start with "https://". Got: "${value}"`);
       process.exit(1);
     }
   }
