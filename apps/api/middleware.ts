@@ -1,8 +1,10 @@
-import { authMiddleware } from "@clerk/nextjs";
+import { clerkMiddleware } from "@clerk/nextjs/server";
+import { NextResponse } from "next/server";
 
 // Keep your auth config as-is, but ensure matcher excludes static stuff.
-export default authMiddleware({
-  // your publicRoutes / ignoredRoutes if needed
+export default clerkMiddleware((auth, request) => {
+  // Let Clerk handle authentication for non-static routes
+  return NextResponse.next();
 });
 
 export const config = {
