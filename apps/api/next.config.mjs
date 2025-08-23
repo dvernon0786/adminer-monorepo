@@ -43,9 +43,7 @@ const nextConfig = {
     const scriptSrcElem = [
       "'self'",
       "'unsafe-inline'",
-      ...clerkHosts,
-      // Allow Clerk JS from jsdelivr CDN
-      "https://cdn.jsdelivr.net"
+      ...clerkHosts
     ].join(' ');
 
     // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
@@ -69,8 +67,7 @@ const nextConfig = {
     // Since we're now proxying Clerk through /clerk/*, we only need 'self' for connect-src
     const connectSrc = [
       "'self'",
-      "https://api.dodopayments.com",
-      "https://cdn.jsdelivr.net"
+      "https://api.dodopayments.com"
     ].join(' ');
 
     const frameSrc = [
