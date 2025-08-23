@@ -123,7 +123,6 @@ const Navigation = () => {
                 </SignInButton>
                 <SignUpButton 
                   mode="modal"
-                  afterSignInUrl="/dashboard"
                   afterSignUpUrl="/dashboard"
                 >
                   <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700">

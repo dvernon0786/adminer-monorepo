@@ -90,7 +90,7 @@ async function main() {
   // On non‑prod we REQUIRE 'unsafe-eval' so dev/preview builds pass with Clerk.
   const requiredForPreview = isProd ? {} : {
     'script-src': ["'unsafe-eval'"],
-    'script-src-elem': ["'unsafe-eval'"],
+    // Note: 'unsafe-eval' is not valid in script-src-elem
   };
 
   const requiredAlways = {

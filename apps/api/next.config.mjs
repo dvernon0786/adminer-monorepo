@@ -30,12 +30,12 @@ const nextConfig = {
     ].filter(Boolean).join(' ');
 
     // Matching script-src-elem for external <script src=...> (Clerk)
+    // Note: 'unsafe-eval' is not valid in script-src-elem, only in script-src
     const scriptSrcElem = [
       "'self'",
       "'unsafe-inline'",
-      ...clerkHosts,
-      !isProd ? "'unsafe-eval'" : null
-    ].filter(Boolean).join(' ');
+      ...clerkHosts
+    ].join(' ');
 
     // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
     const styleSrc = [
