@@ -29,11 +29,11 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
       status: 'healthy',
       version: process.env.npm_package_version,
       clerk: {
-        mode: process.env.CLERK_FRONTEND_API ? 'keyless' : 'missing',
-        frontendApi: process.env.CLERK_FRONTEND_API || null,
+        mode: process.env.CLERK_PUBLISHABLE_KEY ? 'single-source' : 'missing',
+        publishableKey: process.env.CLERK_PUBLISHABLE_KEY ? 'SET' : null,
       },
       guard: {
-        clerkFrontendApi: process.env.CLERK_FRONTEND_API ? 'ok' : 'missing',
+        clerkPublishableKey: process.env.CLERK_PUBLISHABLE_KEY ? 'ok' : 'missing',
         csp: 'ok', // set by your check-csp script already
       },
     });
