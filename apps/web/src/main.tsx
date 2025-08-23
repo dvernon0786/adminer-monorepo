@@ -2,7 +2,7 @@ import { ClerkProvider } from '@clerk/clerk-react'
 import React from 'react'
 import ReactDOM from 'react-dom/client'
 import { BrowserRouter as Router, useNavigate } from 'react-router-dom'
-import App from './App.tsx'
+import App from './App'
 import './index.css'
 
 // window.ENV is written by apps/api/public/env.js
@@ -28,7 +28,7 @@ console.log('🧪 ENV at mount:', window.ENV);
 document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded event'));
 
 // Only log diagnostics in dev (no build-time noise, no prod noise)
-if (import.meta.env.DEV) {
+if (import.meta.env?.DEV) {
   console.debug('🔧 Clerk config resolved:', {
     frontendApi: FRONTEND_API,
     proxyUrl: PROXY_URL,
@@ -40,8 +40,9 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
-      // Keep the CNAME for completeness, but the SDK will use the proxy
-      frontendApi={FRONTEND_API}
+      // For reverse-proxy setup, we need to use publishableKey with a dummy value
+      // The proxyUrl will handle routing all calls through /clerk/*
+      publishableKey="pk_test_dummy_key_for_proxy_mode"
       // 🔑 The magic: tell Clerk SDK to call our proxy paths instead of *.clerk.*
       proxyUrl={PROXY_URL}
       // Load the browser bundle from our own origin as well (rewritten to jsDelivr)
@@ -53,9 +54,6 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
       // Make Clerk use your SPA router instead of full reloads
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
-      // keep this to silence legacy publishableKey checks in older internals
-      // (safe no-op in newer versions)
-      __internal_bypassMissingPublishableKey={true}
     >
       {children}
     </ClerkProvider>
