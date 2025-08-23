@@ -1,66 +1,22 @@
-import { ClerkProvider } from '@clerk/clerk-react'
-import React from 'react'
-import ReactDOM from 'react-dom/client'
-import { BrowserRouter as Router, useNavigate } from 'react-router-dom'
-import App from './App'
-import './index.css'
+import React from "react";
+import ReactDOM from "react-dom/client";
+import { ClerkProvider } from "@clerk/clerk-react";
+import { BrowserRouter as Router } from "react-router-dom";
+import App from "./App";
+import "./index.css";
 
-const ENV = (window as any).ENV ?? {};
-const publishableKey: string | undefined = ENV.CLERK_PUBLISHABLE_KEY;
-const proxyUrl: string | undefined = ENV.CLERK_PROXY_URL || "/clerk";
+const PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string;
 
-if (!publishableKey) {
-  // Hard fail in non-local to surface misconfig immediately.
-  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
-  console.error("Missing CLERK_PUBLISHABLE_KEY in window.ENV", { ENV });
-  if (!isLocal) {
-    throw new Error("CLERK_PUBLISHABLE_KEY is required in Preview/Production.");
-  }
+if (!PUBLISHABLE_KEY) {
+  throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
 }
 
-// Temporary runtime diagnostics
-console.log('🧪 ENV at mount:', window.ENV);
-document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded event'));
-
-// Only log diagnostics in dev (no build-time noise, no prod noise)
-if (import.meta.env?.DEV) {
-  console.debug('🔧 Clerk config resolved:', {
-    publishableKey: publishableKey ? 'SET' : 'NOT SET',
-    proxyUrl: proxyUrl,
-  })
-}
-
-function ClerkWithRouter({ children }: { children: React.ReactNode }) {
-  const navigate = useNavigate();
-  
-  // Only render ClerkProvider if we have a valid publishableKey
-  if (!publishableKey) {
-    return <div>Loading Clerk configuration...</div>;
-  }
-  
-  return (
-    <ClerkProvider 
-      publishableKey={publishableKey} 
-      proxyUrl={proxyUrl}
-      signInUrl="/sign-in"
-      signUpUrl="/sign-up"
-      signInFallbackRedirectUrl="/dashboard"
-      signUpFallbackRedirectUrl="/dashboard"
-      // Make Clerk use your SPA router instead of full reloads
-      routerPush={(to) => navigate(to)}
-      routerReplace={(to) => navigate(to, { replace: true })}
-    >
-      {children}
-    </ClerkProvider>
-  );
-}
-
-ReactDOM.createRoot(document.getElementById('root')!).render(
+ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
-      <ClerkWithRouter>
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
         <App />
-      </ClerkWithRouter>
+      </ClerkProvider>
     </Router>
-  </React.StrictMode>,
-) 
+  </React.StrictMode>
+); 

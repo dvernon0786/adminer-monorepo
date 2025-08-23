@@ -1,6 +1,6 @@
 import { Routes, Route } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { useClerk } from '@clerk/clerk-react'
+import { useClerk, SignedIn, SignedOut, SignInButton, UserButton } from '@clerk/clerk-react'
 import Homepage from './pages/Homepage'
 
 function App() {
@@ -17,6 +17,16 @@ function App() {
 
   return (
     <>
+      {/* Minimal OAuth Components */}
+      <div className="fixed top-4 right-4 z-50">
+        <SignedOut>
+          <SignInButton mode="modal" />
+        </SignedOut>
+        <SignedIn>
+          <UserButton />
+        </SignedIn>
+      </div>
+
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/dashboard" element={<div className="p-8 text-center">Dashboard - Coming Soon</div>} />
