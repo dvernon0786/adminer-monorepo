@@ -42,8 +42,6 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
     <ClerkProvider 
       publishableKey={publishableKey} 
       proxyUrl={proxyUrl}
-      // Use direct CDN URL to avoid MIME type issues with proxy
-      clerkJSUrl="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"
