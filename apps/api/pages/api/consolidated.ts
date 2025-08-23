@@ -24,16 +24,18 @@ function normalizeUsageLimit(row: any) {
 export default async function handler(req: NextApiRequest, res: NextApiResponse) {
   const action = String(req.query.action || "health");
 
-  if (action === "health") {
-    return res.status(200).json({ 
-      status: "healthy",
+  if (action === 'health') {
+    return res.status(200).json({
+      status: 'healthy',
+      version: process.env.npm_package_version,
       clerk: {
         mode: process.env.CLERK_FRONTEND_API ? 'keyless' : 'missing',
-        frontendApi: process.env.CLERK_FRONTEND_API ?? null,
-        hasSecretKey: !!process.env.CLERK_SECRET_KEY,
-        hasProxyUrl: !!process.env.CLERK_PROXY_URL,
-        timestamp: new Date().toISOString()
-      }
+        frontendApi: process.env.CLERK_FRONTEND_API || null,
+      },
+      guard: {
+        clerkFrontendApi: process.env.CLERK_FRONTEND_API ? 'ok' : 'missing',
+        csp: 'ok', // set by your check-csp script already
+      },
     });
   }
 

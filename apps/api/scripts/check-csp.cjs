@@ -96,12 +96,42 @@ async function main() {
   const requiredAlways = {
     'style-src-elem': ['https://fonts.googleapis.com'],
     'font-src': ['https://fonts.gstatic.com', 'data:'],
-    'connect-src': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'self'"],
-    'script-src-elem': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'self'", "'unsafe-inline'"],
-    'script-src': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'unsafe-inline'", "'self'"],
+    'connect-src': [
+      "'self'",
+      'https://clerk.adminer.online',
+      'https://*.clerk.accounts.dev',
+      'https://*.clerk.services',
+      'https://*.clerk.com',
+      'https://api.clerk.com',
+      'https://api.clerk.services',
+      'https://clerk.adminer.online/v1/*',
+      'wss://*.clerk.services',
+      'wss://clerk.adminer.online'
+    ],
+    'script-src-elem': [
+      'https://clerk.adminer.online',
+      'https://*.clerk.com',
+      'https://*.clerk.services',
+      "'self'",
+      "'unsafe-inline'"
+    ],
+    'script-src': [
+      'https://clerk.adminer.online',
+      'https://*.clerk.com',
+      'https://*.clerk.services',
+      "'unsafe-inline'",
+      "'self'"
+    ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'default-src': ["'self'"],
     'object-src': ["'none'"],
+    'frame-src': [
+      "'self'",
+      'https://*.clerk.com',
+      'https://*.clerk.services',
+      'https://clerk.adminer.online'
+    ],
+    'img-src': ["'self'", 'data:', 'https:'],
   };
 
   console.log(`[check-csp] 🔍 Validating CSP for ${env} environment...`);

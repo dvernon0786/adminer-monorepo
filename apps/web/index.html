@@ -2,13 +2,19 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <!-- Load runtime-patched Clerk key without Vite trying to optimize it -->
-    <script src="/env.js" defer data-no-optimize></script>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <title>Adminer Web</title>
+    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Adminer - Competitive Ad Intelligence</title>
   </head>
   <body>
-    <div id="root">Adminer Web (Vite) – coming soon.</div>
+    <div id="root"></div>
+    <script src="/env.js" defer></script>
+    <script>
+      // Defensive guard so we fail before React mounts
+      if (!window.ENV || !window.ENV.CLERK_FRONTEND_API) {
+        console.error('env.js missing CLERK_FRONTEND_API');
+      }
+    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html> 

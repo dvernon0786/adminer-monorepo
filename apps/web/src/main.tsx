@@ -17,6 +17,11 @@ if (location.hostname !== 'localhost' && !FRONTEND_API) {
   );
 }
 
+// Defensive guard so we fail before React mounts
+if (!window.ENV?.CLERK_FRONTEND_API) {
+  throw new Error('Clerk keyless mode: window.ENV.CLERK_FRONTEND_API missing at runtime');
+}
+
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env.DEV) {
   console.debug('🔧 Clerk config resolved:', {

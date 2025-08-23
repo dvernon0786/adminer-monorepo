@@ -18,6 +18,15 @@ const nextConfig = {
       "https://*.clerk.com",
       "https://*.clerk.services"
     ];
+    const clerkAccountsDev = "https://*.clerk.accounts.dev";
+    const clerkApi = [
+      "https://api.clerk.com",
+      "https://api.clerk.services"
+    ];
+    const clerkWebSocket = [
+      "wss://*.clerk.services",
+      "wss://clerk.adminer.online"
+    ];
     const fontsCss = "https://fonts.googleapis.com";
     const fontsFiles = "https://fonts.gstatic.com";
 
@@ -58,6 +67,10 @@ const nextConfig = {
     const connectSrc = [
       "'self'",
       ...clerkHosts,
+      clerkAccountsDev,
+      ...clerkApi,
+      "https://clerk.adminer.online/v1/*",
+      ...clerkWebSocket,
       "https://api.dodopayments.com"
     ].join(' ');
 
@@ -69,7 +82,8 @@ const nextConfig = {
     const imgSrc = [
       "'self'",
       "data:",
-      "blob:"
+      "blob:",
+      "https:"
     ].join(' ');
 
     const workerSrc = [
