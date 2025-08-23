@@ -5,26 +5,17 @@ import { BrowserRouter as Router, useNavigate } from 'react-router-dom'
 import App from './App'
 import './index.css'
 
-// window.ENV is written by apps/api/public/env.js
-const FRONTEND_API = window.ENV?.CLERK_FRONTEND_API || 'clerk.adminer.online'
-const PROXY_URL = window.ENV?.CLERK_PROXY_URL || '/clerk'
-const PK = window.ENV?.CLERK_PUBLISHABLE_KEY || ''
+const ENV = (window as any).ENV ?? {};
+const publishableKey: string | undefined = ENV.CLERK_PUBLISHABLE_KEY;
+const proxyUrl: string | undefined = ENV.CLERK_PROXY_URL || "/clerk";
 
-// 🚨 Runtime safety: validate frontendApi exists outside localhost
-if (location.hostname !== 'localhost' && !FRONTEND_API) {
-  console.error(
-    '❌ CONFIG ERROR: CLERK_FRONTEND_API is missing on non-localhost environment!',
-    '\nHost:', location.hostname,
-    '\nCheck your Vercel environment variables.'
-  );
-}
-
-// Defensive guard so we fail before React mounts
-if (!window.ENV?.CLERK_FRONTEND_API) {
-  throw new Error('Clerk keyless mode: window.ENV.CLERK_FRONTEND_API missing at runtime');
-}
-if (location.hostname !== 'localhost' && !PK) {
-  throw new Error('Clerk v5 requires publishableKey; CLERK_PUBLISHABLE_KEY missing at runtime');
+if (!publishableKey) {
+  // Hard fail in non-local to surface misconfig immediately.
+  const isLocal = location.hostname === "localhost" || location.hostname === "127.0.0.1";
+  console.error("Missing CLERK_PUBLISHABLE_KEY in window.ENV", { ENV });
+  if (!isLocal) {
+    throw new Error("CLERK_PUBLISHABLE_KEY is required in Preview/Production.");
+  }
 }
 
 // Temporary runtime diagnostics
@@ -34,22 +25,25 @@ document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded e
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env?.DEV) {
   console.debug('🔧 Clerk config resolved:', {
-    publishableKey: PK ? 'SET' : 'NOT SET',
-    proxyUrl: PROXY_URL,
+    publishableKey: publishableKey ? 'SET' : 'NOT SET',
+    proxyUrl: proxyUrl,
   })
 }
 
 function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   
+  // Only render ClerkProvider if we have a valid publishableKey
+  if (!publishableKey) {
+    return <div>Loading Clerk configuration...</div>;
+  }
+  
   return (
-    <ClerkProvider
-      // v5 requires a real publishable key (safe to expose)
-      publishableKey={PK}
-      // 🔑 Keep everything same-origin via the reverse proxy
-      proxyUrl={PROXY_URL}
+    <ClerkProvider 
+      publishableKey={publishableKey} 
+      proxyUrl={proxyUrl}
       // Also load Clerk JS via the proxy to keep CSP/connect-src 'self'
-      clerkJSUrl={`${PROXY_URL}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}
+      clerkJSUrl={`${proxyUrl}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"
