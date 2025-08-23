@@ -37,12 +37,29 @@ console.log('🔍 Debug: Resolved CLERK_JS_URL:', CLERK_JS_URL);
 const FRONTEND_API = ENV.CLERK_FRONTEND_API || (PROXY_URL ? new URL(PROXY_URL).host : undefined);
 console.log('🔍 Debug: FRONTEND_API (host only):', FRONTEND_API);
 
+// Additional debugging: Check if FRONTEND_API is actually defined
+console.log('🔍 Debug: FRONTEND_API type:', typeof FRONTEND_API);
+console.log('🔍 Debug: FRONTEND_API length:', FRONTEND_API?.length);
+console.log('🔍 Debug: FRONTEND_API truthy check:', !!FRONTEND_API);
+
 if (!PUBLISHABLE_KEY) {
   console.error('Missing Clerk publishable key')
 }
 
 function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
+  
+  // Debug: Log exactly what props are being passed to ClerkProvider
+  console.log('🔍 Debug: ClerkProvider props:', {
+    publishableKey: PUBLISHABLE_KEY,
+    frontendApi: FRONTEND_API,
+    clerkJSUrl: CLERK_JS_URL,
+    signInUrl: "/sign-in",
+    signUpUrl: "/sign-up",
+    signInFallbackRedirectUrl: "/dashboard",
+    signUpFallbackRedirectUrl: "/dashboard"
+  });
+  
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY!}
