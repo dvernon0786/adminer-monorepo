@@ -10,8 +10,9 @@ const csp = [
   "default-src 'self'",
   // Allow your SPA JS + Clerk loader; keep inline for Vite's inline preloads
   `script-src 'self' 'unsafe-inline' ${CLERK_DOMAIN}${isProd ? '' : " 'unsafe-eval'"}`,
-  // Google Fonts stylesheet
+  // Google Fonts stylesheet - need both style-src and style-src-elem
   "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
   // Images (SPA, data URLs, Clerk assets, blobs)
   "img-src 'self' data: blob:",
   // Font files from Google Fonts

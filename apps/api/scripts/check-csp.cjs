@@ -5,9 +5,10 @@ const { pathToFileURL } = require('url');
 
 async function main() {
   const env = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
+  const isProd = env === 'production';
 
   // Run only on preview and development builds
-  if (env === 'production') {
+  if (isProd) {
     console.log('[check-csp] Skipping in production builds ✅');
     return;
   }
@@ -66,8 +67,11 @@ async function main() {
   // Baseline directives we rely on
   requireContains("default-src 'self'", "default-src 'self'");
   requireContains("script-src 'self' 'unsafe-inline'", "script-src baseline");
+  
   // In non-prod we expect 'unsafe-eval' to be present (to unblock dev tooling)
-  requireContains("'unsafe-eval'", "script-src 'unsafe-eval' for preview/dev");
+  if (!isProd) {
+    requireContains("'unsafe-eval'", "script-src 'unsafe-eval' for preview/dev");
+  }
 
   // Google Fonts (CSS+files)
   requireContains('style-src', 'style-src present');
@@ -88,7 +92,7 @@ async function main() {
     }
   });
 
-  console.log('[check-csp] OK: CSP present and valid for preview/dev ✅');
+  console.log(`[check-csp] OK: CSP present and valid for ${env} ✅`);
 }
 
 main().catch((e) => {

@@ -1,4 +1,4 @@
-import { SignInButton, SignOutButton, useAuth, useUser } from '@clerk/clerk-react'
+import { SignInButton, SignUpButton, SignOutButton, useAuth, useUser } from '@clerk/clerk-react'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
 import { 
@@ -121,7 +121,7 @@ const Navigation = () => {
                     Sign In
                   </Button>
                 </SignInButton>
-                <SignInButton 
+                <SignUpButton 
                   mode="modal"
                   afterSignInUrl="/dashboard"
                   afterSignUpUrl="/dashboard"
@@ -129,7 +129,7 @@ const Navigation = () => {
                   <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700">
                     Get Started
                   </Button>
-                </SignInButton>
+                </SignUpButton>
               </>
             )}
           </div>
