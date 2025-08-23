@@ -1,1 +1,1 @@
-window.ENV={"VITE_CLERK_PUBLISHABLE_KEY":"pk_test_dG9waWNhbC1tZWVya2F0LTE3LmNsZXJrLmFjY291bnRzLmRldiQ"};
+window.ENV={"VITE_CLERK_PUBLISHABLE_KEY":"pk_test_dG9waWNhbC1tZWVya2F0LTE3LmNsZXJrLmFjY291bnRzLmRldiQ","CLERK_PROXY_URL":"https://clerk.adminer.online","CLERK_FRONTEND_API":"clerk.adminer.online"};

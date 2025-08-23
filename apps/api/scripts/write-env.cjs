@@ -34,6 +34,9 @@ const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
 const proxyUrl = process.env.CLERK_PROXY_URL || process.env.VITE_CLERK_PROXY_URL || '';
 const clerkJsUrl = process.env.CLERK_JS_URL || process.env.VITE_CLERK_JS_URL || '';
 
+// Derive host-only value for Clerk frontendApi
+const frontendApi = proxyUrl ? new URL(proxyUrl).host : undefined;
+
 // Debug logging
 console.log('Environment variables available:');
 console.log('- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
@@ -41,11 +44,13 @@ console.log('- VITE_CLERK_PUBLISHABLE_KEY:', process.env.VITE_CLERK_PUBLISHABLE_
 console.log('- CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
 console.log('- CLERK_PROXY_URL:', proxyUrl ? 'SET' : 'NOT SET');
 console.log('- CLERK_JS_URL:', clerkJsUrl ? 'SET' : 'NOT SET');
+console.log('- CLERK_FRONTEND_API (host only):', frontendApi ? 'SET' : 'NOT SET');
 console.log('- Final key length:', key.length);
 
 const envContent = {
   VITE_CLERK_PUBLISHABLE_KEY: key,
   ...(proxyUrl && { CLERK_PROXY_URL: proxyUrl }),
+  ...(frontendApi && { CLERK_FRONTEND_API: frontendApi }),
   ...(clerkJsUrl && { CLERK_JS_URL: clerkJsUrl })
 };
 

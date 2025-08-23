@@ -33,9 +33,9 @@ const CLERK_JS_URL = ENV.CLERK_JS_URL || import.meta.env.VITE_CLERK_JS_URL;
 console.log('🔍 Debug: Resolved PROXY_URL:', PROXY_URL);
 console.log('🔍 Debug: Resolved CLERK_JS_URL:', CLERK_JS_URL);
 
-// For Clerk v5, we need to set frontendApi directly to the proxy domain
-const FRONTEND_API = PROXY_URL || undefined;
-console.log('🔍 Debug: Setting Clerk frontendApi to:', FRONTEND_API);
+// For Clerk v5, we need to use host-only value for frontendApi
+const FRONTEND_API = ENV.CLERK_FRONTEND_API || (PROXY_URL ? new URL(PROXY_URL).host : undefined);
+console.log('🔍 Debug: FRONTEND_API (host only):', FRONTEND_API);
 
 if (!PUBLISHABLE_KEY) {
   console.error('Missing Clerk publishable key')
