@@ -1,16 +1,33 @@
 /** @type {import('next').NextConfig} */
 const isPreview = process.env.VERCEL_ENV === 'preview';
+const isProd = process.env.VERCEL_ENV === 'production' || process.env.NODE_ENV === 'production';
+
+// Configure Clerk domains
+const CLERK_DOMAIN = 'https://clerk.adminer.online';
+const CLERK_API = 'https://api.clerk.com';
 
 const csp = [
   "default-src 'self'",
-  `script-src 'self' 'unsafe-inline'${isPreview ? " https://vercel.live" : ""}`,
-  "style-src 'self' 'unsafe-inline'",
+  // Allow your SPA JS + Clerk loader; keep inline for Vite's inline preloads
+  `script-src 'self' 'unsafe-inline' ${CLERK_DOMAIN}${isProd ? '' : " 'unsafe-eval'"}`,
+  // Google Fonts stylesheet
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  // Images (SPA, data URLs, Clerk assets, blobs)
   "img-src 'self' data: blob:",
-  "font-src 'self' data:",
-  `connect-src 'self' https://api.clerk.com https://*.clerk.com https://api.dodopayments.com${isPreview ? " https://*.vercel.live" : ""}`,
+  // Font files from Google Fonts
+  "font-src 'self' https://fonts.gstatic.com data:",
+  // XHR/WebSocket targets (Clerk SDK talks to its APIs and your Clerk domain)
+  `connect-src 'self' ${CLERK_API} ${CLERK_DOMAIN} https://*.clerk.com https://*.clerk.services https://api.dodopayments.com${isPreview ? " https://*.vercel.live" : ""}`,
+  // Iframes (keep preview support; remove vercel.live in prod if you prefer)
+  "frame-src 'self' https://vercel.live",
+  // Workers & wasm
+  "worker-src 'self' blob:",
+  // Hardening
   "base-uri 'self'",
   "form-action 'self'",
-  `${isPreview ? "frame-src 'self' https://vercel.live" : "frame-src 'self'"}`
+  "frame-ancestors 'self'",
+  "object-src 'none'",
+  "upgrade-insecure-requests",
 ].join('; ');
 
 const nextConfig = {
@@ -25,12 +42,12 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
           { key: 'Content-Security-Policy', value: csp },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
           { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
         ],
       },

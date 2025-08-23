@@ -1,8 +1,8 @@
-import { spawnSync } from "node:child_process";
+const { spawnSync } = require("node:child_process");
 
 const steps = [
   ["==== [Prebuild Guard: Dodo] ====", "scripts/guard-dodo-env.js"],
-  ["==== [Prebuild Guard: Clerk] ====", "scripts/guard-clerk-env.js"],
+  ["==== [Prebuild Guard: Clerk] ====", "scripts/guard-clerk-env.cjs"],
 ];
 
 for (const [banner, file] of steps) {

@@ -1,0 +1,1 @@
+window.__env__={VITE_CLERK_PUBLISHABLE_KEY:"pk_test_dG9waWNhbC1tZWVya2F0LTE3LmNsZXJrLmFjY291bnRzLmRldiQ"};
