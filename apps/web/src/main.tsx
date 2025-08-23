@@ -63,7 +63,12 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   return (
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY!}
-      {...(FRONTEND_API ? { frontendApi: FRONTEND_API } : {})}
+      // Try multiple approaches for Clerk v5 compatibility
+      {...(FRONTEND_API ? { 
+        frontendApi: FRONTEND_API,
+        // Alternative prop names that might work
+        domain: FRONTEND_API
+      } : {})}
       {...(CLERK_JS_URL ? { clerkJSUrl: CLERK_JS_URL } : {})}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
