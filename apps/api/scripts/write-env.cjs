@@ -29,23 +29,24 @@ const outDir = path.join(__dirname, '..', 'public');
 const out = path.join(outDir, 'env.js');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-// Get frontend API (host-only) for Clerk keyless mode - CNAME only
-const frontendApi = process.env.CLERK_FRONTEND_API || 'clerk.adminer.online';
+// Get environment variables
+const frontendApi = process.env.CLERK_FRONTEND_API || '';
 const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || '';
 
-// Debug logging
-console.log('Environment variables available:');
-console.log('- CLERK_FRONTEND_API:', process.env.CLERK_FRONTEND_API ? 'SET' : 'NOT SET');
-console.log('- Final frontendApi:', frontendApi);
-console.log('- CLERK_PUBLISHABLE_KEY:', publishableKey ? 'SET' : 'NOT SET');
-
-const envContent = {
+const ENV = {
   CLERK_FRONTEND_API: frontendApi,
-  // Add proxy configuration for Clerk reverse-proxy setup
   CLERK_PROXY_URL: "/clerk",
-  // v5 requires a real publishable key even in proxy mode; this is safe to expose
-  CLERK_PUBLISHABLE_KEY: publishableKey
+  CLERK_PUBLISHABLE_KEY: publishableKey,
 };
 
-fs.writeFileSync(out, `window.ENV=${JSON.stringify(envContent)};`);
-console.log('Wrote /public/env.js with environment variables including proxy configuration'); 
+// Check for missing publishable key in non-local environments
+const scope = process.env.VERCEL_ENV || process.env.NODE_ENV || "local";
+if (!ENV.CLERK_PUBLISHABLE_KEY) {
+  const isLocal = scope === "development" || scope === "local";
+  const msg = `[write-env] CLERK_PUBLISHABLE_KEY ${isLocal ? "missing (ok for local)" : "MISSING (NOT OK for preview/prod)"} — scope=${scope}`;
+  isLocal ? console.warn(msg) : console.error(msg);
+}
+
+fs.writeFileSync(out, `window.ENV=${JSON.stringify(ENV)};`);
+console.log(`[write-env] Wrote ${out}`);
+console.log(`[write-env] Environment: ${scope}, CLERK_PUBLISHABLE_KEY: ${publishableKey ? 'SET' : 'NOT SET'}`); 

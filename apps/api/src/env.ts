@@ -14,4 +14,4 @@ for (const key of required) {
 export const env = {
   CLERK_PUBLISHABLE_KEY: process.env.CLERK_PUBLISHABLE_KEY as string,
   CLERK_SECRET_KEY: process.env.CLERK_SECRET_KEY as string
-}; 
+}; console.log('CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY);
