@@ -1,18 +1,16 @@
 /** @type {import('next').NextConfig} */
 const isPreview = process.env.VERCEL_ENV === 'preview';
 
-const cspDirectives = [
+const csp = [
   "default-src 'self'",
-  // In preview, allow vercel.live script to avoid console noise; keep prod tighter
-  `script-src 'self' 'unsafe-inline'${isPreview ? ' https://vercel.live' : ''}`,
+  `script-src 'self' 'unsafe-inline'${isPreview ? " https://vercel.live" : ""}`,
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
-  // Clerk + payments + vercel live in preview for ws/events
-  `connect-src 'self' https://api.clerk.com https://*.clerk.com https://api.dodopayments.com${isPreview ? ' https://*.vercel.live' : ''}`,
-  "frame-ancestors 'none'",
+  `connect-src 'self' https://api.clerk.com https://*.clerk.com https://api.dodopayments.com${isPreview ? " https://*.vercel.live" : ""}`,
   "base-uri 'self'",
   "form-action 'self'",
+  `${isPreview ? "frame-src 'self' https://vercel.live" : "frame-src 'self'"}`
 ].join('; ');
 
 const nextConfig = {
@@ -29,7 +27,7 @@ const nextConfig = {
       {
         source: '/:path*',
         headers: [
-          { key: 'Content-Security-Policy', value: cspDirectives },
+          { key: 'Content-Security-Policy', value: csp },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'DENY' },
@@ -41,33 +39,15 @@ const nextConfig = {
 
   async rewrites() {
     return {
-      // 1) beforeFiles: strip accidental /public prefix in URLs (fixes current deploy)
+      // Normalize old URLs early (works even if HTML is cached somewhere)
       beforeFiles: [
-        { source: '/public/env.js', destination: '/env.js' },
         { source: '/public/assets/:path*', destination: '/assets/:path*' },
-        // Catch any other /public/* paths and strip the prefix
-        { source: '/public/:path*', destination: '/:path*' },
+        { source: '/public/env.js', destination: '/env.js' },
       ],
-
-      // 2) afterFiles: let filesystem (_next, assets, api, etc.) win first,
-      // then send all app routes to SPA index.html
-      afterFiles: [
-        // Explicitly serve static assets first
-        { source: '/assets/:path*', destination: '/assets/:path*' },
-        { source: '/env.js', destination: '/env.js' },
-        
-        // SPA routes
-        { source: '/', destination: '/index.html' },
-        { source: '/dashboard', destination: '/index.html' },
-        { source: '/dashboard/:path*', destination: '/index.html' },
-
-        // catch-all SPA routes except known system/asset paths
-        // path-to-regexp syntax: named param with negative lookahead group
-        { source: '/:path((?!api|_next|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|env\\.js).*)', destination: '/index.html' },
-      ],
-
-      // no fallback rewrites
-      fallback: [],
+      // Do NOT put a catch-all here; it can shadow static files.
+      afterFiles: [],
+      // Only hit SPA index.html if nothing else (pages, api, public files) matched
+      fallback: [{ source: '/:path*', destination: '/index.html' }],
     };
   },
 
