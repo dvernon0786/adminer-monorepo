@@ -97,8 +97,9 @@ const nextConfig = {
       `form-action 'self'`,
       `frame-ancestors 'self'`,
       `object-src 'none'`,
-      `script-src ${scriptSrc}`,
-      `script-src-elem ${scriptSrcElem}`,
+      // ALLOW eval for Clerk bootstrap (add wasm-unsafe-eval for Chrome)
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${clerkHosts.join(' ')}`,
+      `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${clerkHosts.join(' ')}`,
       `style-src ${styleSrc}`,
       `style-src-elem ${styleSrcElem}`,
       `font-src ${fontSrc}`,
