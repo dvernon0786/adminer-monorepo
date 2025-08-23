@@ -4,6 +4,7 @@ const isApiRoute = createRouteMatcher(['/api/(.*)']);
 // (Optional) protect SPA areas too, e.g. dashboards
 // const isDashboard = createRouteMatcher(['/dashboard(.*)']);
 
+// Enhanced Clerk middleware with comprehensive error handling
 export default clerkMiddleware(async (auth, req) => {
   try {
     if (isApiRoute(req)) {
@@ -19,7 +20,8 @@ export default clerkMiddleware(async (auth, req) => {
       return new Response(
         JSON.stringify({ 
           error: 'Authentication service temporarily unavailable',
-          message: 'Please try again in a moment'
+          message: 'Please try again in a moment',
+          code: 'AUTH_SERVICE_UNAVAILABLE'
         }), 
         { 
           status: 503, 
