@@ -8,11 +8,13 @@
   </head>
   <body>
     <div id="root"></div>
-    <script src="/env.js" defer></script>
+    <!-- Runtime env MUST run before the app bundle -->
+    <script src="/env.js"></script>
     <script>
-      // Defensive guard so we fail before React mounts
       if (!window.ENV || !window.ENV.CLERK_FRONTEND_API) {
-        console.error('env.js missing CLERK_FRONTEND_API');
+        document.body.innerHTML =
+          '<pre style="padding:16px">Missing CLERK_FRONTEND_API from env.js</pre>';
+        throw new Error('env.js missing CLERK_FRONTEND_API');
       }
     </script>
     <script type="module" src="/src/main.tsx"></script>
