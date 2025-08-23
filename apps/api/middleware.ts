@@ -1,17 +1,22 @@
-import { clerkMiddleware } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
 
-// Keep your auth config as-is, but ensure matcher excludes static stuff.
-export default clerkMiddleware((auth, request) => {
-  // Let Clerk handle authentication for non-static routes
-  return NextResponse.next();
+const isApiRoute = createRouteMatcher(['/api/(.*)']);
+// (Optional) protect SPA areas too, e.g. dashboards
+// const isDashboard = createRouteMatcher(['/dashboard(.*)']);
+
+export default clerkMiddleware(async (auth, req) => {
+  if (isApiRoute(req)) {
+    await auth.protect(); // 401 when signed out
+  }
+  // if (isDashboard(req)) await auth.protect();
 });
 
+// IMPORTANT: exclude static files so CSS/JS don't get intercepted
 export const config = {
   matcher: [
-    // Exclude _next, assets, public files, and env.js from middleware
-    '/((?!_next|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|env\\.js|public).*)',
-    // Include API only if you really want it guarded
-    // '/api/(.*)',
+    // Skip Next internals + any file with an extension; always run on API.
+    // This is Clerk's documented default, copied verbatim.
+    '/((?!_next|[^?]*\\.(?:html?|css|js(?!on)|jpe?g|webp|png|gif|svg|ttf|woff2?|ico|csv|docx?|xlsx?|zip|webmanifest)).*)',
+    '/(api|trpc)(.*)',
   ],
 }; 
