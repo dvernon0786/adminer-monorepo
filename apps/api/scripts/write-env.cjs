@@ -27,16 +27,22 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
 // Get frontend API (host-only) for Clerk keyless mode - CNAME only
 const frontendApi = process.env.CLERK_FRONTEND_API || 'clerk.adminer.online';
+const publishableKey =
+  process.env.CLERK_PUBLISHABLE_KEY ||
+  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || // <- your provided var
+  '';
 
 // Debug logging
 console.log('Environment variables available:');
 console.log('- CLERK_FRONTEND_API:', process.env.CLERK_FRONTEND_API ? 'SET' : 'NOT SET');
 console.log('- Final frontendApi:', frontendApi);
+console.log('- CLERK_PUBLISHABLE_KEY:', publishableKey ? 'SET' : 'NOT SET');
 
 const envContent = {
   CLERK_FRONTEND_API: frontendApi,
   // Add proxy configuration for Clerk reverse-proxy setup
-  CLERK_PROXY_URL: "/clerk"
+  CLERK_PROXY_URL: "/clerk",
+  CLERK_PUBLISHABLE_KEY: publishableKey,
 };
 
 fs.writeFileSync(out, `window.ENV=${JSON.stringify(envContent)};`);

@@ -8,6 +8,7 @@ import './index.css'
 // window.ENV is written by apps/api/public/env.js
 const FRONTEND_API = window.ENV?.CLERK_FRONTEND_API || 'clerk.adminer.online'
 const PROXY_URL = window.ENV?.CLERK_PROXY_URL || '/clerk'
+const PK = window.ENV?.CLERK_PUBLISHABLE_KEY || ''
 
 // 🚨 Runtime safety: validate frontendApi exists outside localhost
 if (location.hostname !== 'localhost' && !FRONTEND_API) {
@@ -16,6 +17,11 @@ if (location.hostname !== 'localhost' && !FRONTEND_API) {
     '\nHost:', location.hostname,
     '\nCheck your Vercel environment variables.'
   );
+}
+
+// sanity guard (optional)
+if (location.hostname !== 'localhost' && !PK) {
+  throw new Error('Clerk v5 requires publishableKey; CLERK_PUBLISHABLE_KEY missing at runtime');
 }
 
 // Defensive guard so we fail before React mounts
@@ -30,7 +36,7 @@ document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded e
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env?.DEV) {
   console.debug('🔧 Clerk config resolved:', {
-    publishableKey: '"" (keyless mode)',
+    publishableKey: PK ? 'SET' : 'NOT SET',
     proxyUrl: PROXY_URL,
   })
 }
@@ -40,8 +46,8 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
-      // ✅ Keyless + reverse-proxy: use empty publishableKey for v5
-      publishableKey=""
+      // ✅ Use the real publishableKey from environment
+      publishableKey={PK}
       // Use proxyUrl so everything stays same-origin
       proxyUrl={PROXY_URL}
       // Also load Clerk JS via the proxy to keep CSP/connect-src 'self'
