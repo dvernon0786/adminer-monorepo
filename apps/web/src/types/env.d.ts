@@ -3,6 +3,7 @@ declare global {
     ENV?: {
       CLERK_FRONTEND_API?: string;
       CLERK_PROXY_URL?: string;
+      CLERK_PUBLISHABLE_KEY?: string;
     };
   }
 }

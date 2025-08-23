@@ -19,14 +19,12 @@ if (location.hostname !== 'localhost' && !FRONTEND_API) {
   );
 }
 
-// sanity guard (optional)
-if (location.hostname !== 'localhost' && !PK) {
-  throw new Error('Clerk v5 requires publishableKey; CLERK_PUBLISHABLE_KEY missing at runtime');
-}
-
 // Defensive guard so we fail before React mounts
 if (!window.ENV?.CLERK_FRONTEND_API) {
   throw new Error('Clerk keyless mode: window.ENV.CLERK_FRONTEND_API missing at runtime');
+}
+if (location.hostname !== 'localhost' && !PK) {
+  throw new Error('Clerk v5 requires publishableKey; CLERK_PUBLISHABLE_KEY missing at runtime');
 }
 
 // Temporary runtime diagnostics
@@ -46,9 +44,9 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
-      // ✅ Use the real publishableKey from environment
+      // v5 requires a real publishable key (safe to expose)
       publishableKey={PK}
-      // Use proxyUrl so everything stays same-origin
+      // 🔑 Keep everything same-origin via the reverse proxy
       proxyUrl={PROXY_URL}
       // Also load Clerk JS via the proxy to keep CSP/connect-src 'self'
       clerkJSUrl={`${PROXY_URL}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}
