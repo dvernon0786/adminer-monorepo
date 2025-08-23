@@ -13,7 +13,10 @@
 const fs = require('fs');
 const path = require('path');
 
-const OUTPUT_CONFIG = path.join(process.cwd(), '.vercel', 'output', 'config', 'routes.json');
+// In Vercel build environment, the output is at /vercel/output, not .vercel/output
+const OUTPUT_CONFIG = process.env.VERCEL === '1' 
+  ? '/vercel/output/config/routes.json'
+  : path.join(process.cwd(), '.vercel', 'output', 'config', 'routes.json');
 
 // Prefer the value you use at runtime (the SPA writes this from write-env.cjs)
 const PROXY_URL =
