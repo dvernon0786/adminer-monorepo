@@ -61,6 +61,11 @@ const nextConfig = {
       "https://api.dodopayments.com"
     ].join(' ');
 
+    const frameSrc = [
+      "'self'",
+      ...clerkHosts
+    ].join(' ');
+
     const imgSrc = [
       "'self'",
       "data:",
@@ -84,6 +89,7 @@ const nextConfig = {
       `style-src-elem ${styleSrcElem}`,
       `font-src ${fontSrc}`,
       `connect-src ${connectSrc}`,
+      `frame-src ${frameSrc}`,
       `img-src ${imgSrc}`,
       `worker-src ${workerSrc}`,
     ].join('; ');

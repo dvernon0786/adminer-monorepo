@@ -9,9 +9,19 @@ import './index.css'
 const PUBLISHABLE_KEY =
   window.ENV?.VITE_CLERK_PUBLISHABLE_KEY || window.ENV?.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
 
-// IMPORTANT for v5 + proxy: use the FULL proxy URL, not host-only and not frontendApi
+// IMPORTANT for v5 + proxy: use the FULL proxy URL with https:// protocol
 const PROXY_URL = window.ENV?.CLERK_PROXY_URL // e.g. "https://clerk.adminer.online"
 const CLERK_JS_URL = window.ENV?.CLERK_JS_URL // optional; Clerk auto-detects when proxyUrl is set
+
+// 🚨 Runtime safety: block pk_test_* in non-localhost environments
+if (location.hostname !== 'localhost' && PUBLISHABLE_KEY?.startsWith('pk_test_')) {
+  console.error(
+    '❌ SECURITY ERROR: Test Clerk publishable key detected on non-localhost environment!',
+    '\nKey prefix:', PUBLISHABLE_KEY.slice(0, 12) + '…',
+    '\nHost:', location.hostname,
+    '\nCheck your Vercel environment variables.'
+  );
+}
 
 if (!PUBLISHABLE_KEY) {
   // Always keep this one loud
