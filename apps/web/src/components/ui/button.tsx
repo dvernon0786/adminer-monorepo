@@ -34,13 +34,22 @@ const buttonVariants = cva(
 )
 
 export interface ButtonProps
-  extends React.ButtonHTMLAttributes<HTMLButtonElement>,
-    VariantProps<typeof buttonVariants> {
+  extends Omit<React.ButtonHTMLAttributes<HTMLButtonElement>,
+    'as' | 'dangerouslySetInnerHTML'> {
+  variant?: VariantProps<typeof buttonVariants>['variant']
+  size?: VariantProps<typeof buttonVariants>['size']
   asChild?: boolean
 }
 
 const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
   ({ className, variant, size, asChild = false, ...props }, ref) => {
+    // Strip any stray Clerk props if they leaked down:
+    // (TS will already catch, this is extra runtime safety)
+    // @ts-expect-error – we're deliberately deleting unknown keys
+    delete (props as any).afterSignInUrl
+    // @ts-expect-error
+    delete (props as any).afterSignUpUrl
+
     const Comp = asChild ? Slot : "button"
     return (
       <Comp

@@ -1,15 +1,9 @@
 import { SignInButton, SignUpButton, SignOutButton, useAuth, useUser } from '@clerk/clerk-react'
 import { Button } from './ui/button'
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar'
-import { 
-  DropdownMenu, 
-  DropdownMenuContent, 
-  DropdownMenuItem, 
-  DropdownMenuLabel, 
-  DropdownMenuSeparator, 
-  DropdownMenuTrigger 
-} from './ui/dropdown-menu'
-import { ChevronDown, User, Settings, LogOut } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from './ui/dropdown-menu'
+import { ChevronDown, LogOut, Settings, User } from 'lucide-react'
+import { SignInBtn, SignUpBtn } from './auth/ClerkButtons'
 import { useNavigate } from 'react-router-dom'
 
 const Navigation = () => {
@@ -112,23 +106,8 @@ const Navigation = () => {
             ) : (
               // User is not authenticated - show sign in buttons
               <>
-                <SignInButton 
-                  mode="modal"
-                  afterSignInUrl="/dashboard"
-                  afterSignUpUrl="/dashboard"
-                >
-                  <Button variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10">
-                    Sign In
-                  </Button>
-                </SignInButton>
-                <SignUpButton 
-                  mode="modal"
-                  afterSignUpUrl="/dashboard"
-                >
-                  <Button size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700">
-                    Get Started
-                  </Button>
-                </SignUpButton>
+                <SignInBtn variant="outline" size="sm" className="border-white/20 text-white hover:bg-white/10" />
+                <SignUpBtn size="sm" className="bg-gradient-to-r from-blue-500 to-purple-600 text-white hover:from-blue-600 hover:to-purple-700" />
               </>
             )}
           </div>

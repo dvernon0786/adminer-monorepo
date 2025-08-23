@@ -30,12 +30,21 @@ const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
             process.env.VITE_CLERK_PUBLISHABLE_KEY || 
             process.env.CLERK_PUBLISHABLE_KEY || '';
 
+// Get proxy URL if available
+const proxyUrl = process.env.CLERK_PROXY_URL || process.env.VITE_CLERK_PROXY_URL || '';
+
 // Debug logging
 console.log('Environment variables available:');
 console.log('- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
 console.log('- VITE_CLERK_PUBLISHABLE_KEY:', process.env.VITE_CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
 console.log('- CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
+console.log('- CLERK_PROXY_URL:', proxyUrl ? 'SET' : 'NOT SET');
 console.log('- Final key length:', key.length);
 
-fs.writeFileSync(out, `window.__env__={VITE_CLERK_PUBLISHABLE_KEY:${JSON.stringify(key)}};`);
-console.log('Wrote /public/env.js with VITE_CLERK_PUBLISHABLE_KEY'); 
+const envContent = {
+  VITE_CLERK_PUBLISHABLE_KEY: key,
+  ...(proxyUrl && { CLERK_PROXY_URL: proxyUrl })
+};
+
+fs.writeFileSync(out, `window.ENV=${JSON.stringify(envContent)};`);
+console.log('Wrote /public/env.js with environment variables'); 

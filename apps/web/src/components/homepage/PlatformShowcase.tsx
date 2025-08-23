@@ -1,6 +1,7 @@
 import { Button } from '../ui/button'
 import { useNavigate } from 'react-router-dom'
-import { SignedIn, SignedOut, SignInButton, SignUpButton, useAuth } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, useAuth } from '@clerk/clerk-react'
+import { SignInBtn, SignUpBtn } from '../auth/ClerkButtons'
 
 export default function PlatformShowcase() {
   const navigate = useNavigate()
@@ -41,15 +42,10 @@ export default function PlatformShowcase() {
                 </Button>
               </SignedIn>
               <SignedOut>
-                <SignInButton 
-              mode="modal" 
-              afterSignInUrl="/dashboard"
-              afterSignUpUrl="/dashboard"
-            >
-                  <Button className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
-                    Try Now
-                  </Button>
-                </SignInButton>
+                <SignInBtn 
+                  children="Try Now"
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors"
+                />
               </SignedOut>
             </div>
           </div>
@@ -74,11 +70,10 @@ export default function PlatformShowcase() {
 
           <div className="mt-12 fade-in fade-4">
             <SignedOut>
-              <SignUpButton mode="modal" redirectUrl="/">
-                <Button className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all hover:scale-105">
-                  Join Early Access for New Platforms
-                </Button>
-              </SignUpButton>
+              <SignUpBtn 
+                children="Join Early Access for New Platforms"
+                className="bg-gradient-to-r from-purple-500 to-pink-600 text-white px-8 py-3 rounded-lg font-medium hover:from-purple-600 hover:to-pink-700 transition-all hover:scale-105"
+              />
             </SignedOut>
             <SignedIn>
               <Button 

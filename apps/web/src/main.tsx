@@ -5,27 +5,38 @@ import { BrowserRouter as Router, useNavigate } from 'react-router-dom'
 import App from './App.tsx'
 import './index.css'
 
-// Declare global window.__env__ type
+// Declare global window.ENV type
 declare global {
   interface Window {
-    __env__?: Record<string, string>
+    ENV?: Record<string, string>
   }
 }
 
 // Resolve Clerk publishable key from runtime environment
-const publishableKey = 
-  window.__env__?.VITE_CLERK_PUBLISHABLE_KEY ||
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY // fallback to build-time if available
+const PUBLISHABLE_KEY =
+  (typeof window !== 'undefined' && window?.ENV?.VITE_CLERK_PUBLISHABLE_KEY) ||
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
-if (!publishableKey) {
-  console.error('Clerk publishable key missing from runtime environment')
+// If you are intentionally proxying Clerk via a custom domain, set this:
+const PROXY_URL =
+  (typeof window !== 'undefined' && window?.ENV?.CLERK_PROXY_URL) ||
+  import.meta.env.VITE_CLERK_PROXY_URL ||
+  undefined
+
+if (!PUBLISHABLE_KEY) {
+  console.error('Missing Clerk publishable key')
 }
 
 function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   return (
     <ClerkProvider
-      publishableKey={publishableKey!}
+      publishableKey={PUBLISHABLE_KEY!}
+      {...(PROXY_URL ? { proxyUrl: PROXY_URL } : {})}
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
       // Make Clerk use your SPA router instead of full reloads
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
