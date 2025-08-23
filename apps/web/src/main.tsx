@@ -37,6 +37,8 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
       // Make Clerk use your SPA router instead of full reloads
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
+      // Bypass publishableKey requirement in keyless mode
+      __internal_bypassMissingPublishableKey={true}
     >
       {children}
     </ClerkProvider>
