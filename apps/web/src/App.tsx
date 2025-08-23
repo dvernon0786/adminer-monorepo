@@ -7,8 +7,12 @@ function App() {
   // Debug Clerk initialization in development
   if (import.meta.env.DEV) {
     const clerk = useClerk()
-    // Removed legacy frontendApi logging - not relevant in Clerk v5
-    console.debug('Clerk publishableKey:', clerk?.publishableKey)
+    // Log Clerk configuration for debugging
+    console.debug('Clerk configuration:', {
+      frontendApi: clerk?.frontendApi,
+      proxyUrl: clerk?.proxyUrl,
+      isLoaded: clerk?.isLoaded
+    })
   }
 
   return (

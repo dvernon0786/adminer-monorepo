@@ -6,32 +6,25 @@ import App from './App.tsx'
 import './index.css'
 
 // window.ENV is written by apps/api/public/env.js
-const PUBLISHABLE_KEY =
-  window.ENV?.VITE_CLERK_PUBLISHABLE_KEY || window.ENV?.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY
+const FRONTEND_API = window.ENV?.CLERK_FRONTEND_API || 'clerk.adminer.online'
 
 // IMPORTANT for v5 + proxy: use the FULL proxy URL with https:// protocol
-const PROXY_URL = window.ENV?.CLERK_PROXY_URL // e.g. "https://clerk.adminer.online"
+const PROXY_URL = window.ENV?.CLERK_PROXY_URL || 'https://clerk.adminer.online'
 const CLERK_JS_URL = window.ENV?.CLERK_JS_URL // optional; Clerk auto-detects when proxyUrl is set
 
-// 🚨 Runtime safety: block pk_test_* in non-localhost environments
-if (location.hostname !== 'localhost' && PUBLISHABLE_KEY?.startsWith('pk_test_')) {
+// 🚨 Runtime safety: validate frontendApi exists outside localhost
+if (location.hostname !== 'localhost' && !FRONTEND_API) {
   console.error(
-    '❌ SECURITY ERROR: Test Clerk publishable key detected on non-localhost environment!',
-    '\nKey prefix:', PUBLISHABLE_KEY.slice(0, 12) + '…',
+    '❌ CONFIG ERROR: CLERK_FRONTEND_API is missing on non-localhost environment!',
     '\nHost:', location.hostname,
     '\nCheck your Vercel environment variables.'
   );
 }
 
-if (!PUBLISHABLE_KEY) {
-  // Always keep this one loud
-  console.error('Clerk publishable key missing')
-}
-
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env.DEV) {
   console.debug('🔧 Clerk config resolved:', {
-    publishableKey: PUBLISHABLE_KEY?.slice(0, 8) + '…',
+    frontendApi: FRONTEND_API,
     proxyUrl: PROXY_URL,
     clerkJSUrl: CLERK_JS_URL,
   })
@@ -42,7 +35,7 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
-      publishableKey={PUBLISHABLE_KEY}
+      frontendApi={FRONTEND_API}
       proxyUrl={PROXY_URL}
       clerkJSUrl={CLERK_JS_URL /* optional; leave undefined unless you need to force it */}
       signInUrl="/sign-in"

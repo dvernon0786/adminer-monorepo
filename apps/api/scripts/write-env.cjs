@@ -25,34 +25,25 @@ const outDir = path.join(__dirname, '..', 'public');
 const out = path.join(outDir, 'env.js');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
-// Try multiple environment variable names for maximum compatibility
-const key = process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
-            process.env.VITE_CLERK_PUBLISHABLE_KEY || 
-            process.env.CLERK_PUBLISHABLE_KEY || '';
-
 // Get proxy URL if available
 const proxyUrl = process.env.CLERK_PROXY_URL || process.env.VITE_CLERK_PROXY_URL || '';
 const clerkJsUrl = process.env.CLERK_JS_URL || process.env.VITE_CLERK_JS_URL || '';
 
-// Derive host-only value for Clerk frontendApi
-const frontendApi = proxyUrl ? new URL(proxyUrl).host : undefined;
+// Get frontend API (host-only) for Clerk keyless mode
+const frontendApi = process.env.CLERK_FRONTEND_API || (proxyUrl ? new URL(proxyUrl).host : 'clerk.adminer.online');
 
 // Debug logging
 console.log('Environment variables available:');
-console.log('- NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY:', process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
-console.log('- VITE_CLERK_PUBLISHABLE_KEY:', process.env.VITE_CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
-console.log('- CLERK_PUBLISHABLE_KEY:', process.env.CLERK_PUBLISHABLE_KEY ? 'SET' : 'NOT SET');
+console.log('- CLERK_FRONTEND_API:', process.env.CLERK_FRONTEND_API ? 'SET' : 'NOT SET');
 console.log('- CLERK_PROXY_URL:', proxyUrl ? 'SET' : 'NOT SET');
 console.log('- CLERK_JS_URL:', clerkJsUrl ? 'SET' : 'NOT SET');
-console.log('- CLERK_FRONTEND_API (host only):', frontendApi ? 'SET' : 'NOT SET');
-console.log('- Final key length:', key.length);
+console.log('- Final frontendApi:', frontendApi);
 
 const envContent = {
-  VITE_CLERK_PUBLISHABLE_KEY: key,
+  CLERK_FRONTEND_API: frontendApi,
   // For v5 + proxy, the SPA must receive the full proxy URL and pass it as `proxyUrl`
   ...(proxyUrl && { CLERK_PROXY_URL: proxyUrl }),
-  // Optional: still expose host purely for human-readable debugging in the browser console
-  ...(frontendApi && { CLERK_PROXY_HOST: frontendApi }),
+  // Optional: Clerk JS URL for pinned assets
   ...(clerkJsUrl && { CLERK_JS_URL: clerkJsUrl })
 };
 

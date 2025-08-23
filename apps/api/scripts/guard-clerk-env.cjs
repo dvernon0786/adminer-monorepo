@@ -36,8 +36,6 @@ if (scope === "preview" || scope === "production") {
   const requiredKeys = {
     CLERK_PROXY_URL: env.CLERK_PROXY_URL,
     CLERK_SECRET_KEY: env.CLERK_SECRET_KEY,
-    CLERK_PUBLISHABLE_KEY: env.CLERK_PUBLISHABLE_KEY,
-    NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY,
   };
 
   for (const [key, value] of Object.entries(requiredKeys)) {
@@ -55,39 +53,29 @@ if (scope === "preview" || scope === "production") {
 const required = [
   // Server side (only if your API needs it at build time)
   "CLERK_SECRET_KEY",
-
-  // Client/SSR publishable keys — at least one is typically present
-  "CLERK_PUBLISHABLE_KEY",
-  "NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY",
-  "VITE_CLERK_PUBLISHABLE_KEY",
 ];
 
-const present = required.filter((k) => !!process.env[k]);
-const missing = required.filter((k) => !process.env[k]);
-
-// Allow flexibility: require at least one publishable key + secret if you truly need secret at build
-const hasAnyPublishable =
-  !!process.env.CLERK_PUBLISHABLE_KEY ||
-  !!process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY ||
-  !!process.env.VITE_CLERK_PUBLISHABLE_KEY;
-
-if (!hasAnyPublishable) {
-  console.error("❌ No Clerk publishable key found (need at least one of):");
-  console.error("   - CLERK_PUBLISHABLE_KEY");
-  console.error("   - NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY");
-  console.error("   - VITE_CLERK_PUBLISHABLE_KEY");
+const missing = required.filter(k => !process.env[k]);
+if (missing.length) {
+  console.error('❌ Clerk env missing:', missing);
   process.exit(1);
 }
 
-// If your API code uses the secret at build time, enforce it:
-if (!process.env.CLERK_SECRET_KEY) {
-  console.error("❌ Missing Clerk server key: CLERK_SECRET_KEY");
+// Keyless OK if frontendApi is set
+if (!process.env.CLERK_FRONTEND_API &&
+    !process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY &&
+    !process.env.VITE_CLERK_PUBLISHABLE_KEY) {
+  console.error('❌ Provide either CLERK_FRONTEND_API (keyless) or a publishable key');
   process.exit(1);
+}
+
+if (process.env.CLERK_FRONTEND_API && (process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || process.env.VITE_CLERK_PUBLISHABLE_KEY)) {
+  console.warn('ℹ️ Both CLERK_FRONTEND_API and a publishable key are set; using keyless on web.');
 }
 
 console.log(
   "✅ Clerk environment variables are set:",
-  present.map((k) => `${k}=***`).join(", ")
+  required.map((k) => `${k}=***`).join(", ")
 );
 
 // Add scope hint for debugging
@@ -95,7 +83,7 @@ console.log(`ℹ️  Environment scope: ${scope}`);
 
 // Add self-auditing summary table
 const summary = Object.keys(process.env)
-  .filter((k) => /^(CLERK_|NEXT_PUBLIC_CLERK_)/.test(k))
+  .filter((k) => /^(CLERK_|NEXT_PUBLIC_CLERK_|VITE_CLERK_)/.test(k))
   .sort()
   .map((k) => ({ key: k, value: process.env[k] ? "***" : "NOT SET" }));
 

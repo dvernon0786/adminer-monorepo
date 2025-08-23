@@ -29,10 +29,13 @@ const clerkPublishableKeys = [
 ];
 
 const hasAnyPublishableKey = clerkPublishableKeys.some(key => !!process.env[key]);
+const hasFrontendApi = !!process.env.CLERK_FRONTEND_API;
 
-if (!hasAnyPublishableKey) {
+// Keyless OK if frontendApi is set
+if (!hasFrontendApi && !hasAnyPublishableKey) {
   console.error("❌ No Clerk publishable key found (need at least one of):");
   clerkPublishableKeys.forEach(key => console.error(`   - ${key}`));
+  console.error("   - CLERK_FRONTEND_API (for keyless mode)");
   process.exit(1);
 }
 
@@ -42,5 +45,14 @@ if (!process.env.CLERK_SECRET_KEY) {
 }
 
 console.log("✅ Env check passed.");
-console.log(`✅ Clerk publishable key found: ${clerkPublishableKeys.find(key => !!process.env[key])}`);
+
+if (hasFrontendApi) {
+  console.log("✅ Clerk frontendApi found (keyless mode)");
+  if (hasAnyPublishableKey) {
+    console.warn("ℹ️ Both CLERK_FRONTEND_API and publishable keys are set; using keyless on web.");
+  }
+} else {
+  console.log(`✅ Clerk publishable key found: ${clerkPublishableKeys.find(key => !!process.env[key])}`);
+}
+
 console.log("✅ Clerk secret key found: CLERK_SECRET_KEY"); 
