@@ -36,8 +36,8 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
       {...(CLERK_JS_URL ? { clerkJSUrl: CLERK_JS_URL } : {})}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
-      afterSignInUrl="/dashboard"
-      afterSignUpUrl="/dashboard"
+      signInFallbackRedirectUrl="/dashboard"
+      signUpFallbackRedirectUrl="/dashboard"
       // Make Clerk use your SPA router instead of full reloads
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}

@@ -141,8 +141,7 @@ export default function HeroSection() {
               <SignedOut>
                 <SignInButton 
                   mode="modal" 
-                  afterSignInUrl="/dashboard"
-                  afterSignUpUrl="/dashboard"
+                  fallbackRedirectUrl="/dashboard"
                 >
                   <Button
                     type="button"
@@ -219,8 +218,7 @@ export default function HeroSection() {
               Already have an account?{' '}
               <SignInButton 
                 mode="modal" 
-                afterSignInUrl="/dashboard"
-                afterSignUpUrl="/dashboard"
+                fallbackRedirectUrl="/dashboard"
               >
                 <button className="text-blue-400 hover:text-blue-300 underline">
                   Sign in here

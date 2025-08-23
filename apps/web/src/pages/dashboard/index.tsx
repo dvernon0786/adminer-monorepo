@@ -55,8 +55,7 @@ export default function Dashboard() {
             <p className="text-neutral-400">Run cross‑platform competitive analysis in minutes.</p>
             <SignInButton 
               mode="modal"
-              afterSignInUrl="/dashboard"
-              afterSignUpUrl="/dashboard"
+              fallbackRedirectUrl="/dashboard"
             >
               <button className="gradient-btn px-5 py-2 rounded-lg font-medium">Sign in</button>
             </SignInButton>
