@@ -30,12 +30,9 @@ const out = path.join(outDir, 'env.js');
 if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
 // Get environment variables
-const frontendApi = process.env.CLERK_FRONTEND_API || '';
 const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || '';
 
 const ENV = {
-  CLERK_FRONTEND_API: frontendApi,
-  CLERK_PROXY_URL: "/clerk",
   CLERK_PUBLISHABLE_KEY: publishableKey,
 };
 

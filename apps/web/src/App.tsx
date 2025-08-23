@@ -17,14 +17,23 @@ function App() {
 
   return (
     <>
-      {/* Minimal OAuth Components */}
-      <div className="fixed top-4 right-4 z-50">
-        <SignedOut>
-          <SignInButton mode="modal" />
-        </SignedOut>
+      {/* Minimal UI Smoke Test */}
+      <div style={{ padding: 24, fontFamily: "ui-sans-serif, system-ui" }}>
+        <h1>Clerk Wiring Smoke Test</h1>
         <SignedIn>
+          <p>Signed in ✅</p>
           <UserButton />
         </SignedIn>
+        <SignedOut>
+          <p>Signed out ❌</p>
+          <SignInButton />
+        </SignedOut>
+        <pre id="conf" style={{ marginTop: 16, padding: 12, background: "#111", color: "#0f0" }}>
+          {JSON.stringify({
+            viteKey: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || "(none)",
+            winKey: (window as any)?.ENV?.CLERK_PUBLISHABLE_KEY || "(none)",
+          }, null, 2)}
+        </pre>
       </div>
 
       <Routes>
