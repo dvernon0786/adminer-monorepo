@@ -34,8 +34,10 @@ console.log('- CLERK_FRONTEND_API:', process.env.CLERK_FRONTEND_API ? 'SET' : 'N
 console.log('- Final frontendApi:', frontendApi);
 
 const envContent = {
-  CLERK_FRONTEND_API: frontendApi
+  CLERK_FRONTEND_API: frontendApi,
+  // Add proxy configuration for Clerk reverse-proxy setup
+  CLERK_PROXY_URL: "/clerk"
 };
 
 fs.writeFileSync(out, `window.ENV=${JSON.stringify(envContent)};`);
-console.log('Wrote /public/env.js with environment variables'); 
+console.log('Wrote /public/env.js with environment variables including proxy configuration'); 

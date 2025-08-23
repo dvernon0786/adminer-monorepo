@@ -7,6 +7,7 @@ import './index.css'
 
 // window.ENV is written by apps/api/public/env.js
 const FRONTEND_API = window.ENV?.CLERK_FRONTEND_API || 'clerk.adminer.online'
+const PROXY_URL = window.ENV?.CLERK_PROXY_URL || '/clerk'
 
 // 🚨 Runtime safety: validate frontendApi exists outside localhost
 if (location.hostname !== 'localhost' && !FRONTEND_API) {
@@ -30,6 +31,7 @@ document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded e
 if (import.meta.env.DEV) {
   console.debug('🔧 Clerk config resolved:', {
     frontendApi: FRONTEND_API,
+    proxyUrl: PROXY_URL,
   })
 }
 
@@ -38,7 +40,12 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
+      // Keep the CNAME for completeness, but the SDK will use the proxy
       frontendApi={FRONTEND_API}
+      // 🔑 The magic: tell Clerk SDK to call our proxy paths instead of *.clerk.*
+      proxyUrl={PROXY_URL}
+      // Load the browser bundle from our own origin as well (rewritten to jsDelivr)
+      clerkJSUrl={`${PROXY_URL}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
       signInFallbackRedirectUrl="/dashboard"
@@ -46,7 +53,8 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
       // Make Clerk use your SPA router instead of full reloads
       routerPush={(to) => navigate(to)}
       routerReplace={(to) => navigate(to, { replace: true })}
-      // Bypass publishableKey requirement in keyless mode
+      // keep this to silence legacy publishableKey checks in older internals
+      // (safe no-op in newer versions)
       __internal_bypassMissingPublishableKey={true}
     >
       {children}

@@ -64,19 +64,14 @@ const nextConfig = {
       "data:"
     ].join(' ');
 
+    // Since we're now proxying Clerk through /clerk/*, we only need 'self' for connect-src
     const connectSrc = [
       "'self'",
-      ...clerkHosts,
-      clerkAccountsDev,
-      ...clerkApi,
-      "https://clerk.adminer.online/v1/*",
-      ...clerkWebSocket,
       "https://api.dodopayments.com"
     ].join(' ');
 
     const frameSrc = [
-      "'self'",
-      ...clerkHosts
+      "'self'"
     ].join(' ');
 
     const imgSrc = [
@@ -98,8 +93,8 @@ const nextConfig = {
       `frame-ancestors 'self'`,
       `object-src 'none'`,
       // ALLOW eval for Clerk bootstrap (script-src only, not script-src-elem)
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${clerkHosts.join(' ')}`,
-      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(' ')}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'`,
+      `script-src-elem 'self' 'unsafe-inline'`,
       `style-src ${styleSrc}`,
       `style-src-elem ${styleSrcElem}`,
       `font-src ${fontSrc}`,
@@ -134,17 +129,25 @@ const nextConfig = {
   },
 
   async rewrites() {
-    return {
+    return [
+      // Proxy EVERYTHING for Clerk through your own origin,
+      // so the browser never talks to *.clerk.* directly.
+      {
+        source: "/clerk/:path*",
+        destination: "https://clerk.adminer.online/:path*",
+      },
+      // (optional) harden: proxy the exact Clerk JS asset via your origin as well
+      {
+        source: "/clerk/npm/@clerk/clerk-js@5/dist/:file*",
+        destination: "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/:file*",
+      },
       // Normalize old URLs early (works even if HTML is cached somewhere)
-      beforeFiles: [
-        { source: '/public/assets/:path*', destination: '/assets/:path*' },
-        { source: '/public/env.js', destination: '/env.js' },
-      ],
+      { source: '/public/assets/:path*', destination: '/assets/:path*' },
+      { source: '/public/env.js', destination: '/env.js' },
       // Do NOT put a catch-all here; it can shadow static files.
-      afterFiles: [],
       // Only hit SPA index.html if nothing else (pages, api, public files) matched
-      fallback: [{ source: '/:path*', destination: '/index.html' }],
-    };
+      { source: '/:path*', destination: '/index.html' },
+    ];
   },
 
   // Add redirects to force browser to use correct URLs
