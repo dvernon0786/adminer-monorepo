@@ -13,7 +13,11 @@ if (fs.existsSync(envLocalPath)) {
     if (trimmed && !trimmed.startsWith('#')) {
       const [key, ...valueParts] = trimmed.split('=');
       if (key && valueParts.length > 0) {
-        const value = valueParts.join('=');
+        // Support quoted values and keep '=' inside values
+        let value = valueParts.join('=').trim();
+        if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+          value = value.slice(1, -1);
+        }
         process.env[key] = value;
       }
     }
@@ -27,10 +31,7 @@ if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
 
 // Get frontend API (host-only) for Clerk keyless mode - CNAME only
 const frontendApi = process.env.CLERK_FRONTEND_API || 'clerk.adminer.online';
-const publishableKey =
-  process.env.CLERK_PUBLISHABLE_KEY ||
-  process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || // <- your provided var
-  '';
+const publishableKey = process.env.CLERK_PUBLISHABLE_KEY || '';
 
 // Debug logging
 console.log('Environment variables available:');
@@ -42,7 +43,8 @@ const envContent = {
   CLERK_FRONTEND_API: frontendApi,
   // Add proxy configuration for Clerk reverse-proxy setup
   CLERK_PROXY_URL: "/clerk",
-  CLERK_PUBLISHABLE_KEY: publishableKey,
+  // v5 requires a real publishable key even in proxy mode; this is safe to expose
+  CLERK_PUBLISHABLE_KEY: publishableKey
 };
 
 fs.writeFileSync(out, `window.ENV=${JSON.stringify(envContent)};`);
