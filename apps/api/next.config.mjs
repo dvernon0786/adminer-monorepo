@@ -110,6 +110,13 @@ const nextConfig = {
 
     return [
       {
+        source: '/env.js',
+        headers: [
+          { key: 'Cache-Control', value: 'no-store' },
+          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
+        ],
+      },
+      {
         source: '/(.*)',
         headers: [
           { key: 'Content-Security-Policy', value: csp },

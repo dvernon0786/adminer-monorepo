@@ -22,6 +22,10 @@ if (!window.ENV?.CLERK_FRONTEND_API) {
   throw new Error('Clerk keyless mode: window.ENV.CLERK_FRONTEND_API missing at runtime');
 }
 
+// Temporary runtime diagnostics
+console.log('🧪 ENV at mount:', window.ENV);
+document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded event'));
+
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env.DEV) {
   console.debug('🔧 Clerk config resolved:', {
