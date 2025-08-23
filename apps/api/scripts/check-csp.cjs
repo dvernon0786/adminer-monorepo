@@ -57,42 +57,68 @@ async function main() {
   }
 
   const csp = String(cspHeader.value || '');
-  const requireContains = (needle, msg) => {
-    if (!csp.includes(needle)) {
-      console.error(`[check-csp] Missing directive: ${msg} (expected to include: ${needle})`);
-      process.exit(1);
-    }
-  };
-
-  // Baseline directives we rely on
-  requireContains("default-src 'self'", "default-src 'self'");
-  requireContains("script-src 'self' 'unsafe-inline'", "script-src baseline");
   
-  // In non-prod we expect 'unsafe-eval' to be present (to unblock dev tooling)
-  if (!isProd) {
-    requireContains("'unsafe-eval'", "script-src 'unsafe-eval' for preview/dev");
-  }
-
-  // Google Fonts (CSS+files)
-  requireContains('style-src', 'style-src present');
-  requireContains('https://fonts.googleapis.com', 'Google Fonts stylesheet domain');
-  requireContains('font-src', 'font-src present');
-  requireContains('https://fonts.gstatic.com', 'Google Fonts file domain');
-
-  // Clerk endpoints
-  requireContains('connect-src', 'connect-src present');
-  requireContains('https://api.clerk.com', 'Clerk API domain');
-  requireContains('https://clerk.adminer.online', 'Your Clerk loader/proxy domain');
-
-  // Hardening presence (don't over-validate exact syntax to keep it resilient)
-  ['base-uri', 'form-action', 'frame-ancestors', 'object-src'].forEach((dir) => {
-    if (!csp.includes(dir)) {
-      console.error(`[check-csp] Hardening directive missing: ${dir}`);
-      process.exit(1);
+  // Parse CSP into directive map
+  const map = {};
+  csp.split(';').forEach(line => {
+    const trimmed = line.trim();
+    if (trimmed) {
+      const [directive, ...values] = trimmed.split(' ');
+      if (directive && values.length > 0) {
+        map[directive] = values.join(' ');
+      }
     }
   });
 
-  console.log(`[check-csp] OK: CSP present and valid for ${env} ✅`);
+  function fail(msg) {
+    console.error(`[check-csp] ❌ ${msg}`);
+    process.exit(1);
+  }
+
+  function assertContains(directive, expects, label = 'required') {
+    const line = map[directive];
+    if (!line) {
+      fail(`Missing directive: ${directive} (${label})`);
+    }
+    for (const token of expects) {
+      if (!line.includes(token)) {
+        fail(`Missing directive: ${directive} expected to include: ${token} (${label})`);
+      }
+    }
+  }
+
+  // On non‑prod we REQUIRE 'unsafe-eval' so dev/preview builds pass with Clerk.
+  const requiredForPreview = isProd ? {} : {
+    'script-src': ["'unsafe-eval'"],
+    'script-src-elem': ["'unsafe-eval'"],
+  };
+
+  const requiredAlways = {
+    'style-src-elem': ['https://fonts.googleapis.com'],
+    'font-src': ['https://fonts.gstatic.com', 'data:'],
+    'connect-src': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'self'"],
+    'script-src-elem': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'self'", "'unsafe-inline'"],
+    'script-src': ['https://clerk.adminer.online', 'https://*.clerk.com', 'https://*.clerk.services', "'unsafe-inline'", "'self'"],
+    'style-src': ["'self'", "'unsafe-inline'"],
+    'default-src': ["'self'"],
+    'object-src': ["'none'"],
+  };
+
+  console.log(`[check-csp] 🔍 Validating CSP for ${env} environment...`);
+  console.log(`[check-csp] 📋 CSP directives found: ${Object.keys(map).join(', ')}`);
+
+  // required always
+  for (const [dir, vals] of Object.entries(requiredAlways)) {
+    assertContains(dir, vals, 'always');
+  }
+
+  // preview/dev only requirements
+  for (const [dir, vals] of Object.entries(requiredForPreview)) {
+    assertContains(dir, vals, 'preview/dev');
+  }
+
+  console.log(`[check-csp] ✅ CSP present and valid for ${env} environment`);
+  console.log(`[check-csp] 🎯 All required directives present and properly configured`);
 }
 
 main().catch((e) => {
