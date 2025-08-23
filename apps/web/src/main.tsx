@@ -30,7 +30,7 @@ document.addEventListener('clerk:loaded', () => console.log('🧪 Clerk loaded e
 // Only log diagnostics in dev (no build-time noise, no prod noise)
 if (import.meta.env?.DEV) {
   console.debug('🔧 Clerk config resolved:', {
-    frontendApi: FRONTEND_API,
+    publishableKey: '"" (keyless mode)',
     proxyUrl: PROXY_URL,
   })
 }
@@ -40,12 +40,11 @@ function ClerkWithRouter({ children }: { children: React.ReactNode }) {
   
   return (
     <ClerkProvider
-      // For reverse-proxy setup, we need to use publishableKey with a dummy value
-      // The proxyUrl will handle routing all calls through /clerk/*
-      publishableKey="pk_test_dummy_key_for_proxy_mode"
-      // 🔑 The magic: tell Clerk SDK to call our proxy paths instead of *.clerk.*
+      // ✅ Keyless + reverse-proxy: use empty publishableKey for v5
+      publishableKey=""
+      // Use proxyUrl so everything stays same-origin
       proxyUrl={PROXY_URL}
-      // Load the browser bundle from our own origin as well (rewritten to jsDelivr)
+      // Also load Clerk JS via the proxy to keep CSP/connect-src 'self'
       clerkJSUrl={`${PROXY_URL}/npm/@clerk/clerk-js@5/dist/clerk.browser.js`}
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
