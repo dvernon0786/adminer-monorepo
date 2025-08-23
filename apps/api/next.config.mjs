@@ -34,7 +34,6 @@ const nextConfig = {
     const scriptSrc = [
       "'self'",
       "'unsafe-inline'",
-      ...clerkHosts,
       !isProd ? "'unsafe-eval'" : null
     ].filter(Boolean).join(' ');
 
@@ -42,8 +41,7 @@ const nextConfig = {
     // Note: 'unsafe-eval' is not valid in script-src-elem, only in script-src
     const scriptSrcElem = [
       "'self'",
-      "'unsafe-inline'",
-      ...clerkHosts
+      "'unsafe-inline'"
     ].join(' ');
 
     // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
