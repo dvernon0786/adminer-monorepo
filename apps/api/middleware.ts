@@ -5,10 +5,29 @@ const isApiRoute = createRouteMatcher(['/api/(.*)']);
 // const isDashboard = createRouteMatcher(['/dashboard(.*)']);
 
 export default clerkMiddleware(async (auth, req) => {
-  if (isApiRoute(req)) {
-    await auth.protect(); // 401 when signed out
+  try {
+    if (isApiRoute(req)) {
+      await auth.protect(); // 401 when signed out
+    }
+    // if (isDashboard(req)) await auth.protect();
+  } catch (error) {
+    // Log middleware errors for debugging but don't crash
+    console.error('Clerk middleware error:', error);
+    
+    // For API routes, return a proper error response
+    if (isApiRoute(req)) {
+      return new Response(
+        JSON.stringify({ 
+          error: 'Authentication service temporarily unavailable',
+          message: 'Please try again in a moment'
+        }), 
+        { 
+          status: 503, 
+          headers: { 'Content-Type': 'application/json' } 
+        }
+      );
+    }
   }
-  // if (isDashboard(req)) await auth.protect();
 });
 
 // IMPORTANT: exclude static files so CSS/JS don't get intercepted
