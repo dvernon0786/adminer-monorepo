@@ -97,7 +97,7 @@ const nextConfig = {
       `object-src 'none'`,
       // ALLOW eval for Clerk bootstrap (script-src only, not script-src-elem)
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'`,
-      `script-src-elem 'self' 'unsafe-inline'`,
+      `script-src-elem ${scriptSrcElem}`,
       `style-src ${styleSrc}`,
       `style-src-elem ${styleSrcElem}`,
       `font-src ${fontSrc}`,
