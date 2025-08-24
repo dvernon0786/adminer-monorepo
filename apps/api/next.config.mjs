@@ -7,6 +7,10 @@ const googleFontsCss = 'https://fonts.googleapis.com';
 const googleFontsFiles = 'https://fonts.gstatic.com';
 // Your Clerk subdomain observed in logs:
 const clerkSubdomain = 'https://clerk.adminer.online';
+// Dodo payment integration
+const dodoApi = 'https://api.dodopayments.com';
+// Clerk official domains
+const clerkDomains = ['https://*.clerk.com', 'https://api.clerk.com', 'https://img.clerk.com'];
 
 // Some preview tooling may use vercel.live; allow it only outside production.
 const previewConnect = isProd ? [] : ['https://vercel.live', 'wss://vercel.live'];
@@ -20,9 +24,11 @@ const csp = [
   "object-src 'none'",
 
   // Scripts (Turnstile + same-origin; Clerk runtime is served locally)
-  `script-src-elem 'self' ${turnstile}`,
+  `script-src 'self' 'unsafe-inline' ${!isProd ? "'unsafe-eval'" : ''}`,
+  `script-src-elem 'self' 'unsafe-inline' ${turnstile} ${clerkDomains.join(' ')}`,
 
   // Styles (Google Fonts CSS + inline for font-loader hydration)
+  `style-src 'self' 'unsafe-inline'`,
   `style-src-elem 'self' 'unsafe-inline' ${googleFontsCss}`,
 
   // Fonts (Google font files + data for robust loading)
@@ -31,8 +37,8 @@ const csp = [
   // Frames (Turnstile widget + any same-origin frames)
   `frame-src 'self' ${turnstile}`,
 
-  // Images (same-origin, data, blob; include Turnstile just in case)
-  `img-src 'self' data: blob: ${turnstile}`,
+  // Images (same-origin, data, blob; include Turnstile and Clerk just in case)
+  `img-src 'self' data: blob: ${turnstile} https://img.clerk.com`,
 
   // Workers (allow blob for modern bundlers/runtimes when needed)
   "worker-src 'self' blob:",
@@ -45,6 +51,8 @@ const csp = [
   [
     "connect-src 'self'",
     clerkSubdomain,         // Clerk env + client calls (as seen in logs)
+    dodoApi,                // Dodo payment API integration
+    ...clerkDomains,        // Official Clerk domains
     turnstile,              // Turnstile verification/telemetry
     googleFontsCss,         // Preconnects from fonts CSS fetches can appear
     googleFontsFiles,       // Preconnects to font files
@@ -58,7 +66,7 @@ const nextConfig = {
   async headers() {
     return [
       {
-        source: '/:path*',
+        source: '/(.*)',
         headers: [
           {
             key: 'Content-Security-Policy',
