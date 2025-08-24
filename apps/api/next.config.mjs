@@ -42,7 +42,6 @@ const nextConfig = {
     const scriptSrcElem = [
       "'self'",
       "'unsafe-inline'",
-      "https://clerk.adminer.online",
       "https://*.clerk.com"
     ].join(' ');
 
@@ -69,7 +68,6 @@ const nextConfig = {
       "'self'",
       "https://api.dodopayments.com",
       "https://api.clerk.com",
-      "https://clerk.adminer.online",
       "https://*.clerk.com"
     ].join(' ');
 
@@ -134,17 +132,6 @@ const nextConfig = {
 
   async rewrites() {
     return [
-      // Proxy EVERYTHING for Clerk through your own origin,
-      // so the browser never talks to *.clerk.* directly.
-      {
-        source: "/clerk/:path*",
-        destination: "https://clerk.adminer.online/:path*",
-      },
-      // Ensure Clerk JS loads from CDN with proper MIME types
-      {
-        source: "/clerk/npm/@clerk/clerk-js@5/dist/:file*",
-        destination: "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/:file*",
-      },
       // Normalize old URLs early (works even if HTML is cached somewhere)
       { source: '/public/assets/:path*', destination: '/assets/:path*' },
       { source: '/public/env.js', destination: '/env.js' },

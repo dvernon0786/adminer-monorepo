@@ -93,17 +93,20 @@ async function main() {
     // Note: 'unsafe-eval' is not valid in script-src-elem
   };
 
-  // With reverse-proxy setup, we only need 'self' for most directives since Clerk calls go through /clerk/*
+  // With direct Clerk integration, we need to allow official Clerk domains
   const requiredAlways = {
     'style-src-elem': ['https://fonts.googleapis.com'],
     'font-src': ['https://fonts.gstatic.com', 'data:'],
     'connect-src': [
       "'self'",
-      'https://api.dodopayments.com'  // Only external API we still need
+      'https://api.dodopayments.com',  // Only external API we still need
+      'https://*.clerk.com',
+      'https://api.clerk.com'
     ],
     'script-src-elem': [
       "'self'",
-      "'unsafe-inline'"
+      "'unsafe-inline'",
+      'https://*.clerk.com'
     ],
     'script-src': [
       "'self'",
@@ -115,7 +118,7 @@ async function main() {
     'frame-src': [
       "'self'"
     ],
-    'img-src': ["'self'", 'data:', 'https:'],
+    'img-src': ["'self'", 'data:', 'https:', 'https://img.clerk.com'],
   };
 
   console.log(`[check-csp] 🔍 Validating CSP for ${env} environment...`);
@@ -133,7 +136,7 @@ async function main() {
 
   console.log(`[check-csp] ✅ CSP present and valid for ${env} environment`);
   console.log(`[check-csp] 🎯 All required directives present and properly configured`);
-  console.log(`[check-csp] 🔒 Reverse-proxy mode: Clerk calls routed through /clerk/* proxy`);
+  console.log(`[check-csp] 🔓 Direct mode: Clerk assets & API from official Clerk domains`);
 }
 
 main().catch((e) => {
