@@ -8,15 +8,6 @@
   </head>
   <body>
     <div id="root"></div>
-    <!-- Runtime env MUST run before the app bundle -->
-    <script src="/env.js?v=2"></script>
-    <script>
-      if (!window.ENV || !window.ENV.CLERK_PUBLISHABLE_KEY) {
-        document.body.innerHTML =
-          '<pre style="padding:16px">Missing CLERK_PUBLISHABLE_KEY from env.js</pre>';
-        throw new Error('env.js missing CLERK_PUBLISHABLE_KEY');
-      }
-    </script>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html> 

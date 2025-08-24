@@ -7,7 +7,6 @@
  *  - /public/assets is missing or empty
  *  - Any src/href in index.html begins with "/public/"
  *  - Any referenced "/assets/*" file is missing
- *  - /public/env.js is missing
  */
 
 const fs = require('fs');
@@ -17,7 +16,6 @@ const apiDir = process.cwd(); // run from apps/api
 const publicDir = path.join(apiDir, 'public');
 const indexHtml = path.join(publicDir, 'index.html');
 const assetsDir = path.join(publicDir, 'assets');
-const envJs = path.join(publicDir, 'env.js');
 
 function fail(msg, details) {
   console.error(`[check-spa-paths] ERROR: ${msg}`);
@@ -32,8 +30,6 @@ function ok(msg) {
 if (!fs.existsSync(publicDir)) fail('Missing /public directory.');
 
 if (!fs.existsSync(indexHtml)) fail('Missing /public/index.html.');
-
-if (!fs.existsSync(envJs)) fail('Missing /public/env.js (written by prebuild).');
 
 if (!fs.existsSync(assetsDir)) fail('Missing /public/assets directory.');
 

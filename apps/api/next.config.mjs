@@ -42,15 +42,6 @@ const nextConfig = {
     ].join("; ");
 
     return [
-      // Make env.js uncacheable at the CDN
-      {
-        source: '/env.js',
-        headers: [
-          { key: 'Cache-Control', value: 'no-store, max-age=0, must-revalidate' },
-          { key: 'Pragma', value: 'no-cache' },
-          { key: 'Expires', value: '0' },
-        ],
-      },
       // API & SPA root
       {
         source: "/(.*)",
@@ -68,7 +59,6 @@ const nextConfig = {
     return [
       // Normalize old URLs early (works even if HTML is cached somewhere)
       { source: '/public/assets/:path*', destination: '/assets/:path*' },
-      { source: '/public/env.js', destination: '/env.js' },
       // Do NOT put a catch-all here; it can shadow static files.
       // Only hit SPA index.html if nothing else (pages, api, public files) matched
       { source: '/:path*', destination: '/index.html' },

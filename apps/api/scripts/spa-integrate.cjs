@@ -1,6 +1,6 @@
 // apps/api/scripts/spa-integrate.cjs
 const { execSync } = require("node:child_process");
-const { existsSync, readFileSync, readdirSync, cpSync, mkdirSync, writeFileSync } = require("node:fs");
+const { existsSync, readFileSync, readdirSync, cpSync, mkdirSync } = require("node:fs");
 const { join } = require("node:path");
 
 function run(cmd, opts = {}) {
@@ -110,79 +110,5 @@ function tryRun(cmd, opts = {}) {
     });
   }
 
-  // 5) Write a clean env.js that **never** exposes proxy hints and pins Clerk JS URL
-  const envJsPath = join(publicDir, "env.js");
-  
-  // Try multiple environment variable sources for Vercel compatibility
-  const publishable = process.env.CLERK_PUBLISHABLE_KEY || 
-                      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
-                      "";
-  
-  console.log(`[spa:integrate] Environment check - CLERK_PUBLISHABLE_KEY: ${publishable ? 'SET' : 'NOT SET'}`);
-  console.log(`[spa:integrate] Available env vars: ${Object.keys(process.env).filter(k => k.includes('CLERK')).join(', ')}`);
-  
-  if (!publishable) {
-    console.error("[spa:integrate] Missing CLERK_PUBLISHABLE_KEY - cannot generate env.js");
-    console.error("[spa:integrate] This will cause client-side errors. Check Vercel environment variables.");
-    // Don't exit - let the build continue but warn about the issue
-    console.warn("[spa:integrate] Continuing build without env.js - authentication will fail!");
-    
-    // Write a minimal env.js with error message
-    const ENV = {
-      CLERK_PUBLISHABLE_KEY: "",
-      CLERK_JS_URL: "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js",
-      ERROR: "Missing CLERK_PUBLISHABLE_KEY - check Vercel environment variables"
-    };
-    
-    writeFileSync(
-      envJsPath,
-      `// Generated at build - DO NOT EDIT\n` +
-        `// ERROR: Missing CLERK_PUBLISHABLE_KEY\n` +
-        `window.env = ${JSON.stringify(ENV, null, 2)};\n`,
-      "utf8"
-    );
-    console.log("[spa:integrate] Wrote error env.js - authentication will fail!");
-    return;
-  }
-
-  const ENV = {
-    CLERK_PUBLISHABLE_KEY: publishable,
-    // Expose the pinned script URL so the SPA can double‑check if desired
-    CLERK_JS_URL: "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js",
-  };
-
-  writeFileSync(
-    envJsPath,
-    `// Generated at build - DO NOT EDIT\n` +
-      `window.env = ${JSON.stringify(ENV, null, 2)};\n`,
-    "utf8"
-  );
-  console.log("[spa:integrate] Re-wrote env.js post-copy ✅");
-
-  // 6) Re-order scripts in index.html so env.js always loads before the SPA bundle
-  const index = join(publicDir, 'index.html');
-  let html = readFileSync(index, 'utf8');
-
-  // 1) Remove any existing env.js tag so we can deterministically inject it first
-  html = html.replace(/<script[^>]+src="\/env\.js[^"]*"[^>]*><\/script>\s*/g, '');
-
-  // 2) Inject env.js immediately after <head> to guarantee availability
-  html = html.replace(
-    /<head>/i,
-    `<head>\n  <script src="/env.js" crossorigin="anonymous"></script>`
-  );
-
-  // 3) Optional: small inline **sanity fallback** (won't run if key is present)
-  html = html.replace(
-    /<\/head>/i,
-    `  <script>
-      if (!window.env || !window.env.CLERK_PUBLISHABLE_KEY) {
-        console.error('env.js missing CLERK_PUBLISHABLE_KEY (fallback inline set)');
-        window.env = { CLERK_PUBLISHABLE_KEY: "${(process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}" };
-      }
-    </script>\n</head>`
-  );
-
-  writeFileSync(index, html, 'utf8');
-  console.log('[spa:integrate] ✅ Ensured env.js loads before bundle');
+  console.log("[spa:integrate] ✅ SPA integration complete - using Vite environment variable injection");
 })(); 
