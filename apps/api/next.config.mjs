@@ -14,6 +14,7 @@ const nextConfig = {
 
     // Clerk + Fonts allowlists (official domains only)
     const clerkHosts = [
+      "https://clerk.com",
       "https://*.clerk.com",
       "https://*.clerk.services"
     ];
@@ -40,6 +41,7 @@ const nextConfig = {
     const scriptSrcElem = [
       "'self'",
       "'unsafe-inline'",
+      "https://clerk.com",
       "https://*.clerk.com"
     ].join(' ');
 
