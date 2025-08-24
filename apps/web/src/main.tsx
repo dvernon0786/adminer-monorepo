@@ -1,10 +1,11 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { BrowserRouter as Router } from "react-router-dom";
-import App from "./App";
 import "./index.css";
 
-// Guards must run before Clerk
+import { BrowserRouter } from "react-router-dom";
+import App from "./App";
+
+// Guards (load before Clerk)
 import "./lib/force-direct-clerk";
 import "./lib/clerk-tripwire";
 
@@ -15,20 +16,19 @@ const PUBLISHABLE_KEY =
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
-  // Fail fast to surface config drift during preview/prod
-  // eslint-disable-next-line no-console
   console.error("Missing Clerk publishable key.");
   throw new Error("Missing Clerk publishable key.");
 }
 
-const PINNED_CLERK_JS = "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+const PINNED_CLERK_JS =
+  "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <Router>
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY} clerkJSUrl={PINNED_CLERK_JS}>
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY} clerkJSUrl={PINNED_CLERK_JS}>
+      <BrowserRouter>
         <App />
-      </ClerkProvider>
-    </Router>
+      </BrowserRouter>
+    </ClerkProvider>
   </React.StrictMode>
 ); 

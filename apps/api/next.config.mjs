@@ -10,16 +10,19 @@ const nextConfig = {
 
   async headers() {
     const clerkHosts = [
-      "https://clerk.com",           // ✅ root domain required for pinned script
-      "https://*.clerk.com",         // subdomains
+      "https://clerk.com",        // ⬅ root needed for pinned script
+      "https://*.clerk.com",
       "https://api.clerk.com",
       "https://assets.clerk.com",
+      "https://img.clerk.com",    // ⬅ needed for Clerk user images
     ];
 
-    const fontHosts = [
+    const googleFonts = [
       "https://fonts.googleapis.com",
       "https://fonts.gstatic.com",
     ];
+
+    const dodo = ["https://api.dodopayments.com"]; // ⬅ fix build failure
 
     const csp = [
       "default-src 'self'",
@@ -27,14 +30,13 @@ const nextConfig = {
       "form-action 'self'",
       "frame-ancestors 'self'",
       "object-src 'none'",
-      // Important: include root clerk.com explicitly for the pinned script URL
-      `script-src 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
-      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
-      `style-src 'self' 'unsafe-inline'`,
-      `style-src-elem 'self' 'unsafe-inline' ${fontHosts.join(" ")}`,
-      `font-src 'self' data: ${fontHosts.join(" ")}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")}`,
+      `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")}`,
+      `style-src 'self' 'unsafe-inline' ${googleFonts[0]}`,
+      `style-src-elem 'self' 'unsafe-inline' ${googleFonts[0]}`,
+      `font-src 'self' data: ${googleFonts[1]}`,
       `img-src 'self' data: ${clerkHosts.join(" ")}`,
-      `connect-src 'self' ${clerkHosts.join(" ")}`,
+      `connect-src 'self' ${clerkHosts.join(" ")} ${dodo.join(" ")}`,
       `frame-src 'self' ${clerkHosts.join(" ")}`,
       `worker-src 'self' blob:`,
     ].join("; ");
