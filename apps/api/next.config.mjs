@@ -2,76 +2,85 @@
 const isProd = process.env.VERCEL_ENV === 'production';
 const isPreview = process.env.VERCEL_ENV === 'preview';
 
-const turnstile = 'https://challenges.cloudflare.com';
-const googleFontsCss = 'https://fonts.googleapis.com';
-const googleFontsFiles = 'https://fonts.gstatic.com';
-// Your Clerk subdomain observed in logs:
-const clerkSubdomain = 'https://clerk.adminer.online';
-// Dodo payment integration
-const dodoApi = 'https://api.dodopayments.com';
-// Clerk official domains
-const clerkDomains = ['https://*.clerk.com', 'https://api.clerk.com', 'https://img.clerk.com'];
-
-// Some preview tooling may use vercel.live; allow it only outside production.
-const previewConnect = isProd ? [] : ['https://vercel.live', 'wss://vercel.live'];
+const CF_TURNSTILE = 'https://challenges.cloudflare.com';
+const GF_CSS = 'https://fonts.googleapis.com';
+const GF_FILES = 'https://fonts.gstatic.com';
+const CLERK_CUSTOM = 'https://clerk.adminer.online';
+const CLERK_HOSTS = [
+  'https://clerk.com',
+  'https://*.clerk.com',
+  'https://api.clerk.com',
+  'https://assets.clerk.com',
+  'https://img.clerk.com'
+];
+const DODO_API = 'https://api.dodopayments.com';
+const PREVIEW_CONNECT = isProd ? [] : ['https://vercel.live', 'wss://vercel.live'];
 
 const csp = [
-  // Baseline
   "default-src 'self'",
   "base-uri 'self'",
   "form-action 'self'",
   "frame-ancestors 'self'",
   "object-src 'none'",
 
-  // Scripts (Turnstile + same-origin; Clerk runtime is served locally)
-  `script-src 'self' 'unsafe-inline' ${!isProd ? "'unsafe-eval'" : ''}`,
-  `script-src-elem 'self' 'unsafe-inline' ${turnstile} ${clerkDomains.join(' ')}`,
+  // --- Scripts ---
+  // Keep both generic and -elem for maximum browser compatibility.
+  [
+    "script-src",
+    "'self'",
+    "'unsafe-inline'",                 // needed by Clerk embed
+    (!isProd) ? "'unsafe-eval'" : "",  // allow in preview/dev only
+    CLERK_CUSTOM,
+    CF_TURNSTILE,
+    ...CLERK_HOSTS
+  ].filter(Boolean).join(' '),
 
-  // Styles (Google Fonts CSS + inline for font-loader hydration)
-  `style-src 'self' 'unsafe-inline'`,
-  `style-src-elem 'self' 'unsafe-inline' ${googleFontsCss}`,
+  [
+    "script-src-elem",
+    "'self'",
+    "'unsafe-inline'",
+    CLERK_CUSTOM,
+    CF_TURNSTILE,
+    ...CLERK_HOSTS
+  ].join(' '),
 
-  // Fonts (Google font files + data for robust loading)
-  `font-src 'self' ${googleFontsFiles} data:`,
+  // --- Styles / Fonts ---
+  `style-src 'self' 'unsafe-inline' ${GF_CSS}`,
+  `style-src-elem 'self' 'unsafe-inline' ${GF_CSS}`,
+  `font-src 'self' ${GF_FILES} data:`,
 
-  // Frames (Turnstile widget + any same-origin frames)
-  `frame-src 'self' ${turnstile}`,
+  // --- Frames ---
+  `frame-src 'self' ${CF_TURNSTILE}`,
 
-  // Images (same-origin, data, blob; include Turnstile and Clerk just in case)
-  `img-src 'self' data: blob: ${turnstile} https://img.clerk.com`,
+  // --- Images ---
+  `img-src 'self' data: blob: ${CF_TURNSTILE} https://img.clerk.com`,
 
-  // Workers (allow blob for modern bundlers/runtimes when needed)
+  // --- Workers / Manifests ---
   "worker-src 'self' blob:",
-
-  // Manifest (same-origin)
   "manifest-src 'self'",
 
-  // *** The missing directive causing the build to fail ***
-  // API/XHR/WebSocket endpoints our app legitimately talks to
+  // --- XHR / fetch / WS ---
   [
-    "connect-src 'self'",
-    clerkSubdomain,         // Clerk env + client calls (as seen in logs)
-    dodoApi,                // Dodo payment API integration
-    ...clerkDomains,        // Official Clerk domains
-    turnstile,              // Turnstile verification/telemetry
-    googleFontsCss,         // Preconnects from fonts CSS fetches can appear
-    googleFontsFiles,       // Preconnects to font files
-    ...previewConnect       // vercel.live only in preview
+    "connect-src",
+    "'self'",
+    CLERK_CUSTOM,
+    ...CLERK_HOSTS,
+    CF_TURNSTILE,
+    GF_CSS,
+    GF_FILES,
+    DODO_API,
+    ...PREVIEW_CONNECT
   ].join(' ')
 ];
-
-// You can optionally add "report-to" / "report-uri" here if you run a CSP collector.
 
 const nextConfig = {
   async headers() {
     return [
       {
+        // Some internal scripts expect /(.*); keep this for compatibility
         source: '/(.*)',
         headers: [
-          {
-            key: 'Content-Security-Policy',
-            value: csp.join('; ')
-          },
+          { key: 'Content-Security-Policy', value: csp.join('; ') },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
