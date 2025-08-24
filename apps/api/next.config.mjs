@@ -18,6 +18,10 @@ const nextConfig = {
       "https://clerk.adminer.online", // ⬅ needed for Clerk API calls
     ];
 
+    const cloudflareTurnstile = [
+      "https://challenges.cloudflare.com", // ⬅ needed for Turnstile CAPTCHA
+    ];
+
     const googleFonts = [
       "https://fonts.googleapis.com",
       "https://fonts.gstatic.com",
@@ -31,14 +35,14 @@ const nextConfig = {
       "form-action 'self'",
       "frame-ancestors 'self'",
       "object-src 'none'",
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")}`,
-      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
+      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
+      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
       `style-src 'self' 'unsafe-inline' ${googleFonts[0]}`,
       `style-src-elem 'self' 'unsafe-inline' ${googleFonts[0]}`,
       `font-src 'self' data: ${googleFonts[1]}`,
-      `img-src 'self' data: ${clerkHosts.join(" ")}`,
-      `connect-src 'self' ${clerkHosts.join(" ")} ${dodo.join(" ")}`,
-      `frame-src 'self' ${clerkHosts.join(" ")}`,
+      `img-src 'self' data: ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
+      `connect-src 'self' ${clerkHosts.join(" ")} ${dodo.join(" ")} ${cloudflareTurnstile.join(" ")}`,
+      `frame-src 'self' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
       `worker-src 'self' blob:`,
     ].join("; ");
 
