@@ -28,6 +28,7 @@ const csp = `
 
   /* styles + fonts (Google Fonts) */
   style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com;
   font-src 'self' https://fonts.gstatic.com data:;
 
   /* images */
