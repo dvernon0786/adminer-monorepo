@@ -56,26 +56,44 @@ const AUTH = {
 const AUTH_CSP = serializeCsp(AUTH)
 
 export default clerkMiddleware(async (auth, req) => {
-  // 1) Early exits
-  if (isHealth(req)) return NextResponse.next()
+  try {
+    // 1) Early exits
+    if (isHealth(req)) return NextResponse.next()
 
-  // 2) Protect API except webhook + health
-  const { pathname } = new URL(req.url)
-  if (pathname.startsWith('/api/') && !isWebhook(req) && !isHealth(req)) {
-    // ✅ auth is an OBJECT, not a function
-    await auth.protect()
+    // 2) Protect API except webhook + health
+    const { pathname } = new URL(req.url)
+    if (pathname.startsWith('/api/') && !isWebhook(req) && !isHealth(req)) {
+      try {
+        console.log('Middleware: Protecting API route:', pathname)
+        // ✅ auth is an OBJECT, not a function
+        await auth.protect()
+        console.log('Middleware: Auth protection successful')
+      } catch (authError) {
+        console.error('Auth protection failed:', authError)
+        return new NextResponse('Unauthorized', { status: 401 })
+      }
+    }
+
+    // 3) Attach correct CSP
+    const res = NextResponse.next()
+    const isAuth = isAuthRoute(req)
+    console.log('Middleware: Route:', pathname, 'isAuth:', isAuth)
+    res.headers.set('Content-Security-Policy', isAuth ? AUTH_CSP : BASE_CSP)
+
+    // Optional hardening
+    res.headers.set('Referrer-Policy', 'no-referrer')
+    res.headers.set('X-Content-Type-Options', 'nosniff')
+    res.headers.set('X-Frame-Options', 'DENY')
+    res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+    console.log('Middleware: Headers set successfully')
+    return res
+  } catch (error) {
+    console.error('Middleware error:', error)
+    // Return a safe response instead of crashing
+    const res = NextResponse.next()
+    res.headers.set('Content-Security-Policy', BASE_CSP)
+    return res
   }
-
-  // 3) Attach correct CSP
-  const res = NextResponse.next()
-  res.headers.set('Content-Security-Policy', isAuthRoute(req) ? AUTH_CSP : BASE_CSP)
-
-  // Optional hardening
-  res.headers.set('Referrer-Policy', 'no-referrer')
-  res.headers.set('X-Content-Type-Options', 'nosniff')
-  res.headers.set('X-Frame-Options', 'DENY')
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-  return res
 })
 
 export const config = {
