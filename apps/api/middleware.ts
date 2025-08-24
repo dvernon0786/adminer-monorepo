@@ -1,5 +1,9 @@
 // apps/api/src/middleware.ts
 import { NextResponse } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
+
+// Match all nested auth steps
+const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
 // BYPASSES (no auth, no header mutations)
 const isHealth = (req: Request) => {
@@ -67,47 +71,46 @@ const AUTH_CSP = serialize({
   "script-src": [...BASE["script-src"], "'unsafe-eval'", "'wasm-unsafe-eval'"], // only on auth routes
 })
 
-// Bulletproof middleware without Clerk integration
-export default async function middleware(req: Request) {
-  try {
-    // 0) Fast exits that should never auth/protect or mutate headers
-    if (isHealth(req) || isWebhook(req) || isOptions(req)) {
-      console.log('Middleware: Fast exit for:', req.method, new URL(req.url).pathname)
-      return NextResponse.next()
-    }
+export default clerkMiddleware(
+  async (auth, req) => {
+    try {
+      // 0) Fast exits that should never auth/protect or mutate headers
+      if (isHealth(req) || isWebhook(req) || isOptions(req)) {
+        console.log('Middleware: Fast exit for:', req.method, new URL(req.url).pathname)
+        return NextResponse.next()
+      }
 
-    // 1) Basic protection for API routes (temporary - allow all to prevent crashes)
-    if (isApi(req)) {
-      console.log('Middleware: API route accessed:', new URL(req.url).pathname)
-      // TODO: Re-implement auth protection once Clerk is stable
-      // For now, allow all API calls to prevent crashes
+      // 1) Re-protect API routes (bypasses: OPTIONS, health, webhook)
+      if (isApi(req)) {
+        console.log('Middleware: Protecting API route:', new URL(req.url).pathname)
+        await auth.protect() // Clerk v6 pattern
+      }
+      
+      // 2) Attach CSP + hardening
+      const res = NextResponse.next()
+      const pathname = new URL(req.url).pathname
+      const isAuth = isAuthRoute(req)
+      
+      res.headers.set('Content-Security-Policy', isAuth ? AUTH_CSP : BASE_CSP)
+      res.headers.set('Referrer-Policy', 'no-referrer')
+      res.headers.set('X-Content-Type-Options', 'nosniff')
+      res.headers.set('X-Frame-Options', 'DENY')
+      res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+      console.log('Middleware: Headers set successfully for:', pathname)
+      return res
+      
+    } catch (error) {
+      console.error('Critical middleware error:', error)
+      
+      // 3) Last resort: Return safe response with minimal headers
+      const res = NextResponse.next()
+      res.headers.set('Content-Security-Policy', BASE_CSP)
+      return res
     }
-    
-    // 2) Basic CSP without Clerk
-    const res = NextResponse.next()
-    const pathname = new URL(req.url).pathname
-    const isAuth = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
-    
-    res.headers.set('Content-Security-Policy', isAuth ? AUTH_CSP : BASE_CSP)
-    res.headers.set('Referrer-Policy', 'no-referrer')
-    res.headers.set('X-Content-Type-Options', 'nosniff')
-    res.headers.set('X-Frame-Options', 'DENY')
-    res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
-    console.log('Middleware: Headers set successfully for:', pathname)
-    return res
-    
-  } catch (error) {
-    console.error('Critical middleware error:', error)
-    
-    // 3) Last resort: Return safe response with minimal headers
-    const res = NextResponse.next()
-    res.headers.set('Content-Security-Policy', BASE_CSP)
-    console.log('Middleware: Emergency fallback response')
-    return res
-  }
-}
+  },
+  { debug: true }
+)
 
-// Match API and SPA routes; exclude static/runtime correctly
 export const config = {
   matcher: [
     // run on API + app routes; skip static/runtime
