@@ -75,18 +75,27 @@ const csp = [
 
 const nextConfig = {
   async headers() {
+    const common = [
+      { key: 'Content-Security-Policy', value: csp.join('; ') },
+      { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+      { key: 'X-Content-Type-Options', value: 'nosniff' },
+      { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+      { key: 'X-XSS-Protection', value: '0' }
+    ];
+
     return [
+      // Apply CSP everywhere
+      { source: '/(.*)', headers: common },
+
+      // Force HTML to bypass cache so CSP updates take effect immediately
       {
-        // Some internal scripts expect /(.*); keep this for compatibility
-        source: '/(.*)',
-        headers: [
-          { key: 'Content-Security-Policy', value: csp.join('; ') },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-XSS-Protection', value: '0' }
-        ]
-      }
+        source: '/',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
+      {
+        source: '/:path*',
+        headers: [{ key: 'Cache-Control', value: 'no-store, must-revalidate' }],
+      },
     ];
   },
 
