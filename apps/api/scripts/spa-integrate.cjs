@@ -158,4 +158,31 @@ function tryRun(cmd, opts = {}) {
     "utf8"
   );
   console.log("[spa:integrate] Re-wrote env.js post-copy ✅");
+
+  // 6) Re-order scripts in index.html so env.js always loads before the SPA bundle
+  const index = join(publicDir, 'index.html');
+  let html = readFileSync(index, 'utf8');
+
+  // 1) Remove any existing env.js tag so we can deterministically inject it first
+  html = html.replace(/<script[^>]+src="\/env\.js[^"]*"[^>]*><\/script>\s*/g, '');
+
+  // 2) Inject env.js immediately after <head> to guarantee availability
+  html = html.replace(
+    /<head>/i,
+    `<head>\n  <script src="/env.js" crossorigin="anonymous"></script>`
+  );
+
+  // 3) Optional: small inline **sanity fallback** (won't run if key is present)
+  html = html.replace(
+    /<\/head>/i,
+    `  <script>
+      if (!window.env || !window.env.CLERK_PUBLISHABLE_KEY) {
+        console.error('env.js missing CLERK_PUBLISHABLE_KEY (fallback inline set)');
+        window.env = { CLERK_PUBLISHABLE_KEY: "${(process.env.CLERK_PUBLISHABLE_KEY || process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || '').replace(/\\/g, '\\\\').replace(/"/g, '\\"')}" };
+      }
+    </script>\n</head>`
+  );
+
+  writeFileSync(index, html, 'utf8');
+  console.log('[spa:integrate] ✅ Ensured env.js loads before bundle');
 })(); 

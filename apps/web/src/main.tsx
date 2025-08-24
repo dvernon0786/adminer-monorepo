@@ -12,6 +12,7 @@ import "./lib/clerk-tripwire";
 import { ClerkProvider } from "@clerk/clerk-react";
 
 const PUBLISHABLE_KEY =
+  (window as any).__ENV?.CLERK_PUBLISHABLE_KEY ||
   (window as any).env?.CLERK_PUBLISHABLE_KEY ||
   import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 

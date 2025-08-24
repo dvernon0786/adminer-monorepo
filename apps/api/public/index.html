@@ -1,17 +1,23 @@
 <!doctype html>
 <html lang="en">
   <head>
+  <script src="/env.js" crossorigin="anonymous"></script>
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Adminer - Competitive Ad Intelligence</title>
-    <script type="module" crossorigin src="/assets/index-Co_YZ1no.js"></script>
+    <script type="module" crossorigin src="/assets/index-B2L3IOXW.js"></script>
     <link rel="stylesheet" crossorigin href="/assets/index-u8vZMgMo.css">
-  </head>
+    <script>
+      if (!window.env || !window.env.CLERK_PUBLISHABLE_KEY) {
+        console.error('env.js missing CLERK_PUBLISHABLE_KEY (fallback inline set)');
+        window.env = { CLERK_PUBLISHABLE_KEY: "pk_test_xxx" };
+      }
+    </script>
+</head>
   <body>
     <div id="root"></div>
     <!-- Runtime env MUST run before the app bundle -->
-    <script src="/env.js?v=2"></script>
     <script>
       if (!window.ENV || !window.ENV.CLERK_PUBLISHABLE_KEY) {
         document.body.innerHTML =
