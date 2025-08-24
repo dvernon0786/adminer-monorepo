@@ -17,7 +17,9 @@
     'clerk.com',
     'clerkstage.dev',
     'cdn.jsdelivr.net',
-    'unpkg.com'
+    'unpkg.com',
+    // Cloudflare Turnstile CAPTCHA (legitimate Clerk service)
+    'challenges.cloudflare.com'
   ];
 
   function isAllowedCdn(url: URL) {
