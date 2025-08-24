@@ -1,6 +1,7 @@
 // Hard-fail if anything tries to load Clerk from non-official domains in production.
 
 const OFFICIAL_SCRIPT = "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+const JS_DELIVR_CLERK_SCRIPT = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 const OFFICIAL_ALLOWED_PREFIXES = [
   "https://clerk.com/",
   "https://www.clerk.com/",
@@ -8,10 +9,18 @@ const OFFICIAL_ALLOWED_PREFIXES = [
   "https://assets.clerk.com/", // future-proofing (doesn't hurt)
 ];
 
+// Trusted CDN for Clerk scripts
+const TRUSTED_CDN_PREFIXES = [
+  "https://cdn.jsdelivr.net/npm/@clerk/", // jsDelivr - official npm CDN
+];
+
 function isAllowedClerkSrc(src: string | null): boolean {
   if (!src) return false;
   if (src === OFFICIAL_SCRIPT) return true;
-  return OFFICIAL_ALLOWED_PREFIXES.some((p) => src.startsWith(p));
+  if (src === JS_DELIVR_CLERK_SCRIPT) return true; // Allow jsDelivr Clerk script
+  if (OFFICIAL_ALLOWED_PREFIXES.some((p) => src.startsWith(p))) return true;
+  if (TRUSTED_CDN_PREFIXES.some((p) => src.startsWith(p))) return true; // Allow trusted CDNs
+  return false;
 }
 
 export function installClerkTripwire() {
