@@ -27,14 +27,17 @@ const BASE_CSP = [
 
 const AUTH_CSP = [BASE_CSP, "'unsafe-eval' 'wasm-unsafe-eval'"].join('; ');
 
-export default clerkMiddleware((auth, req) => {
+export default clerkMiddleware(async (auth, req) => {
   // 1) Early exits
   if (isHealth(req)) return NextResponse.next();
 
   // Protect API except webhook + health
   const { pathname } = new URL(req.url);
   if (pathname.startsWith('/api/') && !isWebhook(req) && !isHealth(req)) {
-    auth().protect();
+    const authObj = await auth();
+    if (!authObj.userId) {
+      return new NextResponse('Unauthorized', { status: 401 });
+    }
   }
 
   // 2) Attach correct CSP
