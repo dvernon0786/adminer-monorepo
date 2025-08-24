@@ -112,10 +112,37 @@ function tryRun(cmd, opts = {}) {
 
   // 5) Write a clean env.js that **never** exposes proxy hints and pins Clerk JS URL
   const envJsPath = join(publicDir, "env.js");
-  const publishable = process.env.CLERK_PUBLISHABLE_KEY || "";
+  
+  // Try multiple environment variable sources for Vercel compatibility
+  const publishable = process.env.CLERK_PUBLISHABLE_KEY || 
+                      process.env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY || 
+                      "";
+  
+  console.log(`[spa:integrate] Environment check - CLERK_PUBLISHABLE_KEY: ${publishable ? 'SET' : 'NOT SET'}`);
+  console.log(`[spa:integrate] Available env vars: ${Object.keys(process.env).filter(k => k.includes('CLERK')).join(', ')}`);
+  
   if (!publishable) {
-    console.error("[write-env] Missing CLERK_PUBLISHABLE_KEY");
-    process.exit(1);
+    console.error("[spa:integrate] Missing CLERK_PUBLISHABLE_KEY - cannot generate env.js");
+    console.error("[spa:integrate] This will cause client-side errors. Check Vercel environment variables.");
+    // Don't exit - let the build continue but warn about the issue
+    console.warn("[spa:integrate] Continuing build without env.js - authentication will fail!");
+    
+    // Write a minimal env.js with error message
+    const ENV = {
+      CLERK_PUBLISHABLE_KEY: "",
+      CLERK_JS_URL: "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js",
+      ERROR: "Missing CLERK_PUBLISHABLE_KEY - check Vercel environment variables"
+    };
+    
+    writeFileSync(
+      envJsPath,
+      `// Generated at build - DO NOT EDIT\n` +
+        `// ERROR: Missing CLERK_PUBLISHABLE_KEY\n` +
+        `window.env = ${JSON.stringify(ENV, null, 2)};\n`,
+      "utf8"
+    );
+    console.log("[spa:integrate] Wrote error env.js - authentication will fail!");
+    return;
   }
 
   const ENV = {

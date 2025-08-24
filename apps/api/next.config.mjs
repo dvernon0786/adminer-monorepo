@@ -31,7 +31,7 @@ const nextConfig = {
       "frame-ancestors 'self'",
       "object-src 'none'",
       `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")}`,
-      `script-src-elem 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")}`,
+      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
       `style-src 'self' 'unsafe-inline' ${googleFonts[0]}`,
       `style-src-elem 'self' 'unsafe-inline' ${googleFonts[0]}`,
       `font-src 'self' data: ${googleFonts[1]}`,
