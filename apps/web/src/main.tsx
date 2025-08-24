@@ -20,10 +20,7 @@ if (!PUBLISHABLE_KEY) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ClerkProvider
-      publishableKey={PUBLISHABLE_KEY}
-      clerkJSUrl="https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
-    >
+    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
       <BrowserRouter>
         <App />
       </BrowserRouter>
