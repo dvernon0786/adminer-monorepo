@@ -114,7 +114,7 @@ const nextConfig = {
       },
       // Catch any other /public/* paths
       {
-        source: '/public/*',
+        source: '/public/:path*',
         destination: '/:path*',
         permanent: false,
       },
