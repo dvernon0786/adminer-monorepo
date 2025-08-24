@@ -1,40 +1,32 @@
-import './guards/clerk-direct-mode'
-import './guards/force-direct-clerk'
-import './guards/clerk-tripwire'
 import React from "react";
 import ReactDOM from "react-dom/client";
-import { ClerkProvider } from '@clerk/clerk-react';
 import { BrowserRouter as Router } from "react-router-dom";
 import App from "./App";
 import "./index.css";
 
-// Prefer Vite env at build-time; fallback to runtime window.ENV for SSR'ed index.html + env.js pattern
+// Guards must run before Clerk
+import "./lib/force-direct-clerk";
+import "./lib/clerk-tripwire";
+
+import { ClerkProvider } from "@clerk/clerk-react";
+
 const PUBLISHABLE_KEY =
-  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY || (window as any)?.ENV?.CLERK_PUBLISHABLE_KEY;
+  (window as any).env?.CLERK_PUBLISHABLE_KEY ||
+  import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
 if (!PUBLISHABLE_KEY) {
-  console.error('Clerk publishable key missing from VITE_CLERK_PUBLISHABLE_KEY (and window.ENV.CLERK_PUBLISHABLE_KEY fallback)');
-  throw new Error('Missing VITE_CLERK_PUBLISHABLE_KEY (and window.ENV.CLERK_PUBLISHABLE_KEY fallback)');
+  // Fail fast to surface config drift during preview/prod
+  // eslint-disable-next-line no-console
+  console.error("Missing Clerk publishable key.");
+  throw new Error("Missing Clerk publishable key.");
 }
 
-// Add runtime error handling for Clerk failures
-if (typeof window !== 'undefined') {
-  window.addEventListener('error', (e) => {
-    if (String(e?.message || '').includes('Clerk')) {
-      console.error('[Clerk] Load failed. Ensure CSP allows *.clerk.com and no custom clerkJSUrl/proxyUrl is set.');
-    }
-  });
-}
+const PINNED_CLERK_JS = "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
-      {/* Hard-wire official Clerk CDN asset in direct mode. */}
-      {/* This prevents any proxy auto-discovery from taking effect. */}
-      <ClerkProvider 
-        publishableKey={PUBLISHABLE_KEY}
-        clerkJSUrl="https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
-      >
+      <ClerkProvider publishableKey={PUBLISHABLE_KEY} clerkJSUrl={PINNED_CLERK_JS}>
         <App />
       </ClerkProvider>
     </Router>

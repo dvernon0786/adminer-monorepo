@@ -1,6 +1,6 @@
 // apps/api/scripts/spa-integrate.cjs
 const { execSync } = require("node:child_process");
-const { existsSync, readFileSync, readdirSync, cpSync, mkdirSync } = require("node:fs");
+const { existsSync, readFileSync, readdirSync, cpSync, mkdirSync, writeFileSync } = require("node:fs");
 const { join } = require("node:path");
 
 function run(cmd, opts = {}) {
@@ -9,7 +9,7 @@ function run(cmd, opts = {}) {
 }
 
 function tryRun(cmd, opts = {}) {
-  try { run(cmd, opts); return true; } catch { return false; }
+  try { run(cmd); return true; } catch { return false; }
 }
 
 (function main() {
@@ -110,12 +110,25 @@ function tryRun(cmd, opts = {}) {
     });
   }
 
-  // Re-write env.js after SPA copy to guarantee it's the last writer.
-  try {
-    const { execSync } = require("node:child_process");
-    execSync("node ./scripts/write-env.cjs", { stdio: "inherit", cwd: __dirname + "/.." });
-    console.log("[spa:integrate] Re-wrote env.js post-copy ✅");
-  } catch (e) {
-    console.warn("[spa:integrate] (non-fatal) Failed to rewrite env.js:", e?.message);
+  // 5) Write a clean env.js that **never** exposes proxy hints and pins Clerk JS URL
+  const envJsPath = join(publicDir, "env.js");
+  const publishable = process.env.CLERK_PUBLISHABLE_KEY || "";
+  if (!publishable) {
+    console.error("[write-env] Missing CLERK_PUBLISHABLE_KEY");
+    process.exit(1);
   }
+
+  const ENV = {
+    CLERK_PUBLISHABLE_KEY: publishable,
+    // Expose the pinned script URL so the SPA can double‑check if desired
+    CLERK_JS_URL: "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js",
+  };
+
+  writeFileSync(
+    envJsPath,
+    `// Generated at build - DO NOT EDIT\n` +
+      `window.env = ${JSON.stringify(ENV, null, 2)};\n`,
+    "utf8"
+  );
+  console.log("[spa:integrate] Re-wrote env.js post-copy ✅");
 })(); 

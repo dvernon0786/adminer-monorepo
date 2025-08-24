@@ -9,122 +9,40 @@ const nextConfig = {
   },
 
   async headers() {
-    const env = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
-    const isProd = env === 'production';
-
-    // Clerk + Fonts allowlists (official domains only)
     const clerkHosts = [
-      "https://clerk.com",
-      "https://*.clerk.com",
-      "https://*.clerk.services"
-    ];
-    const clerkAccountsDev = "https://*.clerk.accounts.dev";
-    const clerkApi = [
+      "https://clerk.com",           // ✅ root domain required for pinned script
+      "https://*.clerk.com",         // subdomains
       "https://api.clerk.com",
-      "https://api.clerk.services"
+      "https://assets.clerk.com",
     ];
-    const clerkWebSocket = [
-      "wss://*.clerk.services"
-    ];
-    const fontsCss = "https://fonts.googleapis.com";
-    const fontsFiles = "https://fonts.gstatic.com";
-
-    // We allow 'unsafe-eval' in PREVIEW/DEV because Clerk + devtools may need it.
-    const scriptSrc = [
-      "'self'",
-      "'unsafe-inline'",
-      !isProd ? "'unsafe-eval'" : null
-    ].filter(Boolean).join(' ');
-
-    // Matching script-src-elem for external <script src=...> (Clerk)
-    // Note: 'unsafe-eval' is not valid in script-src-elem, only in script-src
-    const scriptSrcElem = [
-      "'self'",
-      "'unsafe-inline'",
-      "https://clerk.com",
-      "https://*.clerk.com"
-    ].join(' ');
-
-    // style-src controls inline styles; style-src-elem controls <link rel="stylesheet"> like Google Fonts CSS
-    const styleSrc = [
-      "'self'",
-      "'unsafe-inline'"
-    ].join(' ');
-
-    const styleSrcElem = [
-      "'self'",
-      "'unsafe-inline'",
-      fontsCss
-    ].join(' ');
-
-    const fontSrc = [
-      "'self'",
-      fontsFiles,
-      "data:"
-    ].join(' ');
-
-    // Since we're now using official Clerk auth, we need to allow Clerk's API
-    const connectSrc = [
-      "'self'",
-      "https://api.dodopayments.com",
-      "https://api.clerk.com",
-      "https://*.clerk.com"
-    ].join(' ');
-
-    const frameSrc = [
-      "'self'"
-    ].join(' ');
-
-    const imgSrc = [
-      "'self'",
-      "data:",
-      "blob:",
-      "https:",
-      "https://img.clerk.com"
-    ].join(' ');
-
-    const workerSrc = [
-      "'self'",
-      "blob:"
-    ].join(' ');
 
     const csp = [
-      `default-src 'self'`,
-      `base-uri 'self'`,
-      `form-action 'self'`,
-      `frame-ancestors 'self'`,
-      `object-src 'none'`,
-      // ALLOW eval for Clerk bootstrap (script-src only, not script-src-elem)
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval'`,
-      `script-src-elem ${scriptSrcElem}`,
-      `style-src ${styleSrc}`,
-      `style-src-elem ${styleSrcElem}`,
-      `font-src ${fontSrc}`,
-      `connect-src ${connectSrc}`,
-      `frame-src ${frameSrc}`,
-      `img-src ${imgSrc}`,
-      `worker-src ${workerSrc}`,
-    ].join('; ');
+      "default-src 'self'",
+      "base-uri 'self'",
+      "form-action 'self'",
+      "frame-ancestors 'self'",
+      "object-src 'none'",
+      // Important: include root clerk.com explicitly for the pinned script URL
+      `script-src 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
+      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
+      `style-src 'self' 'unsafe-inline'`,
+      `style-src-elem 'self' 'unsafe-inline'`,
+      `font-src 'self' data:`,
+      `img-src 'self' data: ${clerkHosts.join(" ")}`,
+      `connect-src 'self' ${clerkHosts.join(" ")}`,
+      `frame-src 'self' ${clerkHosts.join(" ")}`,
+      `worker-src 'self' blob:`,
+    ].join("; ");
 
     return [
+      // API & SPA root
       {
-        source: '/env.js',
+        source: "/(.*)",
         headers: [
-          { key: 'Cache-Control', value: 'no-store' },
-          { key: 'Content-Type', value: 'application/javascript; charset=utf-8' },
-        ],
-      },
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Content-Security-Policy', value: csp },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          {
-            key: 'Permissions-Policy',
-            value: 'camera=(), microphone=(), geolocation=(), interest-cohort=()',
-          },
+          { key: "Content-Security-Policy", value: csp },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Referrer-Policy", value: "no-referrer-when-downgrade" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
     ];
