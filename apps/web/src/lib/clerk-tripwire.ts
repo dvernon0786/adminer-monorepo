@@ -28,13 +28,16 @@
 
   // Helper: is this the base runtime we serve locally?
   function isLocalClerkRuntime(url: URL) {
-    // e.g. /clerk.browser.js
-    return url.pathname === '/clerk.browser.js';
+    // e.g. /clerk.browser.js or /clerk-runtime/clerk.browser.js
+    return url.pathname === '/clerk.browser.js' || url.pathname === '/clerk-runtime/clerk.browser.js';
   }
 
   // Helper: same-origin dynamic Clerk chunks
   function isSameOriginClerkChunk(url: URL) {
-    return isSameOrigin(url) && SAME_ORIGIN_CLERK_CHUNK.test(url.pathname);
+    return isSameOrigin(url) && (
+      SAME_ORIGIN_CLERK_CHUNK.test(url.pathname) || 
+      url.pathname.startsWith('/clerk-runtime/') && url.pathname.endsWith('.js')
+    );
   }
 
   Element.prototype.appendChild = function guardedAppendChild<T extends Node>(node: T): T {
@@ -43,9 +46,9 @@
       if (
         node &&
         node.nodeName === 'SCRIPT' &&
-        (node as HTMLScriptElement).src
+        (node as unknown as HTMLScriptElement).src
       ) {
-        const src = (node as HTMLScriptElement).src;
+        const src = (node as unknown as HTMLScriptElement).src;
         const url = new URL(src, window.location.href);
 
         // ✅ Allow our local runtime
@@ -72,7 +75,7 @@
       }
     } catch (e) {
       // Surface the error so Clerk can handle/fail fast
-      return Promise.reject(e) as unknown as T;
+      throw e;
     }
 
     // Non-script or script without src → allow

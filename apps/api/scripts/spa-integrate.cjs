@@ -79,6 +79,38 @@ function tryRun(cmd, opts = {}) {
   mkdirSync(publicDir, { recursive: true });
   cpSync(distDir, publicDir, { recursive: true });
 
+  // 5) Copy complete Clerk runtime from @clerk/clerk-js package
+  console.log("[spa:integrate] Copying complete Clerk runtime...");
+  const clerkPackageDir = join(apiCwd, "node_modules", "@clerk", "clerk-js", "dist");
+  const clerkRuntimeDir = join(publicDir, "clerk-runtime");
+  
+  if (existsSync(clerkPackageDir)) {
+    // Create clerk-runtime directory
+    mkdirSync(clerkRuntimeDir, { recursive: true });
+    
+    // Copy all Clerk runtime files
+    const clerkFiles = readdirSync(clerkPackageDir);
+    clerkFiles.forEach(file => {
+      if (file.endsWith('.js')) {
+        const sourcePath = join(clerkPackageDir, file);
+        const destPath = join(clerkRuntimeDir, file);
+        cpSync(sourcePath, destPath);
+        console.log(`[spa:integrate] Copied Clerk runtime: ${file}`);
+      }
+    });
+    
+    // Also copy the main clerk.browser.js to root for backward compatibility
+    const mainClerkFile = join(clerkPackageDir, "clerk.browser.js");
+    if (existsSync(mainClerkFile)) {
+      cpSync(mainClerkFile, join(publicDir, "clerk.browser.js"));
+      console.log("[spa:integrate] Copied main clerk.browser.js to root");
+    }
+    
+    console.log("[spa:integrate] ✅ Complete Clerk runtime copied");
+  } else {
+    console.warn("[spa:integrate] WARNING: @clerk/clerk-js package not found, Clerk runtime not copied");
+  }
+
   // Debug: Check what was actually copied and verify paths
   console.log(`[spa:integrate] Copied SPA build to ${publicDir} ✅`);
   console.log(`[spa:integrate] Current working directory: ${process.cwd()}`);

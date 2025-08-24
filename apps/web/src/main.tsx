@@ -22,7 +22,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
-      clerkJSUrl="/clerk.browser.js"        // 🔒 same-origin runtime
+      clerkJSUrl="/clerk-runtime/clerk.browser.js"  // 🔒 complete runtime with all chunks
       telemetry={false}
       // modern props (non-deprecated)
       signInUrl="/sign-in"
