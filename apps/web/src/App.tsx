@@ -8,16 +8,19 @@ import Dashboard from './pages/dashboard'
 
 // Post-auth redirect logic
 function PostAuthRedirect() {
-  const { isSignedIn } = useUser()
+  const { isSignedIn, isLoaded } = useUser()
   const nav = useNavigate()
   const { pathname } = useLocation()
 
   useEffect(() => {
+    // Wait for Clerk to fully load before making auth decisions
+    if (!isLoaded) return
+    
     // If signed in and we're on an auth page, go to dashboard
     if (isSignedIn && (pathname === '/' || pathname.startsWith('/sign-'))) {
       nav('/dashboard', { replace: true })
     }
-  }, [isSignedIn, pathname, nav])
+  }, [isSignedIn, isLoaded, pathname, nav])
 
   return null
 }

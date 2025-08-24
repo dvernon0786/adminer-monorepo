@@ -19,10 +19,17 @@ export default function Dashboard() {
   const [selected, setSelected] = useState<AnalysisResult | null>(null);
   const [openPricing, setOpenPricing] = useState(false);
 
-  // Guard route: bounce unsigned users home
+  // Guard route: bounce unsigned users home (but allow auth routes)
   useEffect(() => {
     if (!isLoaded) return; // Wait for auth to load
-    if (!isSignedIn) navigate("/", { replace: true });
+    
+    // Don't redirect if we're on auth routes - let Clerk handle the flow
+    const isAuthRoute = window.location.pathname.startsWith('/sign-') || 
+                       window.location.pathname === '/';
+    
+    if (!isSignedIn && !isAuthRoute) {
+      navigate("/", { replace: true });
+    }
   }, [isLoaded, isSignedIn, navigate]);
 
   const stats: DashboardStats = useMemo(() => {
