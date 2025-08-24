@@ -16,6 +16,11 @@ const nextConfig = {
       "https://assets.clerk.com",
     ];
 
+    const fontHosts = [
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com",
+    ];
+
     const csp = [
       "default-src 'self'",
       "base-uri 'self'",
@@ -26,8 +31,8 @@ const nextConfig = {
       `script-src 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
       `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")}`,
       `style-src 'self' 'unsafe-inline'`,
-      `style-src-elem 'self' 'unsafe-inline'`,
-      `font-src 'self' data:`,
+      `style-src-elem 'self' 'unsafe-inline' ${fontHosts.join(" ")}`,
+      `font-src 'self' data: ${fontHosts.join(" ")}`,
       `img-src 'self' data: ${clerkHosts.join(" ")}`,
       `connect-src 'self' ${clerkHosts.join(" ")}`,
       `frame-src 'self' ${clerkHosts.join(" ")}`,
