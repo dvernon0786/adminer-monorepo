@@ -22,7 +22,12 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
-      clerkJSUrl="/clerk.browser.js"
+      clerkJSUrl="/clerk.browser.js"        // 🔒 local script
+      signInUrl="/sign-in"                  // ✅ relative
+      signUpUrl="/sign-up"                  // ✅ relative
+      afterSignInUrl="/"                    // ✅ relative (we'll route to /dashboard ourselves)
+      afterSignUpUrl="/"
+      telemetry={false}
     >
       <BrowserRouter>
         <App />
