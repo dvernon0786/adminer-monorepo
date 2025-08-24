@@ -22,12 +22,13 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ClerkProvider
       publishableKey={PUBLISHABLE_KEY}
-      clerkJSUrl="/clerk.browser.js"        // 🔒 local script
-      signInUrl="/sign-in"                  // ✅ relative
-      signUpUrl="/sign-up"                  // ✅ relative
-      signInFallbackRedirectUrl="/"         // ✅ relative (replaces deprecated afterSignInUrl)
-      signUpFallbackRedirectUrl="/"         // ✅ relative (replaces deprecated afterSignUpUrl)
+      clerkJSUrl="/clerk.browser.js"        // 🔒 same-origin runtime
       telemetry={false}
+      // modern props (non-deprecated)
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+      signInFallbackRedirectUrl="/dashboard"  // ✅ send to dashboard after sign-in
+      signUpFallbackRedirectUrl="/"           // ✅ stay on home after sign-up
     >
       <BrowserRouter>
         <App />

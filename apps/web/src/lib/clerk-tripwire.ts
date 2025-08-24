@@ -1,86 +1,81 @@
-// Hard-fail if anything tries to load Clerk from non-official domains in production.
+// Clerk Security Tripwire
+// Blocks unauthorized script injections while allowing legitimate Clerk scripts
 
-const OFFICIAL_SCRIPT = "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
-const JS_DELIVR_CLERK_SCRIPT = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
-const LOCAL_CLERK_SCRIPT = "/clerk.browser.js";
+(function secureScriptAppendChild() {
+  const nativeAppendChild = Element.prototype.appendChild;
 
-// Allow dynamic Clerk script chunks (loaded on-demand by main clerk.browser.js)
-const CLERK_CHUNK_PATTERNS = [
-  /^\/framework_clerk\.browser_[a-f0-9]+_\d+\.\d+\.\d+\.js$/,
-  /^\/vendors_clerk\.browser_[a-f0-9]+_\d+\.\d+\.\d+\.js$/,
-  /^\/ui-common_clerk\.browser_[a-f0-9]+_\d+\.\d+\.\d+\.js$/,
-  /^\/[a-z-]+_clerk\.browser_[a-f0-9]+_\d+\.\d+\.\d+\.js$/, // Generic pattern for future chunks
-];
+  function isSameOrigin(url: URL) {
+    return url.origin === window.location.origin;
+  }
 
-const OFFICIAL_ALLOWED_PREFIXES = [
-  "https://clerk.com/",
-  "https://*.clerk.com",
-  "https://api.clerk.com",
-  "https://assets.clerk.com",
-  "https://img.clerk.com",
-];
+  // Allowlist patterns for same-origin dynamic chunks Clerk injects
+  const SAME_ORIGIN_CLERK_CHUNK = /^\/(framework|vendors|ui-common)_clerk\.browser_[A-Za-z0-9_.-]+\.js$/;
 
-// Trusted CDN for Clerk scripts
-const TRUSTED_CDN_PREFIXES = [
-  "https://cdn.jsdelivr.net/npm/@clerk/", // jsDelivr - official npm CDN
-];
+  // Optional: if you ever point clerkJSUrl back to CDN, these hosts are ok.
+  const ALLOWED_CDN_HOSTS = [
+    // Clerk CDN / npm CDNs commonly used by Clerk
+    'clerk.com',
+    'clerkstage.dev',
+    'cdn.jsdelivr.net',
+    'unpkg.com'
+  ];
 
-function isAllowedClerkSrc(src: string | null): boolean {
-  if (!src) return false;
-  
-  // Allow main Clerk scripts
-  if (src === OFFICIAL_SCRIPT) return true;
-  if (src === JS_DELIVR_CLERK_SCRIPT) return true; // Allow jsDelivr Clerk script
-  if (src === LOCAL_CLERK_SCRIPT) return true; // Allow locally served Clerk script
-  
-  // Allow dynamic Clerk script chunks
-  if (CLERK_CHUNK_PATTERNS.some(pattern => pattern.test(src))) return true;
-  
-  // Allow official Clerk domains
-  if (OFFICIAL_ALLOWED_PREFIXES.some((p) => src.startsWith(p))) return true;
-  
-  // Allow trusted CDNs
-  if (TRUSTED_CDN_PREFIXES.some((p) => src.startsWith(p))) return true; // Allow trusted CDNs
-  
-  return false;
-}
+  function isAllowedCdn(url: URL) {
+    return ALLOWED_CDN_HOSTS.some(host =>
+      url.hostname === host || url.hostname.endsWith(`.${host}`)
+    );
+  }
 
-export function installClerkTripwire() {
-  if (typeof window === "undefined") return;
-  if (!import.meta.env.PROD) return; // only tripwire in prod
+  // Helper: is this the base runtime we serve locally?
+  function isLocalClerkRuntime(url: URL) {
+    // e.g. /clerk.browser.js
+    return url.pathname === '/clerk.browser.js';
+  }
 
-  // Observe new scripts
-  const mo = new MutationObserver((mutations) => {
-    for (const m of mutations) {
-      for (const n of Array.from(m.addedNodes)) {
-        if (n.nodeType === 1 && (n as Element).tagName === "SCRIPT") {
-          const s = n as HTMLScriptElement;
-          const src = s.getAttribute("src");
-          if (src && /clerk/i.test(src) && !isAllowedClerkSrc(src)) {
-            console.error("[clerk-tripwire] Blocked non-official Clerk script:", src);
-            throw new Error("Security tripwire: non-official Clerk script attempted to load.");
-          }
+  // Helper: same-origin dynamic Clerk chunks
+  function isSameOriginClerkChunk(url: URL) {
+    return isSameOrigin(url) && SAME_ORIGIN_CLERK_CHUNK.test(url.pathname);
+  }
+
+  Element.prototype.appendChild = function guardedAppendChild<T extends Node>(node: T): T {
+    try {
+      // Only guard <script> elements that actually have a src
+      if (
+        node &&
+        node.nodeName === 'SCRIPT' &&
+        (node as HTMLScriptElement).src
+      ) {
+        const src = (node as HTMLScriptElement).src;
+        const url = new URL(src, window.location.href);
+
+        // ✅ Allow our local runtime
+        if (isLocalClerkRuntime(url)) {
+          return nativeAppendChild.call(this, node);
         }
-      }
-    }
-  });
 
-  mo.observe(document.documentElement, { subtree: true, childList: true });
+        // ✅ Allow same-origin dynamic Clerk chunks
+        if (isSameOriginClerkChunk(url)) {
+          return nativeAppendChild.call(this, node);
+        }
 
-  // Patch appendChild to catch dynamic script injection
-  const _appendChild = Element.prototype.appendChild;
-  // @ts-expect-error patching
-  Element.prototype.appendChild = function (child: Node) {
-    if (child instanceof HTMLScriptElement) {
-      const src = child.getAttribute("src");
-      if (src && /clerk/i.test(src) && !isAllowedClerkSrc(src)) {
-        console.error("[clerk-tripwire] Blocked non-official Clerk script (appendChild):", src);
-        throw new Error("Security tripwire: non-official Clerk script attempted to load.");
+        // ✅ (Optional) Allow official CDNs if you ever use them
+        if (isAllowedCdn(url)) {
+          return nativeAppendChild.call(this, node);
+        }
+
+        // ❌ Everything else is blocked
+        console.error(
+          '[clerk-tripwire] Blocked script (appendChild):',
+          url.href
+        );
+        throw new Error('Security tripwire: non-allowed script attempted to load.');
       }
+    } catch (e) {
+      // Surface the error so Clerk can handle/fail fast
+      return Promise.reject(e) as unknown as T;
     }
-    return _appendChild.call(this, child);
+
+    // Non-script or script without src → allow
+    return nativeAppendChild.call(this, node);
   };
-}
-
-// Auto-install
-installClerkTripwire(); 
+})(); 
