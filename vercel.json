@@ -1,9 +1,10 @@
 {
-  "buildCommand": "rm -rf apps/web/dist apps/api/public/assets && npm run prebuild && npm run build && npm run spa:integrate",
+  "buildCommand": "rm -rf apps/web/dist apps/api/public/assets && unset CLERK_FRONTEND_API && npm run prebuild && npm run build && npm run spa:integrate",
   "installCommand": "npm ci",
   "framework": "nextjs",
   "env": {
-    "CACHE_BUST": "2025-01-24-11:15"
+    "CACHE_BUST": "2025-01-24-11:15",
+    "CLERK_FRONTEND_API": ""
   },
   "rewrites": [
     { "source": "/dashboard", "destination": "/index.html" },
