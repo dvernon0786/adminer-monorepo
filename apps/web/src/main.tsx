@@ -1,4 +1,6 @@
 import './guards/clerk-direct-mode'
+import './guards/force-direct-clerk'
+import './guards/clerk-tripwire'
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { ClerkProvider } from '@clerk/clerk-react';
@@ -27,9 +29,12 @@ if (typeof window !== 'undefined') {
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <Router>
-      {/* IMPORTANT: Do NOT pass clerkJSUrl, proxyUrl, frontendApi, or anything else. */}
-      {/* This forces official *.clerk.com asset loading. */}
-      <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+      {/* Hard-wire official Clerk CDN asset in direct mode. */}
+      {/* This prevents any proxy auto-discovery from taking effect. */}
+      <ClerkProvider 
+        publishableKey={PUBLISHABLE_KEY}
+        clerkJSUrl="https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js"
+      >
         <App />
       </ClerkProvider>
     </Router>

@@ -108,10 +108,14 @@ function tryRun(cmd, opts = {}) {
         console.log(`  ${match}`);
       }
     });
-    
-    // Check for any /public/ references that shouldn't be there
-    if (copiedHtml.includes('/public/')) {
-      console.warn(`[spa:integrate] WARNING: Found /public/ references in index.html!`);
-    }
+  }
+
+  // Re-write env.js after SPA copy to guarantee it's the last writer.
+  try {
+    const { execSync } = require("node:child_process");
+    execSync("node ./scripts/write-env.cjs", { stdio: "inherit", cwd: __dirname + "/.." });
+    console.log("[spa:integrate] Re-wrote env.js post-copy ✅");
+  } catch (e) {
+    console.warn("[spa:integrate] (non-fatal) Failed to rewrite env.js:", e?.message);
   }
 })(); 

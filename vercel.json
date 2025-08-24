@@ -6,6 +6,11 @@
     "CACHE_BUST": "2025-01-24-11:15",
     "CLERK_FRONTEND_API": ""
   },
+  "build": {
+    "env": {
+      "CLERK_FRONTEND_API": ""
+    }
+  },
   "rewrites": [
     { "source": "/dashboard", "destination": "/index.html" },
     { "source": "/dashboard/:path*", "destination": "/index.html" }
