@@ -5,14 +5,13 @@
       "runtime": "nodejs20.x"
     }
   },
-  "buildCommand": "rm -rf apps/web/dist apps/api/public/assets && unset CLERK_FRONTEND_API CLERK_PROXY_URL && npm run prebuild --workspace @adminer/api && npm run build --workspace @adminer/api && npm run spa:integrate --workspace @adminer/api",
+  "buildCommand": "echo 'Cache bust: $(date)' && rm -rf apps/web/dist apps/api/public/assets && unset CLERK_FRONTEND_API CLERK_PROXY_URL && npm run prebuild --workspace @adminer/api && npm run build --workspace @adminer/api && npm run spa:integrate --workspace @adminer/api",
   "framework": "nextjs",
   "env": {
-    // Important: never set CLERK_FRONTEND_API/CLERK_PROXY_URL here
+    "CACHE_BUST": "2025-01-24-12:00"
   },
   "build": {
     "env": {
-      // Make absolutely sure these are not present during sub-builds
       "CLERK_FRONTEND_API": "",
       "CLERK_PROXY_URL": ""
     }
