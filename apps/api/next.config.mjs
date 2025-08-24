@@ -1,61 +1,58 @@
 /** @type {import('next').NextConfig} */
+
+const csp = `
+  default-src 'self';
+  base-uri 'self';
+  form-action 'self';
+  frame-ancestors 'self';
+
+  /* scripts */
+  script-src 'self' 'unsafe-inline'
+    https://clerk.com https://*.clerk.com https://api.clerk.com
+    https://assets.clerk.com https://img.clerk.com
+    https://clerk.adminer.online
+    https://challenges.cloudflare.com;
+  script-src-elem 'self' 'unsafe-inline'
+    https://clerk.com https://*.clerk.com https://api.clerk.com
+    https://assets.clerk.com https://img.clerk.com
+    https://clerk.adminer.online
+    https://challenges.cloudflare.com;
+
+  /* connections (XHR/fetch) */
+  connect-src 'self'
+    https://api.clerk.com
+    https://challenges.cloudflare.com;
+
+  /* iframes (Turnstile widget) */
+  frame-src 'self' https://challenges.cloudflare.com https://*.clerk.com;
+
+  /* styles + fonts (Google Fonts) */
+  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
+  font-src 'self' https://fonts.gstatic.com data:;
+
+  /* images */
+  img-src 'self' data: blob: https://img.clerk.com https://challenges.cloudflare.com;
+
+  /* workers (rarely needed, safe to allow self) */
+  worker-src 'self' blob:;
+`
+  .replace(/\s{2,}/g, " ")
+  .trim();
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
+  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  { key: "X-Frame-Options", value: "SAMEORIGIN" },
+  { key: "X-XSS-Protection", value: "0" },
+];
+
 const nextConfig = {
-  reactStrictMode: true,
-
-  // Ensure static files are served correctly
-  experimental: {
-    // Force Next.js to serve static files from public/
-    // Note: staticPageGenerationTimeout is not a valid option in Next.js 14
-  },
-
   async headers() {
-    const clerkHosts = [
-      "https://clerk.com",        // ⬅ root needed for pinned script
-      "https://*.clerk.com",
-      "https://api.clerk.com",
-      "https://assets.clerk.com",
-      "https://img.clerk.com",    // ⬅ needed for Clerk user images
-      "https://clerk.adminer.online", // ⬅ needed for Clerk API calls
-    ];
-
-    const cloudflareTurnstile = [
-      "https://challenges.cloudflare.com", // ⬅ needed for Turnstile CAPTCHA
-    ];
-
-    const googleFonts = [
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com",
-    ];
-
-    const dodo = ["https://api.dodopayments.com"]; // ⬅ fix build failure
-
-    const csp = [
-      "default-src 'self'",
-      "base-uri 'self'",
-      "form-action 'self'",
-      "frame-ancestors 'self'",
-      "object-src 'none'",
-      `script-src 'self' 'unsafe-inline' 'unsafe-eval' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
-      `script-src-elem 'self' 'unsafe-inline' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
-      `style-src 'self' 'unsafe-inline' ${googleFonts[0]}`,
-      `style-src-elem 'self' 'unsafe-inline' ${googleFonts[0]}`,
-      `font-src 'self' data: ${googleFonts[1]}`,
-      `img-src 'self' data: ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
-      `connect-src 'self' ${clerkHosts.join(" ")} ${dodo.join(" ")} ${cloudflareTurnstile.join(" ")}`,
-      `frame-src 'self' ${clerkHosts.join(" ")} ${cloudflareTurnstile.join(" ")}`,
-      `worker-src 'self' blob:`,
-    ].join("; ");
-
     return [
-      // API & SPA root
       {
         source: "/(.*)",
-        headers: [
-          { key: "Content-Security-Policy", value: csp },
-          { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Referrer-Policy", value: "no-referrer-when-downgrade" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
-        ],
+        headers: securityHeaders,
       },
     ];
   },
