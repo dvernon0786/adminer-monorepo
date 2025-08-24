@@ -54,7 +54,6 @@ function SignUpPage() {
           routing="path" 
           path="/sign-up"
           afterSignUpUrl="/dashboard"
-          redirectUrl="/dashboard"
         />
       </div>
     </div>

@@ -1,56 +1,82 @@
-import { NextResponse } from 'next/server';
-import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server';
+// apps/api/src/middleware.ts
+import { NextResponse } from 'next/server'
+import { clerkMiddleware, createRouteMatcher } from '@clerk/nextjs/server'
 
 // Match auth routes including ALL nested steps
-const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)']);
+const isAuthRoute = createRouteMatcher(['/sign-in(.*)', '/sign-up(.*)'])
 
-// Exact health check bypass (no headers touched)
 function isHealth(req: Request) {
-  const url = new URL(req.url);
-  return url.pathname === '/api/consolidated' && url.searchParams.get('action') === 'health';
+  const url = new URL(req.url)
+  return url.pathname === '/api/consolidated' && url.searchParams.get('action') === 'health'
 }
 
-// Webhook bypass (no auth)
 function isWebhook(req: Request) {
-  const url = new URL(req.url);
-  return url.pathname === '/api/dodo/webhook';
+  const url = new URL(req.url)
+  return url.pathname === '/api/dodo/webhook'
 }
 
-const BASE_CSP = [
-  "default-src 'self'",
-  "img-src 'self' data: https://img.clerk.com",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' https://fonts.gstatic.com",
-  "connect-src 'self' https://api.clerk.com https://clerk.com https://*.clerk.com https://challenges.cloudflare.com",
-  "script-src 'self' 'unsafe-inline' https://clerk.com https://*.clerk.com https://api.clerk.com https://assets.clerk.com https://img.clerk.com https://challenges.cloudflare.com",
-].join('; ');
+/**
+ * Build CSP strings safely. We duplicate BASE and only widen script-src for auth.
+ */
+const BASE = {
+  "default-src": ["'self'"],
+  "img-src": ["'self'", "data:", "https://img.clerk.com"],
+  "style-src": ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+  "font-src": ["'self'", "https://fonts.gstatic.com"],
+  "connect-src": [
+    "'self'",
+    "https://api.clerk.com",
+    "https://clerk.com",
+    "https://*.clerk.com",
+    "https://challenges.cloudflare.com"
+  ],
+  "script-src": [
+    "'self'",
+    "'unsafe-inline'",
+    "https://clerk.com",
+    "https://*.clerk.com",
+    "https://api.clerk.com",
+    "https://assets.clerk.com",
+    "https://img.clerk.com",
+    "https://challenges.cloudflare.com"
+  ],
+}
 
-const AUTH_CSP = [BASE_CSP, "'unsafe-eval' 'wasm-unsafe-eval'"].join('; ');
+function serializeCsp(d: Record<string, string[]>) {
+  return Object.entries(d).map(([k, v]) => `${k} ${v.join(' ')}`).join('; ')
+}
+
+const BASE_CSP = serializeCsp(BASE)
+
+// Clone + widen script-src for auth flows
+const AUTH = {
+  ...BASE,
+  "script-src": [...BASE["script-src"], "'unsafe-eval'", "'wasm-unsafe-eval'"],
+}
+const AUTH_CSP = serializeCsp(AUTH)
 
 export default clerkMiddleware(async (auth, req) => {
   // 1) Early exits
-  if (isHealth(req)) return NextResponse.next();
+  if (isHealth(req)) return NextResponse.next()
 
-  // Protect API except webhook + health
-  const { pathname } = new URL(req.url);
+  // 2) Protect API except webhook + health
+  const { pathname } = new URL(req.url)
   if (pathname.startsWith('/api/') && !isWebhook(req) && !isHealth(req)) {
-    const authObj = await auth();
-    if (!authObj.userId) {
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
+    // ✅ auth is an OBJECT, not a function
+    await auth.protect()
   }
 
-  // 2) Attach correct CSP
-  const res = NextResponse.next();
-  res.headers.set('Content-Security-Policy', isAuthRoute(req) ? AUTH_CSP : BASE_CSP);
+  // 3) Attach correct CSP
+  const res = NextResponse.next()
+  res.headers.set('Content-Security-Policy', isAuthRoute(req) ? AUTH_CSP : BASE_CSP)
 
   // Optional hardening
-  res.headers.set('Referrer-Policy', 'no-referrer');
-  res.headers.set('X-Content-Type-Options', 'nosniff');
-  res.headers.set('X-Frame-Options', 'DENY');
-  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()');
-  return res;
-});
+  res.headers.set('Referrer-Policy', 'no-referrer')
+  res.headers.set('X-Content-Type-Options', 'nosniff')
+  res.headers.set('X-Frame-Options', 'DENY')
+  res.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  return res
+})
 
 export const config = {
   matcher: [
@@ -58,4 +84,4 @@ export const config = {
     // Run on all SPA routes, but skip static files/runtime
     '/((?!_next|static|clerk-runtime|vendor|assets|.*\\.(?:js|css|map|png|jpg|svg|ico|txt)$).*)',
   ],
-}; 
+} 
