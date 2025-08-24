@@ -24,8 +24,8 @@ function tryRun(cmd, opts = {}) {
   }
 
   const pkg = JSON.parse(readFileSync(pkgFile, "utf8"));
-  if (!pkg.scripts || pkg.scripts.build !== "vite build") {
-    throw new Error('[spa:integrate] ERROR: apps/web/package.json must contain `"build": "vite build"` in scripts.');
+  if (!pkg.scripts || !pkg.scripts.build || !pkg.scripts.build.includes("vite build")) {
+    throw new Error('[spa:integrate] ERROR: apps/web/package.json must contain build script with "vite build".');
   }
 
   console.log("[spa:integrate] Preflight passed ✅");
@@ -64,8 +64,18 @@ function tryRun(cmd, opts = {}) {
     throw new Error("[spa:integrate] ERROR: SPA build completed but dist/ folder is empty.");
   }
 
-  // 4) Copy dist → apps/api/public
+  // 4) Copy dist → apps/api/public (with cache busting)
   const publicDir = join(apiCwd, "public");
+  
+  // Clear any existing assets to prevent cache issues
+  if (existsSync(publicDir)) {
+    const assetsDir = join(publicDir, "assets");
+    if (existsSync(assetsDir)) {
+      console.log("[spa:integrate] Clearing existing assets to prevent cache issues...");
+      require("fs").rmSync(assetsDir, { recursive: true, force: true });
+    }
+  }
+  
   mkdirSync(publicDir, { recursive: true });
   cpSync(distDir, publicDir, { recursive: true });
 
