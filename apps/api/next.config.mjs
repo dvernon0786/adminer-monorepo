@@ -1,60 +1,75 @@
 /** @type {import('next').NextConfig} */
+const isProd = process.env.VERCEL_ENV === 'production';
+const isPreview = process.env.VERCEL_ENV === 'preview';
 
-const csp = `
-  default-src 'self';
-  base-uri 'self';
-  form-action 'self';
-  frame-ancestors 'self';
+const turnstile = 'https://challenges.cloudflare.com';
+const googleFontsCss = 'https://fonts.googleapis.com';
+const googleFontsFiles = 'https://fonts.gstatic.com';
+// Your Clerk subdomain observed in logs:
+const clerkSubdomain = 'https://clerk.adminer.online';
 
-  /* scripts */
-  script-src 'self' 'unsafe-inline'
-    https://clerk.com https://*.clerk.com https://api.clerk.com
-    https://assets.clerk.com https://img.clerk.com
-    https://clerk.adminer.online
-    https://challenges.cloudflare.com;
-  script-src-elem 'self' 'unsafe-inline'
-    https://clerk.com https://*.clerk.com https://api.clerk.com
-    https://assets.clerk.com https://img.clerk.com
-    https://clerk.adminer.online
-    https://challenges.cloudflare.com;
+// Some preview tooling may use vercel.live; allow it only outside production.
+const previewConnect = isProd ? [] : ['https://vercel.live', 'wss://vercel.live'];
 
-  /* connections (XHR/fetch) */
-  connect-src 'self'
-    https://api.clerk.com
-    https://challenges.cloudflare.com;
+const csp = [
+  // Baseline
+  "default-src 'self'",
+  "base-uri 'self'",
+  "form-action 'self'",
+  "frame-ancestors 'self'",
+  "object-src 'none'",
 
-  /* iframes (Turnstile widget) */
-  frame-src 'self' https://challenges.cloudflare.com https://*.clerk.com;
+  // Scripts (Turnstile + same-origin; Clerk runtime is served locally)
+  `script-src-elem 'self' ${turnstile}`,
 
-  /* styles + fonts (Google Fonts) */
-  style-src 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com;
-  font-src 'self' https://fonts.gstatic.com data:;
+  // Styles (Google Fonts CSS + inline for font-loader hydration)
+  `style-src-elem 'self' 'unsafe-inline' ${googleFontsCss}`,
 
-  /* images */
-  img-src 'self' data: blob: https://img.clerk.com https://challenges.cloudflare.com;
+  // Fonts (Google font files + data for robust loading)
+  `font-src 'self' ${googleFontsFiles} data:`,
 
-  /* workers (rarely needed, safe to allow self) */
-  worker-src 'self' blob:;
-`
-  .replace(/\s{2,}/g, " ")
-  .trim();
+  // Frames (Turnstile widget + any same-origin frames)
+  `frame-src 'self' ${turnstile}`,
 
-const securityHeaders = [
-  { key: "Content-Security-Policy", value: csp },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "SAMEORIGIN" },
-  { key: "X-XSS-Protection", value: "0" },
+  // Images (same-origin, data, blob; include Turnstile just in case)
+  `img-src 'self' data: blob: ${turnstile}`,
+
+  // Workers (allow blob for modern bundlers/runtimes when needed)
+  "worker-src 'self' blob:",
+
+  // Manifest (same-origin)
+  "manifest-src 'self'",
+
+  // *** The missing directive causing the build to fail ***
+  // API/XHR/WebSocket endpoints our app legitimately talks to
+  [
+    "connect-src 'self'",
+    clerkSubdomain,         // Clerk env + client calls (as seen in logs)
+    turnstile,              // Turnstile verification/telemetry
+    googleFontsCss,         // Preconnects from fonts CSS fetches can appear
+    googleFontsFiles,       // Preconnects to font files
+    ...previewConnect       // vercel.live only in preview
+  ].join(' ')
 ];
+
+// You can optionally add "report-to" / "report-uri" here if you run a CSP collector.
 
 const nextConfig = {
   async headers() {
     return [
       {
-        source: "/(.*)",
-        headers: securityHeaders,
-      },
+        source: '/:path*',
+        headers: [
+          {
+            key: 'Content-Security-Policy',
+            value: csp.join('; ')
+          },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
+          { key: 'X-XSS-Protection', value: '0' }
+        ]
+      }
     ];
   },
 
