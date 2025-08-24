@@ -2,6 +2,7 @@
 
 const OFFICIAL_SCRIPT = "https://clerk.com/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
 const JS_DELIVR_CLERK_SCRIPT = "https://cdn.jsdelivr.net/npm/@clerk/clerk-js@5/dist/clerk.browser.js";
+const LOCAL_CLERK_SCRIPT = "/clerk.browser.js";
 const OFFICIAL_ALLOWED_PREFIXES = [
   "https://clerk.com/",
   "https://www.clerk.com/",
@@ -18,6 +19,7 @@ function isAllowedClerkSrc(src: string | null): boolean {
   if (!src) return false;
   if (src === OFFICIAL_SCRIPT) return true;
   if (src === JS_DELIVR_CLERK_SCRIPT) return true; // Allow jsDelivr Clerk script
+  if (src === LOCAL_CLERK_SCRIPT) return true; // Allow locally served Clerk script
   if (OFFICIAL_ALLOWED_PREFIXES.some((p) => src.startsWith(p))) return true;
   if (TRUSTED_CDN_PREFIXES.some((p) => src.startsWith(p))) return true; // Allow trusted CDNs
   return false;
