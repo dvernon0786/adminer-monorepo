@@ -2,7 +2,7 @@ import { SignedIn, SignedOut, SignInButton, useUser } from "@clerk/clerk-react";
 import { DashboardHeader } from "@/components/dashboard";
 import EnhancedAnalysisForm from "@/components/dashboard/EnhancedAnalysisForm";
 import { JobsTable } from "@/components/dashboard/JobsTable";
-import { ResultsTabs } from "@/components/dashboard/ResultsTabs";
+import ResultsTabs from "@/components/dashboard/ResultsTabs";
 import { useMemo, useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { AnalysisResult, DashboardStats } from "@/types/dashboard";

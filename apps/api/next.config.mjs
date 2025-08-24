@@ -12,9 +12,8 @@ const nextConfig = {
     const env = process.env.VERCEL_ENV || process.env.NODE_ENV || 'development';
     const isProd = env === 'production';
 
-    // Clerk + Fonts allowlists
+    // Clerk + Fonts allowlists (official domains only)
     const clerkHosts = [
-      "https://clerk.adminer.online",
       "https://*.clerk.com",
       "https://*.clerk.services"
     ];
@@ -24,8 +23,7 @@ const nextConfig = {
       "https://api.clerk.services"
     ];
     const clerkWebSocket = [
-      "wss://*.clerk.services",
-      "wss://clerk.adminer.online"
+      "wss://*.clerk.services"
     ];
     const fontsCss = "https://fonts.googleapis.com";
     const fontsFiles = "https://fonts.gstatic.com";

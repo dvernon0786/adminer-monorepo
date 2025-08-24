@@ -6,6 +6,7 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
+    "guard:clerk": "rg -n \"(clerkJSUrl|proxyUrl|frontendApi)\" src | grep -v 'error' | grep -v 'comment' | grep -v 'IMPORTANT' && (echo \"❌ Forbidden Clerk proxy config found\" && exit 1) || echo \"✅ Clerk direct mode clean\"",
     "preview": "vite preview --port 5173"
   },
   "dependencies": {

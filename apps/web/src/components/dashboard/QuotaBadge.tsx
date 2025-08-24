@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useConsolidatedApi } from "../lib/useConsolidatedApi";
+import { useConsolidatedApi } from "../../hooks/useConsolidatedApi";
 
 export function QuotaBadge({ onClickPricing }: { onClickPricing?: () => void }) {
   const { quotaStatus } = useConsolidatedApi();
