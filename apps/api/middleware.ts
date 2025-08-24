@@ -12,9 +12,9 @@ export default clerkMiddleware(
       const res = NextResponse.next();
 
       // mark the route as public or protected
-      const public = !(isApi(req) || isDashboard(req));
+      const isPublic = !(isApi(req) || isDashboard(req));
       res.headers.set("x-debug-route", url.pathname);
-      res.headers.set("x-debug-public", public ? "true" : "false");
+      res.headers.set("x-debug-public", isPublic ? "true" : "false");
 
       // Bypass health so curl doesn't hit MIDDLEWARE_INVOCATION_FAILED
       if (pathname === '/api/consolidated' && searchParams.get('action') === 'health') {
