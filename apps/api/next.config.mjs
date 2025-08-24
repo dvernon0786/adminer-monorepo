@@ -15,6 +15,7 @@ const nextConfig = {
       "https://api.clerk.com",
       "https://assets.clerk.com",
       "https://img.clerk.com",    // ⬅ needed for Clerk user images
+      "https://clerk.adminer.online", // ⬅ needed for Clerk API calls
     ];
 
     const googleFonts = [

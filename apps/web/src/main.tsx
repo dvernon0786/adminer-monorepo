@@ -25,8 +25,8 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       clerkJSUrl="/clerk.browser.js"        // 🔒 local script
       signInUrl="/sign-in"                  // ✅ relative
       signUpUrl="/sign-up"                  // ✅ relative
-      afterSignInUrl="/"                    // ✅ relative (we'll route to /dashboard ourselves)
-      afterSignUpUrl="/"
+      signInFallbackRedirectUrl="/"         // ✅ relative (replaces deprecated afterSignInUrl)
+      signUpFallbackRedirectUrl="/"         // ✅ relative (replaces deprecated afterSignUpUrl)
       telemetry={false}
     >
       <BrowserRouter>
