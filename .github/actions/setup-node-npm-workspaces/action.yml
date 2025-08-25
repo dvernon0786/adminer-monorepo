@@ -14,7 +14,9 @@ inputs:
     required: false
     default: |
       package-lock.json
-      apps/*/package-lock.json
+      adminer/package-lock.json
+      adminer/apps/*/package-lock.json
+      adminer/apps/*/apps/*/package-lock.json
   run-install:
     description: "If 'true', run 'npm ci' after setup"
     required: false
@@ -61,12 +63,19 @@ runs:
         } >> "$GITHUB_OUTPUT"
 
     - name: Setup Node with cache
+      if: ${{ steps.find-locks.outputs.paths != '' }}
       uses: actions/setup-node@v4
       with:
         node-version: ${{ inputs.node-version }}
         cache: npm
         # Only pass existing lockfiles to avoid warnings
         cache-dependency-path: ${{ steps.find-locks.outputs.paths }}
+
+    - name: Setup Node without cache (fallback)
+      if: ${{ steps.find-locks.outputs.paths == '' }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
 
     - name: npm ci (optional)
       if: ${{ inputs.run-install == 'true' }}

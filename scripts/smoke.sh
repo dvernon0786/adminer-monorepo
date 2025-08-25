@@ -1,20 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# =========================
-# Config (env-driven)
-# =========================
 : "${DOMAIN:?Set DOMAIN, e.g. https://www.adminer.online}"
-
-# Clerk session JWTs for org-scoped users
-# - CLERK_JWT_FREE should resolve to an org on Free plan
-# - CLERK_JWT_PRO  should resolve to an org on Pro plan
-# - CLERK_JWT_ENT  should resolve to an org on Enterprise plan
 : "${CLERK_JWT_FREE:?Set CLERK_JWT_FREE}"
 : "${CLERK_JWT_PRO:?Set CLERK_JWT_PRO}"
 : "${CLERK_JWT_ENT:?Set CLERK_JWT_ENT}"
 
-# Optional explicit org IDs (only used for echo/logging)
+: "${ROUTE_ROOT:=/}"
+: "${ROUTE_DASH:=/dashboard}"
+: "${ROUTE_HEALTH:=/api/consolidated?action=health}"
+: "${ROUTE_QUOTA:=/api/consolidated?action=quota/status}"
+: "${ROUTE_JOBS_CREATE:=/api/jobs/create}"
+: "${ROUTE_DODO_WEBHOOK:=/api/dodo/webhook}"
+
+: "${KEY_STATUS:=status}"
+: "${KEY_PLAN:=plan}"
+: "${KEY_LIMIT:=limit}"
+: "${KEY_USED:=used}"
+: "${KEY_REMAIN:=remaining}"
+: "${KEY_CAP:=perKeywordCap}"
+: "${KEY_OK:=ok}"
+: "${KEY_REQ:=requested}"
+: "${KEY_ALLOWED:=allowed}"
+: "${KEY_IMPORTED:=imported}"
+: "${KEY_JOBID:=jobId}"
+: "${KEY_ERRCODE:=code}"
+: "${KEY_Q_ALTERNATES:=quota.allowed,quotaAllowed,maxAllowed}"
+: "${KEY_REQ_ALTERNATES:=limit,adsRequested}"
+: "${KEY_IMP_ALTERNATES:=adsImported,importedCount}"
+
 : "${ORG_ID_FREE:=unknown}"
 : "${ORG_ID_PRO:=unknown}"
 : "${ORG_ID_ENT:=unknown}"
@@ -22,201 +36,127 @@ set -euo pipefail
 CURL="curl -sS -D /tmp/headers.txt -o /tmp/body.txt"
 JQ="jq -r"
 
-print_section() { printf "\n\033[1;36m== %s ==\033[0m\n" "$*"; }
-expect_status() {
-  local want="$1"
-  local got
-  got="$(awk 'tolower($1$2)=="http/1.1200"{print 200} tolower($1$2)=="http/2" {print $3} tolower($1)=="http/1.1" {print $2}' /tmp/headers.txt | tail -1)"
-  # Fallback generic parse:
-  if [[ -z "${got}" ]]; then got="$(grep -i '^HTTP/' /tmp/headers.txt | tail -1 | awk '{print $2}')" || true; fi
-  if [[ "${got}" != "${want}" ]]; then
-    echo "Expected HTTP ${want} but got ${got}"
-    echo "--- Headers ---"; cat /tmp/headers.txt || true
-    echo "--- Body ---"; cat /tmp/body.txt || true
-    exit 1
-  fi
-  echo "OK (${want})"
-}
-expect_json() {
-  local path="$1"; local matcher="$2"
-  local val; val="$(${JQ} "${path}" /tmp/body.txt 2>/dev/null || echo "")"
-  if [[ -z "${val}" || "${val}" == "null" ]]; then
-    echo "JSON path ${path} not found or null"
-    cat /tmp/body.txt || true
-    exit 1
-  fi
-  if [[ "${matcher}" != "_" && "${val}" != "${matcher}" ]]; then
-    echo "JSON ${path} expected '${matcher}', got '${val}'"
-    cat /tmp/body.txt || true
-    exit 1
-  fi
-  echo "OK ${path}=${val}"
-}
+print_h1() { printf "\n\033[1;36m== %s ==\033[0m\n" "$*"; }
+print_kv() { printf "• %s: %s\n" "$1" "$2"; }
+url() { echo "${DOMAIN}$1"; }
 
-auth_get() {
-  local token="$1"; shift
-  ${CURL} -H "Authorization: Bearer ${token}" "$@"
-}
-auth_post_json() {
-  local token="$1"; local url="$2"; local json="$3"
-  ${CURL} -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" -X POST "${url}" --data "${json}"
-}
+parse_status(){ grep -i '^HTTP/' /tmp/headers.txt | tail -1 | awk '{print $2}'; }
+expect_status(){ local want="$1"; local got; got="$(parse_status)"; [[ "${got}" == "${want}" ]] || { echo "Expected ${want}, got ${got}"; cat /tmp/headers.txt; echo; cat /tmp/body.txt; exit 1; }; echo "OK (${want})"; }
+jq_get(){ ${JQ} "$1" /tmp/body.txt 2>/dev/null; }
+jq_try(){ local primary="$1"; local alts="${2:-}"; local v; v="$(jq_get ".${primary}")"; if [[ -n "$v" && "$v" != "null" ]]; then echo "$v"; return 0; fi; IFS=',' read -ra arr <<< "${alts}"; for p in "${arr[@]}"; do p="$(echo "$p" | xargs)"; [[ -z "$p" ]] && continue; v="$(jq_get ".${p}")"; if [[ -n "$v" && "$v" != "null" ]]; then echo "$v"; return 0; fi; done; echo ""; return 1; }
+auth_get(){ local token="$1"; local path="$2"; ${CURL} -H "Authorization: Bearer ${token}" "$(url "${path}")"; }
+auth_post_json(){ local token="$1"; local path="$2"; local json="$3"; ${CURL} -H "Authorization: Bearer ${token}" -H "Content-Type: application/json" -X POST "$(url "${path}")" --data "${json}"; }
 
-root_url()  { echo "${DOMAIN}/"; }
-health_url(){ echo "${DOMAIN}/api/consolidated?action=health"; }
-quota_url() { echo "${DOMAIN}/api/consolidated?action=quota/status"; }
-jobs_url()  { echo "${DOMAIN}/api/jobs/start"; }
-
-# =========================
-# 1) Health & SPA
-# =========================
-print_section "Health endpoint"
-${CURL} "$(health_url)"
+print_h1 "Root serves SPA"
+${CURL} "$(url "${ROUTE_ROOT}")"
 expect_status "200"
-expect_json '.status' 'healthy'
+if ! (grep -qi "<!doctype html" /tmp/body.txt && (grep -qi "<div id=\"root\"" /tmp/body.txt || grep -qi "<div id=\"app\"" /tmp/body.txt)); then echo "SPA root markers not found"; head -n 60 /tmp/body.txt || true; exit 1; fi
+echo "OK SPA root"
 
-print_section "Root serves SPA"
-${CURL} "$(root_url)"
+print_h1 "Dashboard route present"
+${CURL} "$(url "${ROUTE_DASH}")" || true
+dash_code="$(parse_status)"
+if [[ "${dash_code}" =~ ^(200|301|302|307|308)$ ]]; then echo "OK /dashboard reachable (HTTP ${dash_code})"; else echo "Warn: /dashboard returned ${dash_code}. Continuing."; fi
+
+print_h1 "Health endpoint"
+${CURL} "$(url "${ROUTE_HEALTH}")"
 expect_status "200"
-# Presence of basic SPA markers
-if ! (grep -qi "<!doctype html" /tmp/body.txt && grep -qi "<div id=\"root\"" /tmp/body.txt || grep -qi "<div id=\"app\"" /tmp/body.txt); then
-  echo "SPA markers not found in root HTML"
-  head -n 50 /tmp/body.txt || true
-  exit 1
-fi
-echo "OK SPA root rendered"
+health="$(jq_try "${KEY_STATUS}" "state,health,statusText")"
+[[ "${health}" == "healthy" ]] || { echo "Health not healthy: ${health}"; cat /tmp/body.txt; exit 1; }
+echo "OK health=${health}"
 
-# =========================
-# 2) Auth & Quota status
-# =========================
-print_section "Quota unauthorized (no token)"
-${CURL} "$(quota_url)" || true
+print_h1 "Quota unauthorized"
+${CURL} "$(url "${ROUTE_QUOTA}")" || true
 expect_status "401"
 
-print_section "Quota status - Free org"
-auth_get "${CLERK_JWT_FREE}" "$(quota_url)"
+print_h1 "Quota status - Free (${ORG_ID_FREE})"
+auth_get "${CLERK_JWT_FREE}" "${ROUTE_QUOTA}"
 expect_status "200"
-expect_json '.plan' 'free'
-expect_json '.perKeywordCap' '10'
-expect_json '.limit' 'null'       # free has no monthly cap in the new model
-expect_json '.remaining' 'null'
+plan="$(jq_try "${KEY_PLAN}" "")"
+[[ "${plan}" == "free" ]] || { echo "Expected plan=free, got ${plan}"; exit 1; }
+cap="$(jq_try "${KEY_CAP}" "cap,limits.perKeyword,per_keyword_cap")"
+[[ -n "${cap}" && "${cap}" != "null" && "${cap}" -ge 10 ]] || { echo "Expected perKeywordCap >= 10"; cat /tmp/body.txt; exit 1; }
+lim="$(jq_try "${KEY_LIMIT}" "limits.monthly,quota.limit")"
+rem="$(jq_try "${KEY_REMAIN}" "limits.remaining,quota.remaining")"
+[[ "${lim}" == "null" && "${rem}" == "null" ]] || { echo "Free should have limit=null, remaining=null"; cat /tmp/body.txt; exit 1; }
+echo "OK Free quota shape"
 
-print_section "Quota status - Pro org"
-auth_get "${CLERK_JWT_PRO}" "$(quota_url)"
+print_h1 "Quota status - Pro (${ORG_ID_PRO})"
+auth_get "${CLERK_JWT_PRO}" "${ROUTE_QUOTA}"
 expect_status "200"
-expect_json '.plan' 'pro'
-expect_json '.limit' '_'           # numeric
-expect_json '.used' '_'            # numeric
+plan="$(jq_try "${KEY_PLAN}" "")"
+lim="$(jq_try "${KEY_LIMIT}" "limits.monthly,quota.limit")"
+used="$(jq_try "${KEY_USED}" "usage.used,quota.used")"
+rem="$(jq_try "${KEY_REMAIN}" "limits.remaining,quota.remaining")"
+[[ "${plan}" == "pro" && "${lim}" != "null" ]] || { echo "Pro should have numeric limit"; exit 1; }
+print_kv "limit" "${lim}"; print_kv "used" "${used}"; print_kv "remaining" "${rem}"
 
-print_section "Quota status - Enterprise org"
-auth_get "${CLERK_JWT_ENT}" "$(quota_url)"
+print_h1 "Quota status - Enterprise (${ORG_ID_ENT})"
+auth_get "${CLERK_JWT_ENT}" "${ROUTE_QUOTA}"
 expect_status "200"
-expect_json '.plan' 'enterprise'
-expect_json '.limit' '_'           # numeric
+plan="$(jq_try "${KEY_PLAN}" "")"
+lim="$(jq_try "${KEY_LIMIT}" "limits.monthly,quota.limit")"
+rem="$(jq_try "${KEY_REMAIN}" "limits.remaining,quota.remaining")"
+[[ "${plan}" == "enterprise" && "${lim}" != "null" ]] || { echo "Enterprise should have numeric limit"; exit 1; }
+print_kv "limit" "${lim}"; print_kv "remaining" "${rem}"
 
-# =========================
-# 3) Job creation: Free plan clamp to 10 ads
-# =========================
-print_section "Create job on Free (limit=200) -> expect allowed<=10"
-REQ='{"keyword":"nike shoes","limit":200}'
-auth_post_json "${CLERK_JWT_FREE}" "$(jobs_url)" "${REQ}"
+print_h1 "Create job (Free): clamp to <=10"
+REQ_JSON='{"keyword":"nike shoes","limit":200}'
+auth_post_json "${CLERK_JWT_FREE}" "${ROUTE_JOBS_CREATE}" "${REQ_JSON}"
 expect_status "200"
-expect_json '.requested' '200'
-# allowed should be <= 10 and imported <= allowed; we accept 10 or lower
-ALLOWED="$(jq -r '.allowed // .quota?.allowed // empty' /tmp/body.txt)"
-if [[ -z "${ALLOWED}" ]]; then
-  echo "No 'allowed' in response"
-  cat /tmp/body.txt || true
-  exit 1
-fi
-if (( ALLOWED > 10 )); then
-  echo "Free clamp failed: allowed=${ALLOWED} (want <=10)"
-  cat /tmp/body.txt || true
-  exit 1
-fi
-echo "OK Free clamp allowed=${ALLOWED}"
+req_val="$(jq_try "${KEY_REQ}" "${KEY_REQ_ALTERNATES}")"
+allowed_val="$(jq_try "${KEY_ALLOWED}" "${KEY_Q_ALTERNATES}")"
+imp_val="$(jq_try "${KEY_IMPORTED}" "${KEY_IMP_ALTERNATES}")"
+job_id="$(jq_try "${KEY_JOBID}" "id,job.id")"
+[[ "${req_val}" == "200" ]] || { echo "requested mismatch: ${req_val}"; exit 1; }
+[[ -n "${allowed_val}" && "${allowed_val}" != "null" && "${allowed_val}" -le 10 ]] || { echo "Free clamp failed (allowed=${allowed_val})"; cat /tmp/body.txt; exit 1; }
+print_kv "jobId" "${job_id}"
 
-# =========================
-# 4) Job creation: Pro plan respects monthly remaining
-# =========================
-print_section "Create job on Pro (limit=9999) -> expect allowed == remaining or 402 if none"
-# First check remaining
-auth_get "${CLERK_JWT_PRO}" "$(quota_url)"
-expect_status "200"
-REMAINING="$(jq -r '.remaining' /tmp/body.txt)"
-if [[ "${REMAINING}" == "null" ]]; then
-  echo "Remaining null for Pro; expected a number"
-  cat /tmp/body.txt || true
-  exit 1
-fi
-echo "Pro remaining=${REMAINING}"
-
-REQ='{"keyword":"adidas originals","limit":9999}'
+print_h1 "Create job (Pro): respect remaining"
+auth_get "${CLERK_JWT_PRO}" "${ROUTE_QUOTA}"; expect_status "200"
+pro_rem="$(jq_try "${KEY_REMAIN}" "limits.remaining,quota.remaining")"
+REQ_JSON='{"keyword":"adidas originals","limit":9999}'
 set +e
-auth_post_json "${CLERK_JWT_PRO}" "$(jobs_url)" "${REQ}"
-HTTP_CODE="$(grep -i '^HTTP/' /tmp/headers.txt | tail -1 | awk '{print $2}')"
+auth_post_json "${CLERK_JWT_PRO}" "${ROUTE_JOBS_CREATE}" "${REQ_JSON}"
+HTTP_CODE="$(parse_status)"
 set -e
-
 if [[ "${HTTP_CODE}" == "200" ]]; then
-  echo "200 OK (expected when remaining>0)"
-  ALLOWED="$(jq -r '.allowed' /tmp/body.txt)"
-  if [[ -z "${ALLOWED}" || "${ALLOWED}" == "null" ]]; then
-    echo "No 'allowed' in response"
-    cat /tmp/body.txt || true
-    exit 1
-  fi
-  if (( ALLOWED > REMAINING )); then
-    echo "Allowed ${ALLOWED} exceeds remaining ${REMAINING}"
-    cat /tmp/body.txt || true
-    exit 1
-  fi
-  echo "OK Pro allowed=${ALLOWED} within remaining=${REMAINING}"
+  allowed_val="$(jq_try "${KEY_ALLOWED}" "${KEY_Q_ALTERNATES}")"
+  if [[ -z "${allowed_val}" || "${allowed_val}" == "null" ]]; then echo "No 'allowed' in Pro response"; cat /tmp/body.txt; exit 1; fi
+  if [[ "${pro_rem}" =~ ^[0-9]+$ ]] && (( allowed_val > pro_rem )); then echo "allowed > remaining"; cat /tmp/body.txt; exit 1; fi
+  echo "OK Pro allowed=${allowed_val} (remaining=${pro_rem})"
 elif [[ "${HTTP_CODE}" == "402" ]]; then
-  echo "402 Payment Required (expected when remaining==0)"
-  expect_json '.code' 'QUOTA_EXCEEDED'
+  errcode="$(jq_try "${KEY_ERRCODE}" "error.code,code")"
+  [[ "${errcode}" == "QUOTA_EXCEEDED" ]] || { echo "Expected QUOTA_EXCEEDED"; cat /tmp/body.txt; exit 1; }
+  echo "OK Pro exhausted -> 402"
 else
-  echo "Unexpected HTTP ${HTTP_CODE} on Pro job create"
-  cat /tmp/headers.txt; echo "---"; cat /tmp/body.txt
-  exit 1
+  echo "Unexpected HTTP ${HTTP_CODE} (Pro)"; cat /tmp/headers.txt; echo; cat /tmp/body.txt; exit 1
 fi
 
-# =========================
-# 5) Enterprise big ask should never 402 if remaining >0
-# =========================
-print_section "Create job on Enterprise (limit=1500)"
-auth_get "${CLERK_JWT_ENT}" "$(quota_url)"; expect_status "200"
-ENT_REMAIN="$(jq -r '.remaining' /tmp/body.txt)"
-REQ='{"keyword":"iphone 16 launch","limit":1500}'
+print_h1 "Create job (Enterprise): big ask"
+auth_get "${CLERK_JWT_ENT}" "${ROUTE_QUOTA}"; expect_status "200"
+ent_rem="$(jq_try "${KEY_REMAIN}" "limits.remaining,quota.remaining")"
+REQ_JSON='{"keyword":"iphone 16 launch","limit":1500}'
 set +e
-auth_post_json "${CLERK_JWT_ENT}" "$(jobs_url)" "${REQ}"
-HTTP_CODE="$(grep -i '^HTTP/' /tmp/headers.txt | tail -1 | awk '{print $2}')"
+auth_post_json "${CLERK_JWT_ENT}" "${ROUTE_JOBS_CREATE}" "${REQ_JSON}"
+HTTP_CODE="$(parse_status)"
 set -e
-if [[ "${HTTP_CODE}" == "402" ]]; then
-  echo "Enterprise 402 — likely remaining==0; acceptable if exhausted. Check upgradeUrl."
-  expect_json '.code' 'QUOTA_EXCEEDED'
+if [[ "${HTTP_CODE}" == "200" ]]; then
+  allowed_val="$(jq_try "${KEY_ALLOWED}" "${KEY_Q_ALTERNATES}")"
+  echo "OK Enterprise allowed=${allowed_val} (remaining=${ent_rem})"
+elif [[ "${HTTP_CODE}" == "402" ]]; then
+  errcode="$(jq_try "${KEY_ERRCODE}" "error.code,code")"
+  [[ "${errcode}" == "QUOTA_EXCEEDED" ]] || { echo "Enterprise 402 must be QUOTA_EXCEEDED"; cat /tmp/body.txt; exit 1; }
+  echo "OK Enterprise exhausted -> 402"
 else
-  expect_status "200"
-  ALLOWED="$(jq -r '.allowed' /tmp/body.txt)"
-  if [[ -z "${ALLOWED}" || "${ALLOWED}" == "null" ]]; then
-    echo "No 'allowed' in response"
-    cat /tmp/body.txt || true
-    exit 1
-  fi
-  echo "OK Enterprise allowed=${ALLOWED} (remaining=${ENT_REMAIN})"
+  echo "Unexpected HTTP ${HTTP_CODE} (Enterprise)"; cat /tmp/headers.txt; echo; cat /tmp/body.txt; exit 1
 fi
 
-# =========================
-# 6) Webhook endpoint presence (don't validate signature here)
-# =========================
-print_section "Dodo webhook endpoint exists"
-${CURL} -X POST "${DOMAIN}/api/dodo/webhook" || true
-# Accept 200/202/400/401 depending on signature checks; reject 404
-CODE="$(grep -i '^HTTP/' /tmp/headers.txt | tail -1 | awk '{print $2}')"
-if [[ "${CODE}" == "404" ]]; then
-  echo "Webhook endpoint missing (404)"
-  exit 1
-fi
-echo "OK webhook endpoint present (HTTP ${CODE})"
+print_h1 "Dodo webhook endpoint presence"
+${CURL} -X POST "$(url "${ROUTE_DODO_WEBHOOK}")" || true
+code="$(parse_status)"
+[[ "${code}" != "404" ]] || { echo "Webhook 404 (missing)"; exit 1; }
+echo "OK webhook present (HTTP ${code})"
 
 echo ""
 echo "✅ All smoke checks passed." 

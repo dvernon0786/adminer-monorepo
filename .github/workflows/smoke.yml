@@ -8,38 +8,59 @@ on:
 jobs:
   smoke:
     if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production')
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 15
+
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+
+      - name: Show lockfiles
+        run: |
+          echo "Repo root: $PWD"
+          git ls-files | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$' || echo "No lockfiles found"
+
+      # Monorepo-safe Node cache (npm). Gate by presence of lockfile(s).
+      - name: Setup Node (cache)
+        if: ${{ hashFiles('package-lock.json', '**/package-lock.json') != '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+          cache-dependency-path: |
+            package-lock.json
+            **/package-lock.json
+
+      - name: Setup Node (no cache fallback)
+        if: ${{ hashFiles('package-lock.json', '**/package-lock.json') == '' }}
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Install jq & curl
         run: |
           sudo apt-get update
           sudo apt-get install -y jq curl
 
-      - name: Run smoke tests
-        env:
-          DOMAIN: ${{ secrets.PROD_DOMAIN }}
-          CLERK_JWT_FREE: ${{ secrets.PROD_CLERK_JWT_FREE }}
-          CLERK_JWT_PRO: ${{ secrets.PROD_CLERK_JWT_PRO }}
-          CLERK_JWT_ENT: ${{ secrets.PROD_CLERK_JWT_ENT }}
-          ORG_ID_FREE: ${{ secrets.PROD_ORG_ID_FREE }}
-          ORG_ID_PRO: ${{ secrets.PROD_ORG_ID_PRO }}
-          ORG_ID_ENT: ${{ secrets.PROD_ORG_ID_ENT }}
-        run: |
-          chmod +x scripts/smoke.sh
-          scripts/smoke.sh
+      - name: Make smoke executable
+        run: chmod +x scripts/smoke.sh
 
-      - name: Upload smoke artifacts on failure
+      - name: Run Smoke Tests
+        env:
+          DOMAIN: ${{ secrets.PROD_DOMAIN }}   # e.g., https://www.adminer.online
+          CLERK_JWT_FREE: ${{ secrets.PROD_CLERK_JWT_FREE }}
+          CLERK_JWT_PRO:  ${{ secrets.PROD_CLERK_JWT_PRO }}
+          CLERK_JWT_ENT:  ${{ secrets.PROD_CLERK_JWT_ENT }}
+          ORG_ID_FREE: ${{ secrets.PROD_ORG_ID_FREE }}
+          ORG_ID_PRO:  ${{ secrets.PROD_ORG_ID_PRO }}
+          ORG_ID_ENT:  ${{ secrets.PROD_ORG_ID_ENT }}
+        run: scripts/smoke.sh
+
+      - name: Upload smoke artifacts (headers/body)
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-failure-logs
+          name: smoke-artifacts
           path: |
             /tmp/headers.txt
             /tmp/body.txt
-            ./logs/**
-            ./**/*.log
-          if-no-files-found: ignore

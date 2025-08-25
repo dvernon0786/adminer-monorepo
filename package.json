@@ -3,7 +3,10 @@
   "version": "1.0.0",
   "description": "Adminer Final Project",
   "scripts": {
-    "debug:clerk": "node scripts/debug-clerk.mjs"
+    "debug:clerk": "node scripts/debug-clerk.mjs",
+    "smoke": "scripts/smoke.sh",
+    "smoke:local": "source scripts/smoke-local.env && scripts/smoke.sh",
+    "smoke:help": "echo 'Smoke testing commands: npm run smoke, npm run smoke:local'"
   },
   "type": "module"
 } 

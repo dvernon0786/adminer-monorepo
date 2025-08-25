@@ -34,6 +34,16 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Show lockfiles
+        run: |
+          echo "Repo root: $PWD"
+          echo "--- find lockfiles ---"
+          (git ls-files | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$') || echo "No lockfiles found"
+          echo "--- ls adminer ---"
+          ls -la adminer/ || echo "adminer/ not found"
+          echo "--- ls adminer/apps ---"
+          ls -la adminer/apps/ || echo "adminer/apps/ not found"
+
       - name: Setup Node (cached)
         uses: ./.github/actions/setup-node-npm-workspaces
         with:
@@ -80,6 +90,12 @@ jobs:
       WAIT_INTERVAL_SEC: "10"    # poll every 10s
     steps:
       - uses: actions/checkout@v4
+
+      - name: Show lockfiles
+        run: |
+          echo "Repo root: $PWD"
+          echo "--- find lockfiles ---"
+          (git ls-files | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$') || echo "No lockfiles found"
 
       - name: Setup Node (cached)
         uses: ./.github/actions/setup-node-npm-workspaces
