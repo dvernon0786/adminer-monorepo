@@ -1,0 +1,75 @@
+name: "Setup Node (npm workspaces, cached)"
+description: "Sets up Node.js with npm cache across workspaces by auto-discovering package-lock.json files."
+author: "Adminer CI"
+
+inputs:
+  node-version:
+    description: "Node.js version range"
+    required: false
+    default: "20.x"
+  lockfile_globs:
+    description: |-
+      Multiline list of glob patterns to search for package-lock.json.
+      Useful if your workspaces live outside apps/*.
+    required: false
+    default: |
+      package-lock.json
+      apps/*/package-lock.json
+  run-install:
+    description: "If 'true', run 'npm ci' after setup"
+    required: false
+    default: "false"
+  working-directory:
+    description: "Directory to run 'npm ci' in (when run-install is true)"
+    required: false
+    default: "."
+
+runs:
+  using: "composite"
+  steps:
+    - name: Find npm lockfiles
+      id: find-locks
+      shell: bash
+      run: |
+        set -euo pipefail
+
+        # Read multiline globs from input
+        GLOBS="${{ inputs.lockfile_globs }}"
+        FOUND=""
+        while IFS= read -r PATTERN; do
+          [[ -z "$PATTERN" ]] && continue
+          # Expand glob; ignore errors if no match
+          for f in $(ls -1 $PATTERN 2>/dev/null || true); do
+            [[ -f "$f" ]] && FOUND+="$f"$'\n'
+          done
+        done <<< "$GLOBS"
+
+        # Trim trailing newline
+        FOUND="${FOUND%$'\n'}"
+
+        echo "Discovered lockfiles:"
+        if [[ -n "$FOUND" ]]; then
+          echo "$FOUND"
+        else
+          echo "⚠️  No package-lock.json files found with supplied patterns." >&2
+        fi
+
+        {
+          echo 'paths<<EOF'
+          echo "$FOUND"
+          echo 'EOF'
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Setup Node with cache
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ inputs.node-version }}
+        cache: npm
+        # Only pass existing lockfiles to avoid warnings
+        cache-dependency-path: ${{ steps.find-locks.outputs.paths }}
+
+    - name: npm ci (optional)
+      if: ${{ inputs.run-install == 'true' }}
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: npm ci 

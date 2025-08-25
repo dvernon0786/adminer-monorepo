@@ -1,0 +1,264 @@
+name: monorepo-ci
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+  workflow_dispatch:
+  schedule:
+    # Nightly: 18:00 UTC (≈ 11:30 PM IST, Asia/Kolkata)
+    - cron: "0 18 * * *"
+
+concurrency:
+  group: monorepo-ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  # Centralized Node default; guards will fan out via matrix
+  NODE_VERSION_DEFAULT: 20.x
+
+jobs:
+  # -----------------------------
+  # 1) Guards: fast static checks
+  #    Runs on a Node version matrix
+  # -----------------------------
+  check-guards:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [18.x, 20.x, 22.x]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (cached)
+        uses: ./.github/actions/setup-node-npm-workspaces
+        with:
+          node-version: ${{ matrix.node }}
+          run-install: false
+
+      - name: Run guards
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -x "scripts/check-guards.sh" ]; then
+            bash scripts/check-guards.sh
+          elif npm run | grep -qE 'check:guards'; then
+            npm run check:guards
+          else
+            echo "No guard script found. Add scripts/check-guards.sh or npm script 'check:guards'." >&2
+            exit 1
+          fi
+
+      - name: Upload guard logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: guard-logs-node-${{ matrix.node }}
+          path: |
+            ./logs/**
+            ./**/*.log
+          if-no-files-found: ignore
+
+  # ------------------------------------------------
+  # 2) Health: wait for Vercel deployment, then test
+  # ------------------------------------------------
+  health:
+    runs-on: ubuntu-latest
+    needs: [check-guards]
+    env:
+      PROD_URL: ${{ secrets.PROD_URL }}
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }} # optional
+      HEALTH_PATH: "/api/consolidated?action=health"
+      # Poll settings
+      WAIT_TIMEOUT_SEC: "600"    # 10 min max
+      WAIT_INTERVAL_SEC: "10"    # poll every 10s
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (cached)
+        uses: ./.github/actions/setup-node-npm-workspaces
+        with:
+          node-version: ${{ env.NODE_VERSION_DEFAULT }}
+          run-install: false
+
+      - name: Validate configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ -z "${PROD_URL:-}" ]; then
+            echo "❌ PROD_URL secret is not configured." >&2
+            exit 1
+          fi
+          echo "PROD_URL=${PROD_URL}"
+
+      - name: Wait for Vercel deployment to be READY (API if available; else URL ping)
+        shell: bash
+        env:
+          PROD_URL: ${{ env.PROD_URL }}
+          VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ env.VERCEL_TEAM_ID }}
+          WAIT_TIMEOUT_SEC: ${{ env.WAIT_TIMEOUT_SEC }}
+          WAIT_INTERVAL_SEC: ${{ env.WAIT_INTERVAL_SEC }}
+        run: |
+          set -euo pipefail
+
+          deadline=$(( $(date +%s) + WAIT_TIMEOUT_SEC ))
+          api_used="false"
+
+          if [ -n "${VERCEL_TOKEN:-}" ] && [ -n "${VERCEL_PROJECT_ID:-}" ]; then
+            echo "Using Vercel API to wait for deployment readiness…"
+            api_used="true"
+            # Poll the latest production deployment until state READY
+            # See: https://vercel.com/docs/rest-api#endpoints/deployments
+            while [ "$(date +%s)" -lt "$deadline" ]; do
+              # Query last 1 deployment for project; optionally include teamId
+              TEAM_ARG=""
+              if [ -n "${VERCEL_TEAM_ID:-}" ]; then
+                TEAM_ARG="&teamId=${VERCEL_TEAM_ID}"
+              fi
+
+              resp="$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1${TEAM_ARG}" \
+                -H "Authorization: Bearer ${VERCEL_TOKEN}")" || true
+
+              state="$(echo "$resp" | jq -r '.deployments[0].state // empty')"
+              url="$(echo "$resp" | jq -r '.deployments[0].url // empty')"
+
+              echo "Latest deployment: state=${state:-n/a} url=${url:-n/a}"
+
+              if [ "$state" = "READY" ] || [ "$state" = "BUILDING" ] || [ "$state" = "QUEUED" ] || [ "$state" = "CANCELED" ] || [ "$state" = "ERROR" ]; then
+                if [ "$state" = "READY" ]; then
+                  echo "✅ Deployment READY."
+                  break
+                elif [ "$state" = "ERROR" ] || [ "$state" = "CANCELED" ]; then
+                  echo "❌ Deployment state=${state}. Failing early."
+                  exit 1
+                fi
+              fi
+
+              sleep "$WAIT_INTERVAL_SEC"
+            done
+
+            if [ "$(date +%s)" -ge "$deadline" ]; then
+              echo "❌ Timed out waiting for Vercel deployment to be READY (${WAIT_TIMEOUT_SEC}s)." >&2
+              exit 1
+            fi
+          else
+            echo "Vercel API credentials not provided; falling back to URL ping…"
+          fi
+
+          echo "Now confirming PROD_URL is responding (fallback or post-READY)…"
+          deadline2=$(( $(date +%s) + WAIT_TIMEOUT_SEC ))
+          while [ "$(date +%s)" -lt "$deadline2" ]; do
+            code=$(curl -sS -o /dev/null -w "%{http_code}" "${PROD_URL}")
+            echo "PROD_URL => HTTP $code"
+            if [ "$code" -ge 200 ] && [ "$code" -lt 500 ]; then
+              echo "✅ PROD_URL responding."
+              exit 0
+            fi
+            sleep "$WAIT_INTERVAL_SEC"
+          done
+
+          echo "❌ PROD_URL did not become responsive in time." >&2
+          exit 1
+
+      - name: Hit health endpoint (expects 200)
+        shell: bash
+        env:
+          PROD_URL: ${{ env.PROD_URL }}
+          HEALTH_PATH: ${{ env.HEALTH_PATH }}
+        run: |
+          set -euo pipefail
+          if [ -x "scripts/health.sh" ]; then
+            bash scripts/health.sh
+            exit $?
+          elif npm run | grep -qE '^ *health'; then
+            npm run health
+            exit $?
+          fi
+
+          URL="${PROD_URL%/}${HEALTH_PATH}"
+          echo "GET $URL"
+          code=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$URL")
+          echo "HTTP $code"
+          cat /tmp/health.json || true
+
+          if [ "$code" -ne 200 ]; then
+            echo "❌ Health check failed (expected 200)." >&2
+            exit 1
+          fi
+
+      - name: Upload health logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: health-logs
+          path: |
+            /tmp/health.json
+            ./logs/**
+            ./**/*.log
+          if-no-files-found: ignore
+
+  # ---------------------------------------------------
+  # 3) Smoke (Production): end-to-end user-perspective
+  #     - Triggers on pushes, PRs, and nightly cron
+  # ---------------------------------------------------
+  smoke_prod:
+    runs-on: ubuntu-latest
+    # Run nightly, and also after health in push/PR contexts
+    needs: [health]
+    if: |
+      github.event_name != 'schedule' || startsWith(github.ref, 'refs/heads/')
+    env:
+      PROD_URL: ${{ secrets.PROD_URL }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node (cached)
+        uses: ./.github/actions/setup-node-npm-workspaces
+        with:
+          node-version: ${{ env.NODE_VERSION_DEFAULT }}
+          run-install: false
+
+      - name: Ensure PROD_URL is set
+        shell: bash
+        run: |
+          if [ -z "${PROD_URL:-}" ]; then
+            echo "❌ PROD_URL secret is not configured." >&2
+            exit 1
+          fi
+          echo "PROD_URL=${PROD_URL}"
+
+      - name: Run smoke against Production
+        shell: bash
+        env:
+          PROD_URL: ${{ env.PROD_URL }}
+        run: |
+          set -euo pipefail
+          if [ -x "scripts/smoke.sh" ]; then
+            bash scripts/smoke.sh
+          elif npm run | grep -qE '^ *smoke'; then
+            npm run smoke
+          else
+            echo "No smoke script found. Add scripts/smoke.sh or npm script 'smoke'." >&2
+            exit 1
+          fi
+
+      - name: Upload smoke artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs
+          path: |
+            ./logs/**
+            ./**/*.log
+            ./**/playwright-report/**
+            ./**/cypress/screenshots/**
+            ./**/cypress/videos/**
+          if-no-files-found: ignore 
