@@ -6,7 +6,9 @@
     "debug:clerk": "node scripts/debug-clerk.mjs",
     "smoke": "scripts/smoke.sh",
     "smoke:local": "source scripts/smoke-local.env && scripts/smoke.sh",
-    "smoke:help": "echo 'Smoke testing commands: npm run smoke, npm run smoke:local'"
+    "smoke:help": "echo 'Smoke testing commands: npm run smoke, npm run smoke:local'",
+    "test:endpoints": "scripts/test-endpoints.sh",
+    "test:local": "scripts/test-endpoints.sh"
   },
   "type": "module"
 } 
