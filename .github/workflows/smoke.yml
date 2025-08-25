@@ -1,0 +1,45 @@
+name: Production Smoke
+
+on:
+  workflow_dispatch: {}
+  deployment_status:
+    types: [success]
+
+jobs:
+  smoke:
+    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production')
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install jq & curl
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y jq curl
+
+      - name: Run smoke tests
+        env:
+          DOMAIN: ${{ secrets.PROD_DOMAIN }}
+          CLERK_JWT_FREE: ${{ secrets.PROD_CLERK_JWT_FREE }}
+          CLERK_JWT_PRO: ${{ secrets.PROD_CLERK_JWT_PRO }}
+          CLERK_JWT_ENT: ${{ secrets.PROD_CLERK_JWT_ENT }}
+          ORG_ID_FREE: ${{ secrets.PROD_ORG_ID_FREE }}
+          ORG_ID_PRO: ${{ secrets.PROD_ORG_ID_PRO }}
+          ORG_ID_ENT: ${{ secrets.PROD_ORG_ID_ENT }}
+        run: |
+          chmod +x scripts/smoke.sh
+          scripts/smoke.sh
+
+      - name: Upload smoke artifacts on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-failure-logs
+          path: |
+            /tmp/headers.txt
+            /tmp/body.txt
+            ./logs/**
+            ./**/*.log
+          if-no-files-found: ignore
