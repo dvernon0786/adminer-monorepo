@@ -5,7 +5,7 @@
       "runtime": "nodejs20.x"
     }
   },
-  "buildCommand": "echo 'Cache bust: $(date)' && rm -rf adminer/apps/web/dist adminer/apps/api/public/assets && unset CLERK_FRONTEND_API CLERK_PROXY_URL && cd adminer && npm run prebuild --workspace @adminer/api && npm run build --workspace @adminer/api && npm run spa:integrate --workspace @adminer/api",
+  "buildCommand": "bash scripts/vercel-build.sh",
   "framework": "nextjs",
   "env": {
     "CACHE_BUST": "2025-01-24-12:00"
