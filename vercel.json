@@ -5,7 +5,7 @@
       "runtime": "nodejs20.x"
     }
   },
-  "buildCommand": "bash ../../scripts/vercel-build.sh",
+  "buildCommand": "bash ../vercel-build.sh",
   "framework": "nextjs",
   "env": {
     "CACHE_BUST": "2025-01-24-12:00"
