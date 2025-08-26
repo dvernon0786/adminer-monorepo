@@ -1,3 +1,8 @@
 .vercel
 .env*.local
 scripts/smoke-local.env
+
+# Build artifacts (prevent stale Clerk assets)
+adminer/apps/web/dist/
+adminer/apps/api/public/assets/
+adminer/apps/api/public/clerk-runtime/
