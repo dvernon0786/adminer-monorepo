@@ -64,5 +64,15 @@ log "📦 Copying SPA artifacts from $DIST_DIR → $PUBLIC_DIR"
 # Works on Vercel build images (no need for rsync)
 tar -C "$DIST_DIR" -cf - . | tar -C "$PUBLIC_DIR" -xpf -
 
+# --- Build Next.js API app so .next/ exists ---------------------------------
+log "🧱 Building Next.js API app at: $API_DIR"
+pushd "$API_DIR" >/dev/null
+if npm run -s | grep -qE '^  build'; then
+  npm run build
+else
+  npx --yes next build
+fi
+popd >/dev/null
+
 # --- Done -------------------------------------------------------------------
-log "✅ Build completed. Public assets ready at: $PUBLIC_DIR" 
+log "✅ Build completed. Public assets ready at: $PUBLIC_DIR and Next .next/ built." 
