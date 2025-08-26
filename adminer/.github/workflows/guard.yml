@@ -1,0 +1,53 @@
+name: Guard Loop-Proof
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  guard:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install deps
+        run: npm ci
+
+      - name: Build web SPA and stage into API public
+        run: |
+          cd apps/web
+          npm run build
+          mkdir -p ../api/public
+          cp -r dist/* ../api/public/
+
+      - name: Start API (Next dev) in background
+        run: |
+          cd apps/api
+          nohup npm run dev -- --port 3000 >/tmp/api.log 2>&1 &
+          echo $! > /tmp/api.pid
+
+      - name: Wait for server
+        run: |
+          for i in {1..40}; do
+            curl -sSf http://localhost:3000/ >/dev/null && exit 0 || true
+            sleep 0.5
+          done
+          echo "Server did not start"; cat /tmp/api.log; exit 1
+
+      - name: Run guard checks
+        run: node scripts/guard-check.mjs
+
+      - name: Show logs on failure
+        if: failure()
+        run: cat /tmp/api.log
+
+      - name: Stop API
+        if: always()
+        run: kill "$(cat /tmp/api.pid)" || true 

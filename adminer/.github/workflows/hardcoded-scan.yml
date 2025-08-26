@@ -1,0 +1,50 @@
+name: Hardcoded Value Scan
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    name: Scan for hardcoded values and security risks
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+      
+      - name: Install dependencies
+        run: npm ci
+      
+      - name: Run hardcoded value scan
+        run: npm run scan:hardcoded
+      
+      - name: Scan summary
+        if: always()
+        run: |
+          echo "## 🔍 Hardcoded Value Scan Results" >> $GITHUB_STEP_SUMMARY
+          if [ ${{ job.status }} == 'success' ]; then
+            echo "✅ **PASSED** - No hardcoded values or security risks detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Your repository is clean and secure!" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **FAILED** - Hardcoded values or security risks detected" >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Please review the scan output above and fix any issues before merging." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "Common fixes:" >> $GITHUB_STEP_SUMMARY
+            echo "- Replace placeholders with proper values" >> $GITHUB_STEP_SUMMARY
+            echo "- Remove hardcoded secrets/tokens" >> $GITHUB_STEP_SUMMARY
+            echo "- Use environment variables for configuration" >> $GITHUB_STEP_SUMMARY
+            echo "- Add legitimate strings to whitelist in tools/hardcoded-scan.config.json" >> $GITHUB_STEP_SUMMARY
+          fi 

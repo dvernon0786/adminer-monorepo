@@ -1,0 +1,21 @@
+# dependencies
+node_modules/
+# builds
+dist/
+.next/
+out/
+# env
+.env
+.env.*
+!.env.example
+# vercel
+.vercel/
+# os/editor
+.DS_Store
+*.log
+*.log.*
+*.swp
+*.swo
+.idea/
+.vscode/ 
+.vercel

@@ -1,0 +1,93 @@
+name: Smoke (Prod)
+on:
+  deployment_status:
+    types: [created, in_progress, success]
+  # Manual trigger for testing
+  workflow_dispatch:
+    inputs:
+      domain:
+        description: 'Domain to test'
+        required: true
+        default: 'https://www.adminer.online'
+        type: string
+
+jobs:
+  smoke:
+    if: ${{ github.event.deployment_status.state == 'success' || github.event_name == 'workflow_dispatch' }}
+    runs-on: ubuntu-latest
+    name: smoke_prod
+    concurrency:
+      group: smoke_prod
+      cancel-in-progress: true
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl jq
+          
+      - name: Wait for deployment to stabilize
+        if: github.event_name == 'deployment_status'
+        run: |
+          echo "Waiting for deployment to stabilize..."
+          sleep 120  # Wait up to 2 minutes
+          
+      - name: Health check
+        run: |
+          DOMAIN="${{ github.event.inputs.domain || 'https://www.adminer.online' }}"
+          echo "Testing domain: $DOMAIN"
+          
+          # Wait for health endpoint to be ready
+          for i in {1..30}; do
+            if curl -fsS "$DOMAIN/api/consolidated?action=health" >/dev/null 2>&1; then
+              echo "✅ Health endpoint ready after ${i}s"
+              break
+            fi
+            if [ $i -eq 30 ]; then
+              echo "❌ Health endpoint not ready after 30s"
+              exit 1
+            fi
+            echo "Waiting for health endpoint... (${i}/30)"
+            sleep 2
+          done
+          
+      - name: Run smoke tests
+        env:
+          DOMAIN: ${{ github.event.inputs.domain || 'https://www.adminer.online' }}
+          CLERK_TOKEN: ${{ secrets.CLERK_TEST_BEARER }}
+        run: |
+          echo "Running smoke tests against $DOMAIN"
+          bash scripts/smoke.sh "$DOMAIN"
+          
+      - name: Upload test artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-results-${{ github.run_number }}
+          path: |
+            /tmp/*.out
+            /tmp/health*.log
+          retention-days: 7
+          
+      - name: Test summary
+        if: always()
+        run: |
+          echo "## 🧪 Smoke Test Results" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Domain**: ${{ github.event.inputs.domain || 'https://www.adminer.online' }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Status**: ${{ job.status }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Run ID**: ${{ github.run_number }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          
+          if [ "${{ job.status }}" = "success" ]; then
+            echo "✅ **All smoke tests passed!**" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "❌ **Some smoke tests failed**" >> $GITHUB_STEP_SUMMARY
+            echo "Check the logs above for details." >> $GITHUB_STEP_SUMMARY
+          fi
+          
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Tests Run**: Health, Quota (unauth), Quota (auth), Dodo webhook, Jobs list, Job creation, Apify webhook, Quota limits" >> $GITHUB_STEP_SUMMARY 

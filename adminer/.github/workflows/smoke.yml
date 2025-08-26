@@ -1,0 +1,92 @@
+name: Smoke tests (Production)
+
+on:
+  # Run automatically when a Deployment reports "success".
+  # Vercel's GitHub integration emits deployment_status events.
+  deployment_status:
+    types: [success]
+
+  # Optional: manual trigger
+  workflow_dispatch:
+
+  # Optional: run on main pushes (acts as a fallback)
+  push:
+    branches: [main]
+
+concurrency:
+  group: smoke-prod
+  cancel-in-progress: true
+
+jobs:
+  smoke_prod:
+    # Only run when:
+    # - manually triggered, OR
+    # - a successful deployment to Production, OR
+    # - a push to main (fallback)
+    if: >
+      github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'deployment_status' &&
+       github.event.deployment_status.state == 'success' &&
+       (contains(github.event.deployment.environment, 'Production') ||
+        contains(github.event.deployment.environment, 'production'))) ||
+      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    # Point smoke.sh at your live domain
+    env:
+      DOMAIN: https://www.adminer.online
+
+    permissions:
+      contents: read
+      deployments: read
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Make smoke script executable
+        run: chmod +x scripts/smoke.sh
+
+      - name: Wait for health endpoint (prod)
+        run: |
+          set -e
+          echo "Waiting for $DOMAIN to report healthy..."
+          for i in {1..24}; do
+            code=$(curl -s -o /dev/null -w "%{http_code}" \
+              "$DOMAIN/api/consolidated?action=health" || true)
+            echo "Attempt $i: HTTP $code"
+            [ "$code" = "200" ] && exit 0
+            sleep 5
+          done
+          echo "Service not healthy after waiting." >&2
+          exit 1
+
+      - name: Run smoke tests (prod)
+        run: |
+          set -eo pipefail
+          echo "Running smoke tests against $DOMAIN ..."
+          DOMAIN="$DOMAIN" ./scripts/smoke.sh | tee smoke.log
+
+      - name: Upload smoke artifacts (prod)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-logs-prod
+          path: |
+            smoke.log
+            /tmp/*.out
+            scripts/smoke.sh
+
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## Smoke Test Summary" >> $GITHUB_STEP_SUMMARY
+          if [ -f smoke.log ]; then
+            echo "\n\`\`\`text" >> $GITHUB_STEP_SUMMARY
+            tail -n 200 smoke.log >> $GITHUB_STEP_SUMMARY || true
+            echo "\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "_No smoke.log produced._" >> $GITHUB_STEP_SUMMARY
+          fi 

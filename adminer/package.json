@@ -1,0 +1,50 @@
+{
+  "name": "adminer",
+  "private": true,
+  "version": "0.1.0",
+  "workspaces": [
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run -w @adminer/web build && npm run -w @adminer/api build",
+    "dev:api": "npm run -w @adminer/api dev",
+    "dev:web": "npm run -w @adminer/web dev",
+    "guard": "node scripts/guard.js",
+    "scan:hardcoded": "tsx tools/hardcoded-scan.ts",
+    "scan:hardcoded:diff": "tsx tools/hardcoded-scan.diff.ts",
+    "setup:husky": "node scripts/setup-husky.js",
+    "test": "jest",
+    "test:watch": "jest --watch",
+    "test:billing": "vitest run",
+    "test:billing:watch": "vitest",
+    "build:all": "npm run -w @adminer/api run prebuild && npm run -w @adminer/api run build",
+    "dev:api:env": "cd apps/api && (./scripts/dev-with-env.sh || bash scripts/dev-with-env.sh)",
+    "smoke": "./scripts/smoke-test-production.sh || sh scripts/smoke-test-production.sh",
+    "health": "curl -s https://www.adminer.online/api/consolidated?action=health || echo 'Health check failed'",
+    "billing": "curl -s https://www.adminer.online/api/consolidated?action=billing | jq . || echo 'Billing check failed'",
+    "candidates": "curl -s https://www.adminer.online/api/consolidated?action=candidates | jq . || echo 'Candidates check failed'",
+    "env:check": "cd apps/api && node scripts/guard-env.js",
+    "preflight": "cd apps/api && npm run prebuild",
+    "micro:smoke": "./scripts/micro-smoke.sh || sh scripts/micro-smoke.sh",
+    "vercel:validate": "./scripts/vercel-env-validate.sh || sh scripts/vercel-env-validate.sh",
+    "spa:integrate": "./scripts/build-and-integrate.sh || sh scripts/build-and-integrate.sh"
+  },
+  "devDependencies": {
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.0.0",
+    "fast-glob": "^3.3.3",
+    "husky": "^9.1.7",
+    "jest": "^30.0.5",
+    "lint-staged": "^15.5.2",
+    "ts-jest": "^29.4.1",
+    "tsx": "^4.20.4",
+    "vitest": "^1.0.0"
+  },
+  "engines": {
+    "node": ">=18.18.0"
+  },
+  "dependencies": {
+    "@clerk/clerk-js": "^5.88.0",
+    "dotenv": "^17.2.1"
+  }
+}
