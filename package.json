@@ -13,5 +13,8 @@
     "smoke:dev": "DOMAIN=http://localhost:3000 scripts/smoke-dev.sh",
     "smoke:prod": "scripts/smoke-prod.sh"
   },
-  "type": "module"
-} 
+  "type": "module",
+  "dependencies": {
+    "jose": "^6.0.13"
+  }
+}
