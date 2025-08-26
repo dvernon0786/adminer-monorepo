@@ -1,7 +1,13 @@
 name: Production Smoke
 
 on:
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Also deploy to Vercel before smoke?"
+        required: false
+        type: boolean
+        default: false
   deployment_status:
     types: [success]
 
@@ -12,8 +18,18 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout
+      - name: Checkout (with submodules)
         uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure submodules are synced
+        run: |
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --depth 1 || true
+          git submodule status --recursive || true
 
       - name: Show lockfiles
         run: |
@@ -36,6 +52,30 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+
+      - name: Install Vercel CLI
+        if: ${{ inputs.deploy == true }}
+        run: npm i -g vercel
+
+      - name: Vercel pull env (Prod)
+        if: ${{ inputs.deploy == true }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Vercel build (prebuilt)
+        if: ${{ inputs.deploy == true }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Vercel deploy
+        if: ${{ inputs.deploy == true }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
 
       - name: Install jq & curl
         run: |

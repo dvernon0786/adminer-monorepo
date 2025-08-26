@@ -5,6 +5,12 @@ on:
     branches: [ main ]
   pull_request:
   workflow_dispatch:
+    inputs:
+      deploy:
+        description: "Also deploy to Vercel before smoke?"
+        required: false
+        type: boolean
+        default: false
   schedule:
     # Nightly: 18:00 UTC (≈ 11:30 PM IST, Asia/Kolkata)
     - cron: "0 18 * * *"
@@ -32,7 +38,18 @@ jobs:
       matrix:
         node: [18.x, 20.x, 22.x]
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure submodules are synced
+        run: |
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --depth 1 || true
+          git submodule status --recursive || true
 
       - name: Show lockfiles
         run: |
@@ -49,6 +66,33 @@ jobs:
         with:
           node-version: ${{ matrix.node }}
           run-install: false
+
+      - name: Guard — required files
+        run: |
+          set -euo pipefail
+          # Accept either monorepo layout or submodule path
+          FILES=(
+            "apps/api/vercel.json"
+            "adminer/vercel.json"
+            "scripts/smoke.sh"
+            "scripts/smoke-local.env.example"
+          )
+          OK=0
+          for f in "${FILES[@]}"; do
+            if [ -f "$f" ]; then
+              echo "Found: $f"
+              OK=1
+            fi
+          done
+          if [ $OK -eq 0 ]; then
+            echo "❌ vercel.json not found in any known location"
+            echo "📁 Current directory structure:"
+            ls -la
+            echo "📁 adminer/ contents:"
+            ls -la adminer/ || echo "adminer/ not accessible"
+            exit 1
+          fi
+          echo "✅ Required files check passed"
 
       - name: Run guards
         shell: bash
@@ -89,7 +133,17 @@ jobs:
       WAIT_TIMEOUT_SEC: "600"    # 10 min max
       WAIT_INTERVAL_SEC: "10"    # poll every 10s
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Ensure submodules are synced
+        run: |
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --depth 1 || true
 
       - name: Show lockfiles
         run: |
@@ -234,47 +288,66 @@ jobs:
     env:
       PROD_URL: ${{ secrets.PROD_URL }}
     steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node (cached)
-        uses: ./.github/actions/setup-node-npm-workspaces
+      - name: Checkout (with submodules)
+        uses: actions/checkout@v4
         with:
-          node-version: ${{ env.NODE_VERSION_DEFAULT }}
-          run-install: false
+          fetch-depth: 0
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Ensure PROD_URL is set
-        shell: bash
+      - name: Ensure submodules are synced
         run: |
-          if [ -z "${PROD_URL:-}" ]; then
-            echo "❌ PROD_URL secret is not configured." >&2
-            exit 1
-          fi
-          echo "PROD_URL=${PROD_URL}"
+          git submodule sync --recursive || true
+          git submodule update --init --recursive --depth 1 || true
 
-      - name: Run smoke against Production
-        shell: bash
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install Vercel CLI
+        if: ${{ inputs.deploy == true }}
+        run: npm i -g vercel
+
+      - name: Vercel pull env (Prod)
+        if: ${{ inputs.deploy == true }}
         env:
-          PROD_URL: ${{ env.PROD_URL }}
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+
+      - name: Vercel build (prebuilt)
+        if: ${{ inputs.deploy == true }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel build --prod --token "$VERCEL_TOKEN"
+
+      - name: Vercel deploy
+        if: ${{ inputs.deploy == true }}
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+
+      - name: Install curl+jq
+        run: sudo apt-get update && sudo apt-get install -y curl jq
+
+      - name: Smoke against PROD
+        env:
+          PROD_DOMAIN: ${{ secrets.PROD_DOMAIN }}
+          CLERK_JWT_FREE: ${{ secrets.CLERK_JWT_FREE }}
+          CLERK_JWT_PRO: ${{ secrets.CLERK_JWT_PRO }}
+          CLERK_JWT_ENTERPRISE: ${{ secrets.CLERK_JWT_ENTERPRISE }}
         run: |
           set -euo pipefail
-          if [ -x "scripts/smoke.sh" ]; then
-            bash scripts/smoke.sh
-          elif npm run | grep -qE '^ *smoke'; then
-            npm run smoke
-          else
-            echo "No smoke script found. Add scripts/smoke.sh or npm script 'smoke'." >&2
-            exit 1
-          fi
+          export DOMAIN="${PROD_DOMAIN:-https://www.adminer.online}"
+          bash scripts/smoke.sh
 
-      - name: Upload smoke artifacts on failure
+      - name: Upload failure artifacts
         if: failure()
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-logs
+          name: smoke-artifacts
           path: |
-            ./logs/**
-            ./**/*.log
-            ./**/playwright-report/**
-            ./**/cypress/screenshots/**
-            ./**/cypress/videos/**
-          if-no-files-found: ignore 
+            /tmp/headers.txt
+            /tmp/body.txt 
