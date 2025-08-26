@@ -9,6 +9,7 @@ set -euo pipefail
 : "${ROUTE_ROOT:=/}"
 : "${ROUTE_DASH:=/dashboard}"
 : "${ROUTE_HEALTH:=/api/consolidated?action=health}"
+: "${ROUTE_DB_PING:=/api/consolidated?action=db/ping}"
 : "${ROUTE_QUOTA:=/api/consolidated?action=quota/status}"
 : "${ROUTE_JOBS_CREATE:=/api/jobs/create}"
 : "${ROUTE_DODO_WEBHOOK:=/api/dodo/webhook}"
@@ -66,6 +67,14 @@ expect_status "200"
 health="$(jq_try "${KEY_STATUS}" "state,health,statusText")"
 [[ "${health}" == "healthy" ]] || { echo "Health not healthy: ${health}"; cat /tmp/body.txt; exit 1; }
 echo "OK health=${health}"
+
+print_h1 "Database ping endpoint"
+${CURL} "$(url "${ROUTE_DB_PING}")"
+expect_status "200"
+db_status="$(jq_try "${KEY_STATUS}" "state,statusText")"
+db_conn="$(jq_try "db" "connection,connected")"
+[[ "${db_status}" == "ok" && "${db_conn}" == "connected" ]] || { echo "DB ping failed: status=${db_status}, db=${db_conn}"; cat /tmp/body.txt; exit 1; }
+echo "OK database connected"
 
 print_h1 "Quota unauthorized (no token)"
 ${CURL} "$(url "${ROUTE_QUOTA}")" || true
@@ -139,6 +148,7 @@ echo "🎉 All production smoke checks passed!"
 echo ""
 echo "Your API is working perfectly with real Clerk JWT tokens:"
 echo "✅ Health endpoint"
+echo "✅ Database connectivity"
 echo "✅ Quota endpoints for all plans"
 echo "✅ Job creation with proper quota enforcement"
 echo "✅ Webhook endpoint accessibility"

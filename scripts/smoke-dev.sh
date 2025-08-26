@@ -8,13 +8,16 @@ DEV_HEADERS_FREE="-H x-dev-user-id:dev-user-123 -H x-dev-org-id:dev-org-free -H 
 DEV_HEADERS_PRO="-H x-dev-user-id:dev-user-456 -H x-dev-org-id:dev-org-pro -H x-dev-plan:pro"
 DEV_HEADERS_ENT="-H x-dev-user-id:dev-user-789 -H x-dev-org-id:dev-org-ent -H x-dev-plan:enterprise"
 
+# Optional: Route overrides (for different API shapes)
 : "${ROUTE_ROOT:=/}"
 : "${ROUTE_DASH:=/dashboard}"
 : "${ROUTE_HEALTH:=/api/consolidated?action=health}"
+: "${ROUTE_DB_PING:=/api/consolidated?action=db/ping}"
 : "${ROUTE_QUOTA:=/api/consolidated?action=quota/status}"
 : "${ROUTE_JOBS_CREATE:=/api/jobs/create}"
 : "${ROUTE_DODO_WEBHOOK:=/api/dodo/webhook}"
 
+# Optional: JSON key overrides (tolerant to shape diffs)
 : "${KEY_STATUS:=status}"
 : "${KEY_PLAN:=plan}"
 : "${KEY_LIMIT:=limit}"
@@ -31,6 +34,7 @@ DEV_HEADERS_ENT="-H x-dev-user-id:dev-user-789 -H x-dev-org-id:dev-org-ent -H x-
 : "${KEY_REQ_ALTERNATES:=limit,adsRequested}"
 : "${KEY_IMP_ALTERNATES:=adsImported,importedCount}"
 
+# Optional org IDs (just for logs)
 : "${ORG_ID_FREE:=dev-org-free}"
 : "${ORG_ID_PRO:=dev-org-pro}"
 : "${ORG_ID_ENT:=dev-org-ent}"
@@ -68,6 +72,14 @@ expect_status "200"
 health="$(jq_try "${KEY_STATUS}" "state,health,statusText")"
 [[ "${health}" == "healthy" ]] || { echo "Health not healthy: ${health}"; cat /tmp/body.txt; exit 1; }
 echo "OK health=${health}"
+
+print_h1 "Database ping endpoint"
+${CURL} "$(url "${ROUTE_DB_PING}")"
+expect_status "200"
+db_status="$(jq_try "${KEY_STATUS}" "state,statusText")"
+db_conn="$(jq_try "db" "connection,connected")"
+[[ "${db_status}" == "ok" && "${db_conn}" == "connected" ]] || { echo "DB ping failed: status=${db_status}, db=${db_conn}"; cat /tmp/body.txt; exit 1; }
+echo "OK database connected"
 
 print_h1 "Quota unauthorized (no dev headers)"
 ${CURL} "$(url "${ROUTE_QUOTA}")" || true
@@ -141,6 +153,7 @@ echo "🎉 All smoke checks passed in development mode!"
 echo ""
 echo "Your API is working perfectly with:"
 echo "✅ Health endpoint"
+echo "✅ Database connectivity"
 echo "✅ Quota endpoints for all plans"
 echo "✅ Job creation with proper quota enforcement"
 echo "✅ Webhook endpoint accessibility"
