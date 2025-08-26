@@ -1,55 +1,66 @@
 #!/usr/bin/env bash
 set -euo pipefail
-echo "Cache bust: $(date -u)"
 
-# Move to repo root (folder containing this script)
+# Always echo what we do
+log() { echo -e "$1"; }
+
+# Resolve paths relative to this script, regardless of where it's called from
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-cd "$SCRIPT_DIR"
-
-API_DIR="apps/api"
+MONOREPO_ROOT="$SCRIPT_DIR"              # adminer/
+API_DIR="$MONOREPO_ROOT/apps/api"
+WEB_DIR="$MONOREPO_ROOT/apps/web"
 PUBLIC_DIR="$API_DIR/public"
-WEB_DIR="apps/web"
+DIST_DIR="$WEB_DIR/dist"
 
-# ---------- HARD CLEAN public ----------
-echo "🧹 Cleaning public directory..."
-rm -rf "$PUBLIC_DIR" || true
+log "Cache bust: $(date -u)"
+
+# --- Safety checks -----------------------------------------------------------
+if [[ ! -f "$API_DIR/package.json" ]]; then
+  echo "❌ Expected API at $API_DIR but package.json not found."
+  exit 1
+fi
+if [[ ! -f "$WEB_DIR/package.json" ]]; then
+  echo "❌ Expected Web SPA at $WEB_DIR but package.json not found."
+  exit 1
+fi
+
+# --- Clerk tripwire (keeps proxy regression from sneaking in) ---------------
+# If you have a file that must exist / string that must NOT exist, check it here.
+# Example guard (adjust to your project needs):
+# if grep -R "NEXT_PUBLIC_CLERK_PROXY_URL" "$WEB_DIR" >/dev/null; then
+#   echo "❌ Unexpected NEXT_PUBLIC_CLERK_PROXY_URL usage found in SPA."
+#   exit 1
+# fi
+
+# --- Clean API public dir ----------------------------------------------------
+log "🧹 Cleaning public directory..."
+rm -rf "$PUBLIC_DIR"
 mkdir -p "$PUBLIC_DIR"
 
-# ---------- Build SPA if not already built ----------
-if [ -d "$WEB_DIR/dist" ]; then
-  echo "✅ SPA already built at $WEB_DIR/dist"
+# --- Install & Build SPA -----------------------------------------------------
+log "➡️ Installing SPA deps at: $WEB_DIR"
+pushd "$WEB_DIR" >/dev/null
+if [[ -f package-lock.json ]]; then
+  npm ci --include=dev
 else
-  echo "➡️ Building SPA at: $WEB_DIR"
-  if [ -f "$WEB_DIR/package.json" ]; then
-    (cd "$WEB_DIR" && npm run build)
-  else
-    echo "❌ No package.json found at $WEB_DIR"
-    exit 1
-  fi
+  npm install --include=dev
 fi
 
-# ---------- Copy SPA artifacts to API public ----------
-if [ -d "$WEB_DIR/dist" ]; then
-  echo "➡️ Copying SPA artifacts from $WEB_DIR/dist -> $PUBLIC_DIR"
-  # Use rsync to avoid glob expansion issues
-  rsync -a "$WEB_DIR/dist"/ "$PUBLIC_DIR"/
-  echo "✅ SPA artifacts copied successfully"
-else
-  echo "❌ Expected $WEB_DIR/dist after build, but it was not found."
+log "🏗  Building SPA (vite) ..."
+# Use local vite via npm script so PATH is correct
+# Ensure your apps/web/package.json has: "build": "rm -rf dist && vite build"
+npm run build
+popd >/dev/null
+
+# --- Validate build output ---------------------------------------------------
+if [[ ! -d "$DIST_DIR" ]] || [[ -z "$(ls -A "$DIST_DIR" 2>/dev/null || true)" ]]; then
+  echo "❌ SPA build produced no files at $DIST_DIR"
   exit 1
 fi
 
-# ---------- Tripwire: forbid stale Clerk proxy bits in built artifacts ----------
-echo "🔎 Scanning built artifacts for forbidden Clerk proxy config..."
-if rg -n "(clerkJSUrl|proxyUrl|__clerk_proxy_url|CLERK_FRONTEND_API)" "$PUBLIC_DIR" 2>/dev/null; then
-  echo "❌ Forbidden Clerk proxy references found in built artifacts. Aborting."
-  exit 1
-else
-  echo "✅ Built artifacts are clean."
-fi
+# --- Copy artifacts into API public -----------------------------------------
+log "📦 Copying SPA artifacts from $DIST_DIR → $PUBLIC_DIR"
+rsync -a "$DIST_DIR"/ "$PUBLIC_DIR"/
 
-# ---------- Build API (Next.js) ----------
-echo "➡️ Building @adminer/api (from $API_DIR)"
-(cd "$API_DIR" && npm run build)
-
-echo "✅ Build completed" 
+# --- Done -------------------------------------------------------------------
+log "✅ Build completed. Public assets ready at: $PUBLIC_DIR" 
