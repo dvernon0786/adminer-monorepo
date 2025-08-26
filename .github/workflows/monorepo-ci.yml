@@ -38,18 +38,10 @@ jobs:
       matrix:
         node: [18.x, 20.x, 22.x]
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ensure submodules are synced
-        run: |
-          git submodule sync --recursive || true
-          git submodule update --init --recursive --depth 1 || true
-          git submodule status --recursive || true
 
       - name: Show lockfiles
         run: |
@@ -133,17 +125,10 @@ jobs:
       WAIT_TIMEOUT_SEC: "600"    # 10 min max
       WAIT_INTERVAL_SEC: "10"    # poll every 10s
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ensure submodules are synced
-        run: |
-          git submodule sync --recursive || true
-          git submodule update --init --recursive --depth 1 || true
 
       - name: Show lockfiles
         run: |
@@ -288,17 +273,10 @@ jobs:
     env:
       PROD_URL: ${{ secrets.PROD_URL }}
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ensure submodules are synced
-        run: |
-          git submodule sync --recursive || true
-          git submodule update --init --recursive --depth 1 || true
 
       - name: Setup Node
         uses: actions/setup-node@v4

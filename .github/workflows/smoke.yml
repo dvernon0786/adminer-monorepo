@@ -18,18 +18,10 @@ jobs:
     timeout-minutes: 15
 
     steps:
-      - name: Checkout (with submodules)
+      - name: Checkout
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Ensure submodules are synced
-        run: |
-          git submodule sync --recursive || true
-          git submodule update --init --recursive --depth 1 || true
-          git submodule status --recursive || true
 
       - name: Show lockfiles
         run: |
