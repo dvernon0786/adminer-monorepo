@@ -65,6 +65,13 @@ health="$(jq_try "${KEY_STATUS}" "state,health,statusText")"
 [[ "${health}" == "healthy" ]] || { echo "Health not healthy: ${health}"; cat /tmp/body.txt; exit 1; }
 echo "OK health=${health}"
 
+print_h1 "Database ping"
+${CURL} "$(url "/api/consolidated?action=db/ping")"
+expect_status "200"
+db_status="$(jq_try "status" "")"
+[[ "${db_status}" == "ok" ]] || { echo "DB ping failed: ${db_status}"; cat /tmp/body.txt; exit 1; }
+echo "OK db/ping=${db_status}"
+
 print_h1 "Quota unauthorized"
 ${CURL} "$(url "${ROUTE_QUOTA}")" || true
 expect_status "401"
@@ -157,6 +164,24 @@ ${CURL} -X POST "$(url "${ROUTE_DODO_WEBHOOK}")" || true
 code="$(parse_status)"
 [[ "${code}" != "404" ]] || { echo "Webhook 404 (missing)"; exit 1; }
 echo "OK webhook present (HTTP ${code})"
+
+print_h1 "Webhook rejects missing orgExternalId"
+${CURL} -X POST -H "Content-Type: application/json" -d '{}' "$(url "${ROUTE_DODO_WEBHOOK}")" || true
+webhook_reject_code="$(parse_status)"
+if [[ "${webhook_reject_code}" == "400" ]]; then
+  error_msg="$(jq_try "error" "")"
+  if [[ "${error_msg}" == "missing_orgExternalId" ]]; then
+    echo "OK webhook properly rejects missing orgExternalId (400)"
+  else
+    echo "Webhook rejected but wrong error: ${error_msg}"
+    cat /tmp/body.txt
+    exit 1
+  fi
+else
+  echo "Expected webhook to reject with 400, got ${webhook_reject_code}"
+  cat /tmp/body.txt
+  exit 1
+fi
 
 echo ""
 echo "✅ All smoke checks passed." 
