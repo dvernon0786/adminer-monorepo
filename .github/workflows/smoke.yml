@@ -13,7 +13,7 @@ on:
 
 jobs:
   smoke:
-    if: github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production')
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
 
@@ -30,17 +30,15 @@ jobs:
 
       # Monorepo-safe Node cache (npm). Gate by presence of lockfile(s).
       - name: Setup Node (cache)
-        if: ${{ hashFiles('package-lock.json', '**/package-lock.json') != '' }}
+        if: ${{ hashFiles('package-lock.json', 'adminer/package-lock.json') != '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
           cache: npm
-          cache-dependency-path: |
-            package-lock.json
-            **/package-lock.json
+          cache-dependency-path: package-lock.json
 
       - name: Setup Node (no cache fallback)
-        if: ${{ hashFiles('package-lock.json', '**/package-lock.json') == '' }}
+        if: ${{ hashFiles('package-lock.json', 'adminer/package-lock.json') == '' }}
         uses: actions/setup-node@v4
         with:
           node-version: 20
