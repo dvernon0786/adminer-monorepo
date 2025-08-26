@@ -54,9 +54,17 @@ const serialize = (d: Record<string, readonly string[]>) =>
   Object.entries(d).map(([k, v]) => `${k} ${v.join(' ')}`).join('; ')
 
 const BASE_CSP = serialize(BASE)
-const AUTH_CSP = serialize({
+
+// Development CSP (allows unsafe-eval for Clerk compatibility)
+const DEV_CSP = serialize({
   ...BASE,
-  "script-src": [...BASE["script-src"], "'unsafe-eval'", "'wasm-unsafe-eval'"], // only on auth routes
+  "script-src": [...BASE["script-src"], "'unsafe-eval'", "'wasm-unsafe-eval'"],
+})
+
+// Production CSP (stricter, no unsafe-eval)
+const PROD_CSP = serialize({
+  ...BASE,
+  "script-src": [...BASE["script-src"], "'wasm-unsafe-eval'"], // Only WASM if needed
 })
 
 // Edge-safe random id (no Node imports)
@@ -83,8 +91,11 @@ export default async function middleware(req: Request) {
     const res = NextResponse.next()
     const pathname = new URL(req.url).pathname
     const isAuth = pathname.startsWith('/sign-in') || pathname.startsWith('/sign-up')
+    const isDev = process.env.NODE_ENV === 'development'
 
-    res.headers.set('Content-Security-Policy', isAuth ? AUTH_CSP : BASE_CSP)
+    // Choose CSP based on environment
+    const csp = isDev ? DEV_CSP : PROD_CSP
+    res.headers.set('Content-Security-Policy', csp)
     res.headers.set('Referrer-Policy', 'no-referrer')
     res.headers.set('X-Content-Type-Options', 'nosniff')
     res.headers.set('X-Frame-Options', 'DENY')
@@ -105,13 +116,15 @@ export default async function middleware(req: Request) {
       })
     }
 
-    console.log('Middleware: Headers (and cookie) set for:', pathname)
+    console.log('Middleware: Headers (and cookie) set for:', pathname, isDev ? '(dev)' : '(prod)')
     return res
   } catch (error) {
     console.error('Critical middleware error:', error)
     // 4) Last resort: safe response with minimal headers
     const res = NextResponse.next()
-    res.headers.set('Content-Security-Policy', BASE_CSP)
+    const isDev = process.env.NODE_ENV === 'development'
+    const fallbackCSP = isDev ? DEV_CSP : BASE_CSP
+    res.headers.set('Content-Security-Policy', fallbackCSP)
     console.log('Middleware: Emergency fallback response')
     return res
   }
