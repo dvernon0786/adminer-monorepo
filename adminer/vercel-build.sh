@@ -58,9 +58,11 @@ if [[ ! -d "$DIST_DIR" ]] || [[ -z "$(ls -A "$DIST_DIR" 2>/dev/null || true)" ]]
   exit 1
 fi
 
-# --- Copy artifacts into API public -----------------------------------------
+# --- Copy artifacts into API public (portable, no rsync) --------------------
 log "📦 Copying SPA artifacts from $DIST_DIR → $PUBLIC_DIR"
-rsync -a "$DIST_DIR"/ "$PUBLIC_DIR"/
+# Use tar pipe to preserve dotfiles and avoid globbing pitfalls
+# Works on Vercel build images (no need for rsync)
+tar -C "$DIST_DIR" -cf - . | tar -C "$PUBLIC_DIR" -xpf -
 
 # --- Done -------------------------------------------------------------------
 log "✅ Build completed. Public assets ready at: $PUBLIC_DIR" 
