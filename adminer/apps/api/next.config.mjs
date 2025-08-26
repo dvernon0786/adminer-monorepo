@@ -1,5 +1,10 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  typescript: {
+    // Allow build to pass even with TS errors (temporary while fixing types)
+    ignoreBuildErrors: false
+  },
+
   async headers() {
     // Common pieces
     const SELF = "'self'";

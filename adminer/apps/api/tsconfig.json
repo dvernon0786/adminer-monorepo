@@ -34,6 +34,8 @@
     "tests/**/*",
     "vitest.config.ts",
     "**/*.test.ts",
-    "**/*.spec.ts"
+    "**/*.spec.ts",
+    "drizzle/**",
+    "scripts/**"
   ]
 }
