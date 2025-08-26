@@ -18,9 +18,23 @@ if [ ! -d "adminer" ]; then
     exit 1
 fi
 
+# Check if adminer submodule is properly initialized (has .git directory)
+if [ ! -d "adminer/.git" ]; then
+    echo "⚠️  Warning: adminer submodule not properly initialized"
+    echo "🔧 Attempting to initialize submodule..."
+    
+    # Try to initialize the submodule
+    git submodule update --init --recursive || {
+        echo "❌ Failed to initialize adminer submodule"
+        exit 1
+    }
+fi
+
 # Check if key configuration files exist
 if [ ! -f "adminer/vercel.json" ]; then
     echo "❌ Error: adminer/vercel.json not found"
+    echo "📁 Contents of adminer/ directory:"
+    ls -la adminer/ || echo "Cannot list adminer directory"
     exit 1
 fi
 
@@ -33,6 +47,8 @@ fi
 # Check if adminer apps have package.json files
 if [ ! -f "adminer/apps/api/package.json" ]; then
     echo "❌ Error: adminer/apps/api/package.json not found"
+    echo "📁 Contents of adminer/apps/ directory:"
+    ls -la adminer/apps/ || echo "Cannot list adminer/apps directory"
     exit 1
 fi
 
@@ -44,6 +60,8 @@ fi
 # Check if critical source files exist
 if [ ! -f "adminer/apps/api/src/db/client.ts" ]; then
     echo "❌ Error: adminer/apps/api/src/db/client.ts not found"
+    echo "📁 Contents of adminer/apps/api/src/db/ directory:"
+    ls -la adminer/apps/api/src/db/ || echo "Cannot list db directory"
     exit 1
 fi
 
