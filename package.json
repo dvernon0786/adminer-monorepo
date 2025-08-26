@@ -8,7 +8,10 @@
     "smoke:local": "source scripts/smoke-local.env && scripts/smoke.sh",
     "smoke:help": "echo 'Smoke testing commands: npm run smoke, npm run smoke:local'",
     "test:endpoints": "scripts/test-endpoints.sh",
-    "test:local": "scripts/test-endpoints.sh"
+    "test:local": "scripts/test-endpoints.sh",
+    "test:dev": "scripts/test-dev-mode.sh",
+    "smoke:dev": "DOMAIN=http://localhost:3000 scripts/smoke-dev.sh",
+    "smoke:prod": "scripts/smoke-prod.sh"
   },
   "type": "module"
 } 
