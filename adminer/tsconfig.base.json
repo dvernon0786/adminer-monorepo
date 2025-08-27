@@ -14,6 +14,10 @@
     "isolatedModules": true,
     "noEmit": true,
     "baseUrl": ".",
-    "paths": {}
+    "paths": {
+      "@/*": ["apps/api/src/*"],
+      "@/db": ["apps/api/src/db"],
+      "@/db/*": ["apps/api/src/db/*"]
+    }
   }
 } 
