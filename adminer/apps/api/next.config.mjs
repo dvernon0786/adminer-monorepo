@@ -18,7 +18,7 @@ const csp = (opts = { allowEval: false }) => {
     "https://clerk.com",
   ].join(" ");
 
-  return [
+  const cspValue = [
     `script-src 'self' ${EVAL} ${ORIGINS} data: blob:`,
     `script-src-elem 'self' ${EVAL} ${ORIGINS} data: blob:`,
     `style-src 'self' 'unsafe-inline'`,
@@ -34,6 +34,11 @@ const csp = (opts = { allowEval: false }) => {
     `base-uri 'none'`,
     `form-action 'self' ${ORIGINS}`,
   ].join("; ");
+
+  // Debug logging
+  console.log(`CSP generated for ${opts.allowEval ? 'eval-allowed' : 'strict'}:`, cspValue);
+  
+  return cspValue;
 };
 
 // Shared security headers (strict, modern)
@@ -95,9 +100,9 @@ const nextConfig = {
         ],
       },
 
-      // 3) Default: everything else stays strict (no eval)
+      // 3) Default: everything else stays strict (no eval) - MUST BE LAST
       {
-        source: "/:path*",
+        source: "/((?!_next|api|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|sign-in|sign-up|index\\.html).*)",
         headers: [
           ...securityHeaders,
           { key: "Content-Security-Policy", value: csp({ allowEval: false }) },
