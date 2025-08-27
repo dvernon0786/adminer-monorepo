@@ -6,14 +6,14 @@ const CANONICAL_HOST = "adminer.online";
 
 function needsRedirect(req: Request) {
   const url = new URL(req.url);
-  const host = url.host;
+  const hostname = url.hostname; // <-- use hostname, not host (avoids :443 mismatch)
 
   // Ignore Vercel preview deployments and localhost
-  const isPreview = host.includes(".vercel.app") || host.startsWith("localhost");
+  const isPreview = hostname.includes(".vercel.app") || hostname.startsWith("localhost");
   if (isPreview) return false;
 
   // Only redirect if not already canonical
-  return host !== CANONICAL_HOST;
+  return hostname !== CANONICAL_HOST;
 }
 
 // BYPASSES (no auth, no header mutations)
@@ -92,7 +92,7 @@ export default async function middleware(req: Request) {
     // 0b) Canonical host redirect
     if (needsRedirect(req)) {
       const url = new URL(req.url);
-      url.host = CANONICAL_HOST;
+      url.hostname = CANONICAL_HOST; // normalize hostname only
       console.log(`Middleware: Redirecting ${req.url} -> ${url.toString()}`);
       return NextResponse.redirect(url, 301);
     }
