@@ -1,58 +1,50 @@
 #!/usr/bin/env bash
-set -euxo pipefail
+set -Eeuo pipefail
 
-# Get the absolute path of the script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-echo "🚀 Starting unified Vercel build from: $SCRIPT_DIR"
-
-# Ensure we're in the API directory
-cd "$SCRIPT_DIR"
-
-# Define paths relative to the API directory
+API_DIR="$SCRIPT_DIR"
 WEB_DIR="$SCRIPT_DIR/../web"
-echo "📁 Web directory: $WEB_DIR"
+PUBLIC_DIR="$API_DIR/public"
 
-# Check if web directory exists
-if [ ! -d "$WEB_DIR" ]; then
-  echo "❌ Error: Web directory not found at $WEB_DIR"
-  ls -la "$SCRIPT_DIR/.."
-  exit 1
-fi
+say() { printf "%s\n" "$*"; }
 
-# 1) Build the Vite SPA
-echo "📦 Building Vite SPA..."
-cd "$WEB_DIR"
+install_deps_and_build() {
+  local dir="$1" build_cmd="$2"
+  cd "$dir"
 
-# Always use npm for consistency in Vercel environment
-echo "📦 Installing web dependencies with npm..."
-npm ci --include=dev
-echo "🏗️ Building web app..."
-npm run build
+  if command -v pnpm >/dev/null 2>&1 && [ -f pnpm-lock.yaml ]; then
+    say "📦 Using pnpm in $dir"
+    pnpm install --frozen-lockfile
+    pnpm run "$build_cmd"
+  elif [ -f package-lock.json ]; then
+    say "📦 Using npm (lockfile) in $dir"
+    npm ci --include=dev
+    npm run "$build_cmd"
+  else
+    say "📦 Using npm (no lockfile) in $dir"
+    npm install
+    npm run "$build_cmd"
+  fi
+}
 
-# 2) Copy SPA build into Next public/
-echo "📋 Copying SPA build to public directory..."
-cd "$SCRIPT_DIR"
-rm -rf public/*
-mkdir -p public
-cp -r "$WEB_DIR/dist"/* public/
+say "🚀 Unified build start: $API_DIR"
 
-# Verify SPA files are in place
-if [ ! -f public/index.html ]; then
-  echo "❌ Error: SPA index.html not found in public directory"
-  ls -la public/
-  exit 1
-fi
+# 1) Build Vite SPA
+[ -d "$WEB_DIR" ] || { echo "❌ WEB_DIR not found: $WEB_DIR"; exit 1; }
+say "🏗️ Building SPA (Vite) ..."
+install_deps_and_build "$WEB_DIR" build   # expects "build" script in @adminer/web
 
-echo "✅ SPA files copied successfully"
+# 2) Copy SPA to Next public/
+say "📋 Copying SPA → $PUBLIC_DIR"
+rm -rf "$PUBLIC_DIR"/*
+mkdir -p "$PUBLIC_DIR"
+cp -r "$WEB_DIR/dist/"* "$PUBLIC_DIR/"
 
-# 3) Build the Next.js API app
-echo "🏗️ Building Next.js API app..."
-cd "$SCRIPT_DIR"
-echo "📦 Installing API dependencies with npm..."
-npm ci --include=dev
-echo "🏗️ Building Next.js app..."
-npm run build
+[ -f "$PUBLIC_DIR/index.html" ] || { echo "❌ index.html missing in public/"; exit 1; }
+say "✅ SPA files present"
 
-echo "🎉 Unified build completed successfully!"
-echo "📁 SPA files available in: public/"
-echo "📁 Next.js build available in: .next/" 
+# 3) Build Next API app
+say "🏗️ Building Next API ..."
+install_deps_and_build "$API_DIR" build   # expects "build" script = next build
+
+say "🎉 Unified build completed" 

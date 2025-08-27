@@ -1,29 +1,45 @@
-name: Smoke (Prod)
+name: Smoke Tests (Production)
+
 on:
+  push:
+    branches: [ main ]
   workflow_dispatch:
-  deployment_status:
-    types: [success]
+    inputs:
+      base_url:
+        description: "Base URL to test"
+        default: "https://www.adminer.online"
+        required: true
+        type: string
+
+concurrency:
+  group: smoke-prod
+  cancel-in-progress: false
+
 jobs:
   smoke:
     runs-on: ubuntu-latest
+    timeout-minutes: 10
+
     steps:
-      - name: Hit root (CSP present)
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set BASE_URL
         run: |
-          curl -sI https://www.adminer.online/ | grep -i "content-security-policy" || (echo "CSP header missing" && exit 1)
-      - name: Quota endpoint
-        run: |
-          set -e
-          body=$(curl -s "https://www.adminer.online/api/consolidated?action=quota/status")
-          echo "$body"
-          code=$(curl -s -o /dev/null -w "%{http_code}" "https://www.adminer.online/api/consolidated?action=quota/status")
-          if [ "$code" != "200" ] && [ "$code" != "402" ]; then
-            echo "Unexpected status: $code"; exit 1;
+          if [ -n "${{ github.event.inputs.base_url }}" ]; then
+            echo "BASE_URL=${{ github.event.inputs.base_url }}" >> $GITHUB_ENV
+          else
+            echo "BASE_URL=https://www.adminer.online" >> $GITHUB_ENV
           fi
-      - name: CSP report GET
+
+      # Optional small buffer so Vercel DNS/edge finishes propagating
+      - name: Warm-up wait
+        run: sleep 15
+
+      - name: Run smoke tests
+        env:
+          BASE_URL: ${{ env.BASE_URL }}
+          RETRIES: "30"       # up to ~2.5 minutes per endpoint with 5s sleep
+          SLEEP_SECS: "5"
         run: |
-          curl -s "https://www.adminer.online/api/csp/report" | grep -q '"ok":true' || (echo "CSP report GET failed" && exit 1)
-      - name: CSP report POST (json)
-        run: |
-          curl -s -X POST -H "Content-Type: application/json" \
-            -d '{"document-uri":"gh-action"}' \
-            "https://www.adminer.online/api/csp/report" | grep -q '"received":true' || exit 1
+          bash scripts/smoke.sh
