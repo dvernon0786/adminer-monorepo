@@ -15,22 +15,14 @@
     "noEmit": true,
     "types": ["node"],
     "baseUrl": ".",
-    "plugins": [
-      {
-        "name": "next"
-      }
-    ],
+    "plugins": [{ "name": "next" }],
     "allowJs": true,
     "incremental": true
   },
-  "include": [
-    "next-env.d.ts",
-    ".next/types/**/*.ts",
-    "**/*.ts",
-    "**/*.tsx"
-  ],
+  "include": ["next-env.d.ts", ".next/types/**/*.ts", "src/**/*", "lib/**/*", "pages/**/*", "app/**/*"],
   "exclude": [
     "node_modules",
+    ".next",
     "tests/**/*",
     "vitest.config.ts",
     "**/*.test.ts",
