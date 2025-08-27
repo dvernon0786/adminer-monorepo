@@ -5,6 +5,7 @@ import { useUser, SignIn, SignUp } from '@clerk/clerk-react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import Homepage from './pages/Homepage'
 import Dashboard from './pages/dashboard'
+import AdminWebhookEvents from './pages/AdminWebhookEvents'
 
 // Post-auth redirect logic - only for non-auth routes
 function PostAuthRedirect() {
@@ -74,6 +75,9 @@ function App() {
         
         {/* Protected area — guard here, not on auth routes */}
         <Route path="/dashboard/*" element={<Dashboard />} />
+        
+        {/* Admin routes */}
+        <Route path="/admin/webhooks" element={<AdminWebhookEvents />} />
         
         {/* Fallback */}
         <Route path="*" element={<Navigate to="/" replace />} />

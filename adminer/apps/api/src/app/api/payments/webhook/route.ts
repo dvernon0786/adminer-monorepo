@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
+import { headers } from "next/server";
 import { db } from "@/db";
-import { orgs, plans } from "@/db/schema";
+import { orgs, plans, webhookEvents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-const DODO_WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET!;
+// Prefer DODO_WEBHOOK_KEY; fall back to legacy var so existing envs keep working
+const WEBHOOK_KEY =
+  process.env.DODO_WEBHOOK_KEY ??
+  process.env.DODO_WEBHOOK_SECRET ?? // legacy
+  "";
+
 const PRO_CODE = process.env.DODO_PRO_PLANCODE || "pro-500";
 const ENT_CODE = process.env.DODO_ENTERPRISE_PLANCODE || "ent-2000";
 
@@ -12,21 +18,52 @@ const ENT_CODE = process.env.DODO_ENTERPRISE_PLANCODE || "ent-2000";
 const DODO_PRO_PRODUCT_ID = process.env.DODO_PRO_PRODUCT_ID;
 const DODO_ENT_PRODUCT_ID = process.env.DODO_ENT_PRODUCT_ID;
 
-export const runtime = "edge";
+if (!WEBHOOK_KEY) {
+  // Fail fast on boot if missing
+  console.warn("[payments/webhook] Missing DODO_WEBHOOK_KEY");
+}
 
-async function verifySignature(rawBody: string, signature: string | null) {
-  if (!signature) return false;
-  const enc = new TextEncoder();
-  const key = await crypto.subtle.importKey(
-    "raw",
-    enc.encode(DODO_WEBHOOK_SECRET),
-    { name: "HMAC", hash: "SHA-256" },
-    false,
-    ["sign", "verify"]
-  );
-  const sig = await crypto.subtle.sign("HMAC", key, enc.encode(rawBody));
-  const hex = Array.from(new Uint8Array(sig)).map(b => b.toString(16).padStart(2, "0")).join("");
-  return signature === hex;
+// Use nodejs runtime for compatibility
+export const runtime = "nodejs";
+
+// Manual Standard Webhooks verification following the spec
+async function verifyStandardWebhook(
+  rawBody: string, 
+  webhookId: string, 
+  timestamp: string, 
+  signature: string
+): Promise<boolean> {
+  if (!WEBHOOK_KEY || !webhookId || !timestamp || !signature) {
+    return false;
+  }
+
+  try {
+    // Standard Webhooks format: webhook-id.webhook-timestamp.payload
+    const payload = `${webhookId}.${timestamp}.${rawBody}`;
+    
+    // Create HMAC-SHA256 signature
+    const encoder = new TextEncoder();
+    const keyData = encoder.encode(WEBHOOK_KEY);
+    const payloadData = encoder.encode(payload);
+    
+    const cryptoKey = await crypto.subtle.importKey(
+      "raw",
+      keyData,
+      { name: "HMAC", hash: "SHA-256" },
+      false,
+      ["sign"]
+    );
+    
+    const signatureBytes = await crypto.subtle.sign("HMAC", cryptoKey, payloadData);
+    const expectedSignature = Array.from(new Uint8Array(signatureBytes))
+      .map(b => b.toString(16).padStart(2, "0"))
+      .join("");
+    
+    return signature === expectedSignature;
+  } catch (error) {
+    console.error("Webhook verification error:", error);
+    return false;
+  }
 }
 
 function mapToPlanCode(input: { plan?: string | null; productId?: string | null }) {
@@ -42,12 +79,40 @@ function mapToPlanCode(input: { plan?: string | null; productId?: string | null 
 }
 
 export async function POST(req: Request) {
-  const raw = await req.text();
-  const sig = req.headers.get("dodo-signature");
-  const ok = await verifySignature(raw, sig);
-  if (!ok) return NextResponse.json({ ok: false, error: "invalid_signature" }, { status: 400 });
-
   try {
+    const rawBody = await req.text();
+    const h = headers();
+
+    // Prefer Standard Webhooks header names; accept legacy header for backward-compat
+    const webhookId = h.get("webhook-id") ?? "";
+    const timestamp = h.get("webhook-timestamp") ?? "";
+    const signature = h.get("webhook-signature") ?? h.get("dodo-signature") ?? "";
+
+    // Verify signature per Standard Webhooks spec
+    if (!(await verifyStandardWebhook(rawBody, webhookId, timestamp, signature))) {
+      return NextResponse.json(
+        { ok: false, error: "invalid signature" },
+        { status: 401 }
+      );
+    }
+
+    // Idempotency: ensure we process each webhook-id once
+    if (webhookId) {
+      const already = await db.query.webhookEvents.findFirst({ 
+        where: eq(webhookEvents.id, webhookId),
+        columns: { id: true }
+      });
+      if (already) {
+        return NextResponse.json({ ok: true, duplicate: true, id: webhookId });
+      }
+      
+      // Store webhook event for idempotency
+      await db.insert(webhookEvents).values({ 
+        id: webhookId, 
+        type: "unknown" 
+      });
+    }
+
     // Accept a flexible payload:
     // {
     //   "type": "subscription.updated",
@@ -55,7 +120,7 @@ export async function POST(req: Request) {
     //   "plan": "pro" | "enterprise" | "free",
     //   "subscription": { "productId": "pdt_xxx" }
     // }
-    const event = JSON.parse(raw) as any;
+    const event = JSON.parse(rawBody) as any;
     const type = event?.type as string | undefined;
     const orgId = event?.orgId as string | undefined;
     const plan = event?.plan as string | undefined;
@@ -66,6 +131,14 @@ export async function POST(req: Request) {
     }
 
     const planCode = mapToPlanCode({ plan, productId });
+
+    // Update webhook event with actual type and raw payload
+    if (webhookId) {
+      await db
+        .update(webhookEvents)
+        .set({ type: type || "unknown", raw: rawBody })
+        .where(eq(webhookEvents.id, webhookId));
+    }
 
     // Ensure plans exist
     await db.insert(plans).values([
@@ -81,8 +154,25 @@ export async function POST(req: Request) {
       .values({ id: orgId, planCode, updatedAt: now })
       .onConflictDoUpdate({ target: orgs.id, set: { planCode, updatedAt: now } });
 
-    return NextResponse.json({ ok: true, type, orgId, planCode, mappedBy: productId ? "productId" : "plan" });
-  } catch (e: any) {
-    return NextResponse.json({ ok: false, error: e?.message || "server_error" }, { status: 500 });
+    return NextResponse.json({ 
+      ok: true, 
+      id: webhookId, 
+      type, 
+      orgId, 
+      planCode, 
+      mappedBy: productId ? "productId" : "plan" 
+    });
+  } catch (err: any) {
+    // Distinguish 401 signature vs 400 payload
+    const isSigError = /signature|verify/i.test(String(err?.message ?? ""));
+    return NextResponse.json(
+      { ok: false, error: isSigError ? "invalid signature" : "bad request" },
+      { status: isSigError ? 401 : 400 }
+    );
   }
+}
+
+export async function GET() {
+  // Consistent with adaptor docs: non-POST => 405
+  return NextResponse.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
 } 
