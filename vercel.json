@@ -6,7 +6,6 @@
     }
   },
   "buildCommand": "bash ../../vercel-build.sh",
-  "framework": "nextjs",
   "env": {
     "CACHE_BUST": "2025-01-24-12:00"
   },
@@ -18,6 +17,15 @@
   },
   "rewrites": [
     { "source": "/dashboard", "destination": "/index.html" },
-    { "source": "/dashboard/:path*", "destination": "/index.html" }
+    { "source": "/dashboard/:path*", "destination": "/index.html" },
+    { "source": "/admin/:path*", "destination": "/index.html" },
+    { "source": "/sign-in/:path*", "destination": "/index.html" },
+    { "source": "/sign-up/:path*", "destination": "/index.html" }
+  ],
+  "routes": [
+    { "src": "/dashboard(.*)", "dest": "/index.html" },
+    { "src": "/admin(.*)", "dest": "/index.html" },
+    { "src": "/sign-in(.*)", "dest": "/index.html" },
+    { "src": "/sign-up(.*)", "dest": "/index.html" }
   ]
 } 
