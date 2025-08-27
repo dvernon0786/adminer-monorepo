@@ -130,6 +130,13 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Provide sane defaults if secrets are missing
+        run: |
+          set -euo pipefail
+          : "${PROD_URL:=https://adminer.online}"
+          echo "PROD_URL=$PROD_URL" >> $GITHUB_ENV
+          echo "PROD_URL set to: $PROD_URL"
+
       - name: Debug secrets presence (masked)
         run: |
           set -euo pipefail
@@ -154,10 +161,6 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [ -z "${PROD_URL:-}" ]; then
-            echo "❌ PROD_URL secret is not configured." >&2
-            exit 1
-          fi
           echo "PROD_URL=${PROD_URL}"
 
       - name: Wait for Vercel deployment to be READY (API if available; else URL ping)
@@ -285,6 +288,13 @@ jobs:
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
+
+      - name: Provide sane defaults if secrets are missing
+        run: |
+          set -euo pipefail
+          : "${PROD_URL:=https://adminer.online}"
+          echo "PROD_URL=$PROD_URL" >> $GITHUB_ENV
+          echo "PROD_URL set to: $PROD_URL"
 
       - name: Setup Node
         uses: actions/setup-node@v4

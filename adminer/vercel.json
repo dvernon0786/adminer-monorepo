@@ -1,9 +1,12 @@
 {
   "redirects": [
     {
-      "source": "https://www.adminer.online/:path*",
-      "destination": "https://adminer.online/:path*",
-      "permanent": true
+      "source": "/(.*)",
+      "destination": "https://adminer.online/$1",
+      "permanent": true,
+      "has": [
+        { "type": "host", "value": "www.adminer.online" }
+      ]
     }
   ],
   "headers": [
