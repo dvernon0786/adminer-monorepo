@@ -1,8 +1,6 @@
 /** @type {import('next').NextConfig} */
 const SELF = "'self'";
 const UNSAFE_INLINE = "'unsafe-inline'";
-const UNSAFE_EVAL = "'unsafe-eval'";
-const WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'"; // for completeness
 
 // Your Clerk proxy + origins used by Clerk widgets
 const CLERK_PROXY = "https://clerk.adminer.online";
@@ -13,30 +11,28 @@ const CLERK_ORIGINS = [
 ];
 
 const csp = (opts = { allowEval: false }) => {
-  const EVAL = opts.allowEval ? `${UNSAFE_EVAL} ${WASM_UNSAFE_EVAL}` : "";
+  const EVAL = opts.allowEval ? "'unsafe-eval' 'wasm-unsafe-eval'" : "";
+  const ORIGINS = [
+    "https://clerk.adminer.online",
+    "https://*.clerk.com",
+    "https://clerk.com",
+  ].join(" ");
+
   return [
-    // Core script policy
-    `script-src ${SELF} ${opts.allowEval ? EVAL : ""} ${CLERK_ORIGINS.join(" ")} data: blob:`,
-    // Styles (Clerk injects inline styles)
-    `style-src ${SELF} ${UNSAFE_INLINE}`,
-    // Connections (API, websockets for Clerk, your own API)
-    `connect-src ${SELF} ${CLERK_ORIGINS.join(" ")} https: wss:`,
-    // Frames (Clerk uses iframes)
-    `frame-src ${SELF} ${CLERK_ORIGINS.join(" ")} https:`,
-    // Images & fonts
-    `img-src ${SELF} data: blob: https:`,
-    `font-src ${SELF} data: https:`,
-    // Media & workers (for SPA features)
-    `media-src ${SELF} data: blob: https:`,
-    `worker-src ${SELF} blob:`,
-    // Default + object
-    `default-src ${SELF}`,
+    `script-src 'self' ${EVAL} ${ORIGINS} data: blob:`,
+    `script-src-elem 'self' ${EVAL} ${ORIGINS} data: blob:`,
+    `style-src 'self' 'unsafe-inline'`,
+    `connect-src 'self' ${ORIGINS} https: wss:`,
+    `frame-src 'self' ${ORIGINS} https:`,
+    `img-src 'self' data: blob: https:`,
+    `font-src 'self' data: https:`,
+    `media-src 'self' data: blob: https:`,
+    `worker-src 'self' blob:`,
+    `default-src 'self'`,
     `object-src 'none'`,
-    // Upgrade mixed content on HTTPS
     `upgrade-insecure-requests`,
-    // Disallow unwanted navigations
     `base-uri 'none'`,
-    `form-action ${SELF} ${CLERK_ORIGINS.join(" ")}`,
+    `form-action 'self' ${ORIGINS}`,
   ].join("; ");
 };
 

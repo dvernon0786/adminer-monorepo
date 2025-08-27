@@ -1,19 +1,20 @@
 import type { NextApiRequest, NextApiResponse } from "next";
 
 export default function handler(req: NextApiRequest, res: NextApiResponse) {
-  const { path = "/" } = req.query;
+  if (process.env.DEBUG_HEADERS !== "1") {
+    return res.status(404).end();
+  }
 
-  // Fake a request against Next's headers config to extract what would apply.
-  // In production, just echo the current request's headers.
   const headers: Record<string, string | string[] | undefined> = {};
-  for (const [key, value] of Object.entries(req.headers)) {
-    if (key.toLowerCase().startsWith("content-security-policy") || key.toLowerCase().includes("sec") || key.toLowerCase().startsWith("x-")) {
-      headers[key] = value;
-    }
+  for (const [k, v] of Object.entries(req.headers)) {
+    // Echo all headers so you can inspect what's actually arriving
+    headers[k] = v;
   }
 
   res.status(200).json({
-    requestedPath: path,
+    path: req.query.path ?? "/",
+    sawHeaderCSP: req.headers["content-security-policy"] ?? null,
+    note: "If sawHeaderCSP is null, another layer may be setting/stripping CSP. Check Vercel/Cloudflare.",
     headers,
   });
 } 

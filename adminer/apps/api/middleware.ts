@@ -94,8 +94,8 @@ export default async function middleware(req: Request) {
     const isDev = process.env.NODE_ENV === 'development'
 
     // Choose CSP based on environment
-    const csp = isDev ? DEV_CSP : PROD_CSP
-    res.headers.set('Content-Security-Policy', csp)
+    // const csp = isDev ? DEV_CSP : PROD_CSP
+    // res.headers.set('Content-Security-Policy', csp) // Disabled: CSP now handled in next.config.mjs
     res.headers.set('Referrer-Policy', 'no-referrer')
     res.headers.set('X-Content-Type-Options', 'nosniff')
     res.headers.set('X-Frame-Options', 'DENY')
@@ -123,8 +123,8 @@ export default async function middleware(req: Request) {
     // 4) Last resort: safe response with minimal headers
     const res = NextResponse.next()
     const isDev = process.env.NODE_ENV === 'development'
-    const fallbackCSP = isDev ? DEV_CSP : BASE_CSP
-    res.headers.set('Content-Security-Policy', fallbackCSP)
+    // const fallbackCSP = isDev ? DEV_CSP : BASE_CSP
+    // res.headers.set('Content-Security-Policy', fallbackCSP) // Disabled: CSP now handled in next.config.mjs
     console.log('Middleware: Emergency fallback response')
     return res
   }
