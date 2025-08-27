@@ -10,8 +10,8 @@ const csp = [
   `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${FRONTEND_API} https://challenges.cloudflare.com`,
   // Clerk connections (FAPI, SSE/XHR)
   `connect-src 'self' ${FRONTEND_API}`,
-  // Images (Clerk avatars, etc.)
-  "img-src 'self' https://img.clerk.com data:",
+  // Images (Clerk avatars, Unsplash, etc.)
+  "img-src 'self' https://img.clerk.com https://images.unsplash.com data: blob:",
   // Workers (Clerk uses web workers)
   "worker-src 'self' blob:",
   // Styles & fonts (Vite/inline + Google Fonts)
