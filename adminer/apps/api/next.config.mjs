@@ -10,35 +10,44 @@ const CLERK_ORIGINS = [
   "https://clerk.com",
 ];
 
+// eval-allowed policy (SPA + auth)
+const evalAllowed = [
+  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
+  "script-src-elem 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:", // <- no 'unsafe-eval' here
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https: wss:",
+  "img-src 'self' data: blob: https:",
+  "frame-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https:",
+  "worker-src 'self' blob:",
+  "default-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com",
+  "upgrade-insecure-requests",
+].join("; ");
+
+// strict policy (API)
+const strict = [
+  "script-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
+  "script-src-elem 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' data: https://fonts.gstatic.com",
+  "connect-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https: wss:",
+  "img-src 'self' data: blob: https:",
+  "frame-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https:",
+  "worker-src 'self' blob:",
+  "default-src 'self'",
+  "object-src 'none'",
+  "base-uri 'none'",
+  "form-action 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com",
+  "upgrade-insecure-requests",
+].join("; ");
+
 const csp = (opts = { allowEval: false }) => {
-  const EVAL = opts.allowEval ? "'unsafe-eval' 'wasm-unsafe-eval'" : "";
-  const ORIGINS = [
-    "https://clerk.adminer.online",
-    "https://*.clerk.com",
-    "https://clerk.com",
-  ].join(" ");
-
-  const cspValue = [
-    `script-src 'self' ${EVAL} ${ORIGINS} data: blob:`,
-    `script-src-elem 'self' ${EVAL} ${ORIGINS} data: blob:`,
-    `style-src 'self' 'unsafe-inline'`,
-    `connect-src 'self' ${ORIGINS} https: wss:`,
-    `frame-src 'self' ${ORIGINS} https:`,
-    `img-src 'self' data: blob: https:`,
-    `font-src 'self' data: https:`,
-    `media-src 'self' data: blob: https:`,
-    `worker-src 'self' blob:`,
-    `default-src 'self'`,
-    `object-src 'none'`,
-    `upgrade-insecure-requests`,
-    `base-uri 'none'`,
-    `form-action 'self' ${ORIGINS}`,
-  ].join("; ");
-
-  // Debug logging
-  console.log(`CSP generated for ${opts.allowEval ? 'eval-allowed' : 'strict'}:`, cspValue);
-  
-  return cspValue;
+  return opts.allowEval ? evalAllowed : strict;
 };
 
 // Shared security headers (strict, modern)

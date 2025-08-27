@@ -97,72 +97,70 @@ const developmentHandler = async (req: NextApiRequest, res: NextApiResponse) => 
 
   // ---- QUOTA STATUS (development mode) ----
   if (action === 'quota/status') {
-    // Development mode bypass - read headers directly
-    const authHeader = req.headers.authorization;
-    const devPlanHeader = req.headers['x-dev-plan'];
-    const devUserIdHeader = req.headers['x-dev-user-id'];
-    const devOrgIdHeader = req.headers['x-dev-org-id'];
-    
-    // Check if we have development headers
-    if (devPlanHeader && devUserIdHeader && devOrgIdHeader) {
-      const devPlan = devPlanHeader;
-      const isFree = devPlan === 'free';
-      
-      return res.status(200).json({
-        plan: devPlan,
-        perKeywordCap: isFree ? 10 : null,
-        limit: isFree ? null : (devPlan === 'pro' ? 500 : 2000),
-        remaining: isFree ? null : (devPlan === 'pro' ? 450 : 1800),
-        used: isFree ? null : (devPlan === 'pro' ? 50 : 200)
-      });
-    }
-
-    // If no sign-in hints at all, short-circuit to 401 with no Clerk load.
-    if (!authHeader) {
-      return res.status(401).json({ error: 'unauthorized' });
-    }
     try {
       // Defer Clerk & quota behind guarded dynamic imports.
       const clerkMod = await import('@clerk/nextjs/server').catch(() => null)
-      if (!clerkMod || !('getAuth' in clerkMod)) {
-        // If Clerk can't load in Pages/CJS, don't explode; treat as signed-out.
-        return res.status(401).json({ error: 'unauthorized', reason: 'auth_unavailable' })
+      if (!clerkMod || !('auth' in clerkMod)) {
+        // If Clerk can't load, provide safe defaults so UI won't crash
+        return res.status(200).json({
+          ok: true,
+          planCode: "free-10",
+          quota: 10,
+          used: 0,
+          remaining: 10,
+          guest: true,
+          error: "auth_unavailable"
+        });
       }
-      const { getAuth } = clerkMod as { getAuth: (req: NextApiRequest) => { userId?: string | null; orgId?: string | null } }
-      const { userId, orgId } = getAuth(req) || {}
-      if (!userId || !orgId) {
-        return res.status(401).json({ error: 'unauthorized' })
+      
+      const { auth } = clerkMod;
+      const { orgId } = auth(req) || {};
+
+      // Graceful guest mode to avoid frontend crashes
+      if (!orgId) {
+        return res.status(200).json({
+          ok: true,
+          planCode: "free-10",
+          quota: 10,
+          used: 0,
+          remaining: 10,
+          guest: true
+        });
       }
 
-      // Get quota status using the existing quota module
-      const quotaMod = await import('../../src/lib/quota').catch(() => null)
-      if (!quotaMod || !('getQuotaStatus' in quotaMod)) {
-        // Be conservative; don't 500 in CI if quota module can't be loaded.
-        return res.status(200).json({ plan: 'unknown', remaining: null })
+      // Try to get real quota data
+      try {
+        const quotaMod = await import('../../src/lib/quota').catch(() => null)
+        if (quotaMod && 'getPlanAndUsage' in quotaMod) {
+          const { getPlanAndUsage } = quotaMod as { getPlanAndUsage: (orgId: string) => Promise<any> };
+          const { quota, used, planCode } = await getPlanAndUsage(orgId);
+          const remaining = Math.max(0, quota - used);
+          return res.status(200).json({ ok: true, planCode, quota, used, remaining });
+        }
+      } catch (e) {
+        // Fall through to safe defaults
       }
 
-      const { getQuotaStatus } = quotaMod as {
-        getQuotaStatus: (orgId: string) => Promise<any>
-      }
-
-      const quotaData = await getQuotaStatus(orgId)
-      if (!quotaData.ok) {
-        return res.status(404).json({ error: 'org_not_found' })
-      }
-
-      // Return the format expected by smoke tests
-      const isFree = quotaData.plan === 'free'
+      // Safe defaults if quota lookup fails
       return res.status(200).json({
-        plan: quotaData.plan,
-        perKeywordCap: isFree ? 10 : null,
-        limit: isFree ? null : quotaData.limit,
-        remaining: isFree ? null : quotaData.remaining,
-        used: isFree ? null : quotaData.used
-      })
-    } catch (error) {
-      console.error('Quota status error:', error)
-      // Any runtime hiccup in Clerk/Quota resolution should not fail CI; respond as signed-out.
-      return res.status(401).json({ error: 'unauthorized', reason: 'auth_guard' })
+        ok: true,
+        planCode: "free-10",
+        quota: 10,
+        used: 0,
+        remaining: 10
+      });
+
+    } catch (e: any) {
+      // Never throw 500 to client; provide safe defaults so UI won't crash
+      return res.status(200).json({
+        ok: false,
+        planCode: "free-10",
+        quota: 10,
+        used: 0,
+        remaining: 10,
+        error: "quota_fallback",
+        message: e?.message || "quota lookup failed"
+      });
     }
   }
 
