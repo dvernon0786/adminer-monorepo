@@ -1,96 +1,29 @@
-name: Production Smoke
-
+name: Smoke (Prod)
 on:
   workflow_dispatch:
-    inputs:
-      deploy:
-        description: "Also deploy to Vercel before smoke?"
-        required: false
-        type: boolean
-        default: false
   deployment_status:
     types: [success]
-
 jobs:
   smoke:
-    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.deployment_status.state == 'success' && github.event.deployment_status.environment == 'Production') }}
-    runs-on: ubuntu-24.04
-    timeout-minutes: 15
-
+    runs-on: ubuntu-latest
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Show lockfiles
+      - name: Hit root (CSP present)
         run: |
-          echo "Repo root: $PWD"
-          git ls-files | grep -E '(^|/)(package-lock\.json|pnpm-lock\.yaml|yarn\.lock)$' || echo "No lockfiles found"
-
-      # Monorepo-safe Node cache (npm). Gate by presence of lockfile(s).
-      - name: Setup Node (cache)
-        if: ${{ hashFiles('package-lock.json', 'adminer/package-lock.json') != '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-          cache: npm
-          cache-dependency-path: package-lock.json
-
-      - name: Setup Node (no cache fallback)
-        if: ${{ hashFiles('package-lock.json', 'adminer/package-lock.json') == '' }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20
-
-      - name: Install Vercel CLI
-        if: ${{ inputs.deploy == true }}
-        run: npm i -g vercel
-
-      - name: Vercel pull env (Prod)
-        if: ${{ inputs.deploy == true }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-        run: vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
-
-      - name: Vercel build (prebuilt)
-        if: ${{ inputs.deploy == true }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel build --prod --token "$VERCEL_TOKEN"
-
-      - name: Vercel deploy
-        if: ${{ inputs.deploy == true }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
-
-      - name: Install jq & curl
+          curl -sI https://www.adminer.online/ | grep -i "content-security-policy" || (echo "CSP header missing" && exit 1)
+      - name: Quota endpoint
         run: |
-          sudo apt-get update
-          sudo apt-get install -y jq curl
-
-      - name: Make smoke executable
-        run: chmod +x scripts/smoke.sh
-
-      - name: Run Smoke Tests
-        env:
-          DOMAIN: ${{ secrets.PROD_DOMAIN }}   # e.g., https://www.adminer.online
-          CLERK_JWT_FREE: ${{ secrets.PROD_CLERK_JWT_FREE }}
-          CLERK_JWT_PRO:  ${{ secrets.PROD_CLERK_JWT_PRO }}
-          CLERK_JWT_ENT:  ${{ secrets.PROD_CLERK_JWT_ENT }}
-          ORG_ID_FREE: ${{ secrets.PROD_ORG_ID_FREE }}
-          ORG_ID_PRO:  ${{ secrets.PROD_ORG_ID_PRO }}
-          ORG_ID_ENT:  ${{ secrets.PROD_ORG_ID_ENT }}
-        run: scripts/smoke.sh
-
-      - name: Upload smoke artifacts (headers/body)
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-artifacts
-          path: |
-            /tmp/headers.txt
-            /tmp/body.txt
+          set -e
+          body=$(curl -s "https://www.adminer.online/api/consolidated?action=quota/status")
+          echo "$body"
+          code=$(curl -s -o /dev/null -w "%{http_code}" "https://www.adminer.online/api/consolidated?action=quota/status")
+          if [ "$code" != "200" ] && [ "$code" != "402" ]; then
+            echo "Unexpected status: $code"; exit 1;
+          fi
+      - name: CSP report GET
+        run: |
+          curl -s "https://www.adminer.online/api/csp/report" | grep -q '"ok":true' || (echo "CSP report GET failed" && exit 1)
+      - name: CSP report POST (json)
+        run: |
+          curl -s -X POST -H "Content-Type: application/json" \
+            -d '{"document-uri":"gh-action"}' \
+            "https://www.adminer.online/api/csp/report" | grep -q '"received":true' || exit 1

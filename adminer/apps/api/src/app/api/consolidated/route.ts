@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from "@clerk/nextjs/server";
+import { getMonthlyCompletedJobs } from '../../../lib/db/usage';
 // import db etc if you compute used from DB
 
 type Plan = {
@@ -76,19 +77,16 @@ export async function GET(req: NextRequest) {
 
   if (action === 'quota/status') {
     try {
-      const { orgId } = await auth();
-      const plan = PLAN_FALLBACK;
-      const used = 0; // compute actual usage
+      // TODO: resolve orgId from Clerk/JWT/session; fallback for now
+      const orgId = req.headers.get('x-org-id') ?? 'demo-org';
+      const plan: Plan = PLAN_FALLBACK; // replace with real plan lookup
+      const used = await getMonthlyCompletedJobs(orgId);
       const remaining = Math.max(0, plan.quota - used);
 
       // Enforce quota: return 402 with upgrade URL
       if (used >= plan.quota) {
         return NextResponse.json(
-          {
-            ok: false,
-            code: "quota_exceeded",
-            upgradeUrl: "/billing",
-          },
+          { ok: false, code: "quota_exceeded", upgradeUrl: "/billing" },
           { status: 402 }
         );
       }
@@ -100,24 +98,12 @@ export async function GET(req: NextRequest) {
         quota: plan.quota,
         used,
         remaining,
-        usage: {
-          used,
-          quota: plan.quota,
-          remaining,
-          adsImported: false,
-        },
-        // new fields
-        limit: {
-          monthlyCap: plan.quota,
-          period: plan.period,
-        },
-        plan: {
-          code: plan.code,
-          name: plan.name,
-          quota: plan.quota,
-          period: plan.period,
-        },
-      }, { status: 200 });
+        usage: { used, quota: plan.quota, remaining, adsImported: false },
+        // new fields your SPA expects
+        limit: { monthlyCap: plan.quota, period: plan.period },
+        // normalized plan object so `t.plan.name` is always safe
+        plan: { code: plan.code, name: plan.name, quota: plan.quota, period: plan.period },
+      });
     } catch (e: any) {
       // Never 500 to client; keep UI alive
       const body = computePlan(undefined);
