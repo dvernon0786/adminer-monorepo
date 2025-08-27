@@ -5,6 +5,7 @@
       "runtime": "nodejs20.x"
     }
   },
+  "buildCommand": "bash ./adminer/vercel-build.sh",
   "env": {
     "CACHE_BUST": "2025-01-24-12:00"
   },
