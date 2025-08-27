@@ -6,7 +6,7 @@
 set -e
 
 BASE_URL="${1:-https://www.adminer.online}"
-DODO_SECRET="${DODO_SECRET:-live_xxx}"
+DODO_WEBHOOK_SECRET="${DODO_WEBHOOK_SECRET:-live_xxx}"
 
 echo "🧪 Testing Dodo Integration at $BASE_URL"
 echo "=========================================="
@@ -36,14 +36,14 @@ fi
 
 # Test 3: Dodo webhook signature verification
 echo "3. Testing Dodo webhook signature verification..."
-BODY='{"type":"subscription.updated","orgId":"org_123","plan":"pro"}'
-SIG=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$DODO_SECRET" -r | cut -d' ' -f1)
+BODY='{"type":"subscription.updated","orgId":"org_ci_smoke","plan":"pro"}'
+SIG=$(echo -n "$BODY" | openssl dgst -sha256 -hmac "$DODO_WEBHOOK_SECRET" -r | cut -d' ' -f1)
 
 WEBHOOK_RESPONSE=$(curl -s -w "%{http_code}" \
     -H "Content-Type: application/json" \
     -H "dodo-signature: $SIG" \
     -d "$BODY" \
-    "$BASE_URL/api/dodo/webhook")
+    "$BASE_URL/api/payments/webhook")
 
 HTTP_CODE="${WEBHOOK_RESPONSE: -3}"
 RESPONSE_BODY="${WEBHOOK_RESPONSE%???}"
@@ -61,7 +61,7 @@ WEBHOOK_RESPONSE=$(curl -s -w "%{http_code}" \
     -H "Content-Type: application/json" \
     -H "dodo-signature: invalid_signature" \
     -d "$BODY" \
-    "$BASE_URL/api/dodo/webhook")
+    "$BASE_URL/api/payments/webhook")
 
 HTTP_CODE="${WEBHOOK_RESPONSE: -3}"
 RESPONSE_BODY="${WEBHOOK_RESPONSE%???}"

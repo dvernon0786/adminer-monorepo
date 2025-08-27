@@ -53,15 +53,15 @@ jobs:
           test "$code" = "401"
 
       - name: 3) Dodo webhook signature path works (synthetic org)
-        if: ${{ secrets.DODO_SECRET != '' }}
+        if: ${{ secrets.DODO_WEBHOOK_SECRET != '' }}
         env:
-          DODO_SECRET: ${{ secrets.DODO_SECRET }}
+          DODO_WEBHOOK_SECRET: ${{ secrets.DODO_WEBHOOK_SECRET }}
         run: |
           set -euo pipefail
           ORG_ID="org_ci_smoke"
           BODY=$(jq -cn --arg org "$ORG_ID" '{type:"subscription.updated", orgId:$org, plan:"pro"}')
-          SIG=$(printf "%s" "$BODY" | openssl dgst -sha256 -hmac "$DODO_SECRET" -r | cut -d' ' -f1)
-          URL="$BASE_URL/api/dodo/webhook"
+          SIG=$(printf "%s" "$BODY" | openssl dgst -sha256 -hmac "$DODO_WEBHOOK_SECRET" -r | cut -d' ' -f1)
+          URL="$BASE_URL/api/payments/webhook"
           echo "POST $URL"
           code=$(curl -sS -o /tmp/webhook.json -w "%{http_code}" \
                  -H "Content-Type: application/json" \

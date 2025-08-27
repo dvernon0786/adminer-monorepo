@@ -7,7 +7,7 @@ const isHealth = (req: Request) => {
   return u.pathname === '/api/consolidated' && u.searchParams.get('action') === 'health'
 }
 
-const isWebhook = (req: Request) => new URL(req.url).pathname === '/api/dodo/webhook'
+const isWebhook = (req: Request) => new URL(req.url).pathname === '/api/payments/webhook'
 const isApi = (req: Request) => new URL(req.url).pathname.startsWith('/api/')
 const isOptions = (req: Request) => req.method === 'OPTIONS'
 

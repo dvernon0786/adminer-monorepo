@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { orgs, plans } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-const DODO_SECRET = process.env.DODO_SECRET!;
+const DODO_WEBHOOK_SECRET = process.env.DODO_WEBHOOK_SECRET!;
 const PRO_CODE = process.env.DODO_PRO_PLANCODE || "pro-500";
 const ENT_CODE = process.env.DODO_ENTERPRISE_PLANCODE || "ent-2000";
 
@@ -19,7 +19,7 @@ async function verifySignature(rawBody: string, signature: string | null) {
   const enc = new TextEncoder();
   const key = await crypto.subtle.importKey(
     "raw",
-    enc.encode(DODO_SECRET),
+    enc.encode(DODO_WEBHOOK_SECRET),
     { name: "HMAC", hash: "SHA-256" },
     false,
     ["sign", "verify"]
