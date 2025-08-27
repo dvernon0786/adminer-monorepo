@@ -1,11 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "functions": {
-    "adminer/apps/api/**": {
-      "runtime": "nodejs20.x"
-    }
-  },
-  "buildCommand": "bash ./adminer/vercel-build.sh",
+  "buildCommand": "bash ../../vercel-build.sh",
   "env": {
     "CACHE_BUST": "2025-01-24-12:00"
   },
