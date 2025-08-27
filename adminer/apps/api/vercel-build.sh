@@ -22,13 +22,12 @@ fi
 # 1) Build the Vite SPA
 echo "📦 Building Vite SPA..."
 cd "$WEB_DIR"
-if command -v pnpm &> /dev/null; then
-  pnpm install --frozen-lockfile
-  pnpm build
-else
-  npm ci --include=dev
-  npm run build
-fi
+
+# Always use npm for consistency in Vercel environment
+echo "📦 Installing web dependencies with npm..."
+npm ci --include=dev
+echo "🏗️ Building web app..."
+npm run build
 
 # 2) Copy SPA build into Next public/
 echo "📋 Copying SPA build to public directory..."
@@ -49,13 +48,10 @@ echo "✅ SPA files copied successfully"
 # 3) Build the Next.js API app
 echo "🏗️ Building Next.js API app..."
 cd "$SCRIPT_DIR"
-if command -v pnpm &> /dev/null; then
-  pnpm install --frozen-lockfile
-  pnpm build
-else
-  npm ci --include=dev
-  npm run build
-fi
+echo "📦 Installing API dependencies with npm..."
+npm ci --include=dev
+echo "🏗️ Building Next.js app..."
+npm run build
 
 echo "🎉 Unified build completed successfully!"
 echo "📁 SPA files available in: public/"
