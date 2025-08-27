@@ -6,6 +6,13 @@ API_DIR="$SCRIPT_DIR"
 WEB_DIR="$SCRIPT_DIR/../web"
 PUBLIC_DIR="$API_DIR/public"
 
+# Handle case where script runs from root (Vercel environment)
+if [[ "$SCRIPT_DIR" == "/vercel/path0" ]]; then
+  API_DIR="/vercel/path0/adminer/apps/api"
+  WEB_DIR="/vercel/path0/adminer/apps/web"
+  PUBLIC_DIR="$API_DIR/public"
+fi
+
 say() { printf "%s\n" "$*"; }
 
 install_deps_and_build() {
@@ -28,9 +35,11 @@ install_deps_and_build() {
 }
 
 say "🚀 Unified build start: $API_DIR"
+say "📁 Web directory: $WEB_DIR"
+say "📁 Public directory: $PUBLIC_DIR"
 
 # 1) Build Vite SPA
-[ -d "$WEB_DIR" ] || { echo "❌ WEB_DIR not found: $WEB_DIR"; exit 1; }
+[ -d "$WEB_DIR" ] || { echo "❌ WEB_DIR not found: $WEB_DIR"; ls -la "$(dirname "$WEB_DIR")" || true; exit 1; }
 say "🏗️ Building SPA (Vite) ..."
 install_deps_and_build "$WEB_DIR" build   # expects "build" script in @adminer/web
 
@@ -40,7 +49,7 @@ rm -rf "$PUBLIC_DIR"/*
 mkdir -p "$PUBLIC_DIR"
 cp -r "$WEB_DIR/dist/"* "$PUBLIC_DIR/"
 
-[ -f "$PUBLIC_DIR/index.html" ] || { echo "❌ index.html missing in public/"; exit 1; }
+[ -f "$PUBLIC_DIR/index.html" ] || { echo "❌ index.html missing in public/"; ls -la "$PUBLIC_DIR" || true; exit 1; }
 say "✅ SPA files present"
 
 # 3) Build Next API app
