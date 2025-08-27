@@ -24,5 +24,5 @@ WHERE quota_used_month = 0;
 -- Create index on quota_month for efficient month boundary queries
 CREATE INDEX IF NOT EXISTS idx_orgs_quota_month ON orgs(quota_month);
 
--- Create index on org_id + quota_month for efficient quota lookups
-CREATE INDEX IF NOT EXISTS idx_orgs_quota_lookup ON orgs(org_id, quota_month); 
+-- Create index on id + quota_month for efficient quota lookups
+CREATE INDEX IF NOT EXISTS idx_orgs_quota_lookup ON orgs(id, quota_month); 

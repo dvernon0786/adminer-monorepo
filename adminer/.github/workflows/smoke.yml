@@ -1,92 +1,94 @@
-name: Smoke tests (Production)
+name: Production Smoke Tests
 
 on:
-  # Run automatically when a Deployment reports "success".
-  # Vercel's GitHub integration emits deployment_status events.
+  # Run automatically when Vercel posts a successful deploy to GitHub
   deployment_status:
-    types: [success]
-
-  # Optional: manual trigger
+  # Allow manual runs too
   workflow_dispatch:
 
-  # Optional: run on main pushes (acts as a fallback)
-  push:
-    branches: [main]
-
-concurrency:
-  group: smoke-prod
-  cancel-in-progress: true
-
 jobs:
-  smoke_prod:
-    # Only run when:
-    # - manually triggered, OR
-    # - a successful deployment to Production, OR
-    # - a push to main (fallback)
+  smoke:
     if: >
       github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'deployment_status' &&
-       github.event.deployment_status.state == 'success' &&
-       (contains(github.event.deployment.environment, 'Production') ||
-        contains(github.event.deployment.environment, 'production'))) ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
-
+       github.event.deployment_status.state == 'success')
     runs-on: ubuntu-latest
-    timeout-minutes: 10
 
-    # Point smoke.sh at your live domain
     env:
-      DOMAIN: https://www.adminer.online
-
-    permissions:
-      contents: read
-      deployments: read
+      BASE_URL: https://www.adminer.online
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Make smoke script executable
-        run: chmod +x scripts/smoke.sh
-
-      - name: Wait for health endpoint (prod)
+      - name: Show trigger context
         run: |
-          set -e
-          echo "Waiting for $DOMAIN to report healthy..."
-          for i in {1..24}; do
-            code=$(curl -s -o /dev/null -w "%{http_code}" \
-              "$DOMAIN/api/consolidated?action=health" || true)
-            echo "Attempt $i: HTTP $code"
-            [ "$code" = "200" ] && exit 0
-            sleep 5
-          done
-          echo "Service not healthy after waiting." >&2
-          exit 1
+          echo "Event: ${{ github.event_name }}"
+          if [ "${{ github.event_name }}" = "deployment_status" ]; then
+            echo "Deployment state: ${{ github.event.deployment_status.state }}"
+            echo "Environment: ${{ github.event.deployment_status.environment }}"
+            echo "Target URL: ${{ github.event.deployment_status.target_url }}"
+          fi
 
-      - name: Run smoke tests (prod)
+      - name: Install jq (if missing)
         run: |
-          set -eo pipefail
-          echo "Running smoke tests against $DOMAIN ..."
-          DOMAIN="$DOMAIN" ./scripts/smoke.sh | tee smoke.log
+          sudo apt-get update -y
+          sudo apt-get install -y jq
 
-      - name: Upload smoke artifacts (prod)
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: smoke-logs-prod
-          path: |
-            smoke.log
-            /tmp/*.out
-            scripts/smoke.sh
-
-      - name: Post summary
-        if: always()
+      - name: 1) Health check
         run: |
-          echo "## Smoke Test Summary" >> $GITHUB_STEP_SUMMARY
-          if [ -f smoke.log ]; then
-            echo "\n\`\`\`text" >> $GITHUB_STEP_SUMMARY
-            tail -n 200 smoke.log >> $GITHUB_STEP_SUMMARY || true
-            echo "\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          set -euo pipefail
+          URL="$BASE_URL/api/consolidated?action=health"
+          echo "GET $URL"
+          code=$(curl -sS -o /tmp/health.json -w "%{http_code}" "$URL")
+          cat /tmp/health.json
+          test "$code" = "200"
+          jq -e '.ok == true and .healthy == true' </tmp/health.json >/dev/null
+
+      - name: 2) Quota (unauthenticated) must be 401
+        run: |
+          set -euo pipefail
+          URL="$BASE_URL/api/consolidated?action=quota/status"
+          echo "GET $URL (unauthenticated)"
+          code=$(curl -sS -o /tmp/quota_unauth.json -w "%{http_code}" "$URL")
+          echo "Status: $code"
+          cat /tmp/quota_unauth.json
+          test "$code" = "401"
+
+      - name: 3) Dodo webhook signature path works (synthetic org)
+        if: ${{ secrets.DODO_SECRET != '' }}
+        env:
+          DODO_SECRET: ${{ secrets.DODO_SECRET }}
+        run: |
+          set -euo pipefail
+          ORG_ID="org_ci_smoke"
+          BODY=$(jq -cn --arg org "$ORG_ID" '{type:"subscription.updated", orgId:$org, plan:"pro"}')
+          SIG=$(printf "%s" "$BODY" | openssl dgst -sha256 -hmac "$DODO_SECRET" -r | cut -d' ' -f1)
+          URL="$BASE_URL/api/dodo/webhook"
+          echo "POST $URL"
+          code=$(curl -sS -o /tmp/webhook.json -w "%{http_code}" \
+                 -H "Content-Type: application/json" \
+                 -H "dodo-signature: $SIG" \
+                 -d "$BODY" "$URL")
+          cat /tmp/webhook.json
+          # Accept 200 (ideal) or 409/4xx only if payload is rejected with clear error.
+          test "$code" = "200"
+          jq -e '.ok == true and .orgId == "org_ci_smoke"' </tmp/webhook.json >/dev/null
+
+      - name: 4) (Optional) Quota (authenticated) expects 200/402
+        if: ${{ secrets.CLERK_TEST_JWT != '' }}
+        env:
+          CLERK_TEST_JWT: ${{ secrets.CLERK_TEST_JWT }}
+        run: |
+          set -euo pipefail
+          URL="$BASE_URL/api/consolidated?action=quota/status"
+          echo "GET $URL (authenticated via Bearer)"
+          # NOTE: This works only if your auth() accepts Authorization: Bearer <session token>.
+          code=$(curl -sS -o /tmp/quota_auth.json -w "%{http_code}" \
+                 -H "Authorization: Bearer $CLERK_TEST_JWT" "$URL")
+          echo "Status: $code"
+          cat /tmp/quota_auth.json
+          # Under quota → 200, exceeded → 402
+          if [ "$code" = "200" ] || [ "$code" = "402" ]; then
+            exit 0
           else
-            echo "_No smoke.log produced._" >> $GITHUB_STEP_SUMMARY
+            echo "Unexpected status for authenticated quota: $code"
+            exit 1
           fi 

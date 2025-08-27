@@ -5,6 +5,22 @@ import { relations } from "drizzle-orm";
 
 export const planEnum = pgEnum("plan", ["free", "pro", "enterprise"]);
 
+// New plans table for Dodo integration
+export const plans = pgTable("plans", {
+  code: text("code").primaryKey(),                 // 'free-10' | 'pro-500' | 'ent-2000'
+  name: text("name").notNull(),                    // Free | Pro | Enterprise
+  monthlyQuota: integer("monthly_quota").notNull() // 10 | 500 | 2000
+});
+
+// New usage table for monthly tracking
+export const usage = pgTable("usage", {
+  orgId: text("org_id").notNull().references(() => orgs.id),
+  yyyymm: text("yyyymm").notNull(),                // 'YYYY-MM'
+  used: integer("used").notNull().default(0),
+}, (t) => ({
+  pk: primaryKey({ columns: [t.orgId, t.yyyymm] })
+}));
+
 export const orgs = pgTable("orgs", {
   id: varchar("id", { length: 64 }).primaryKey(),                  // your org id (Clerk org ID or internal)
   externalId: text("external_id")                                  // external identifier for webhook lookups
@@ -14,6 +30,7 @@ export const orgs = pgTable("orgs", {
   name: varchar("name", { length: 256 }).notNull(),
   // Billing
   plan: planEnum("plan").notNull().default("free"),
+  planCode: text("plan_code").references(() => plans.code),        // New field for Dodo integration
   dodoCustomerId: varchar("dodo_customer_id", { length: 128 }),     // external customer
   dodoSubscriptionId: varchar("dodo_subscription_id", { length: 128 }),
   subscriptionStatus: varchar("subscription_status", { length: 64 }).default("inactive"),
@@ -94,6 +111,10 @@ export type WebhookEvent = typeof webhookEvents.$inferSelect
 export type NewWebhookEvent = typeof webhookEvents.$inferInsert
 export type Job = typeof jobs.$inferSelect
 export type NewJob = typeof jobs.$inferInsert
+export type Plan = typeof plans.$inferSelect
+export type NewPlan = typeof plans.$inferInsert
+export type Usage = typeof usage.$inferSelect
+export type NewUsage = typeof usage.$inferInsert
 
 // Enhanced quota types for better type safety
 export interface QuotaStatus {

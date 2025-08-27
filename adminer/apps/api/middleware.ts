@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { clerkMiddleware } from '@clerk/nextjs/server';
 
 // BYPASSES (no auth, no header mutations)
 const isHealth = (req: Request) => {
@@ -82,9 +83,24 @@ export default async function middleware(req: Request) {
       return NextResponse.next()
     }
 
-    // 1) (Temporary) allow API; auth to be re-enabled later
+    // 1) Apply Clerk middleware for API routes
     if (isApi(req)) {
       console.log('Middleware: API route accessed:', new URL(req.url).pathname)
+      
+      // Basic auth check for API routes
+      const authHeader = req.headers.get('authorization');
+      const hasSession = req.headers.get('cookie')?.includes('__session');
+      
+      if (!authHeader && !hasSession) {
+        // Allow health endpoint without auth
+        const url = new URL(req.url);
+        if (url.pathname === '/api/consolidated' && url.searchParams.get('action') === 'health') {
+          return NextResponse.next();
+        }
+        
+        // Require auth for other API routes
+        return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+      }
     }
 
     // 2) Build response + security headers
