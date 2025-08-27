@@ -11,6 +11,11 @@ if [[ "$SCRIPT_DIR" == "/vercel/path0" ]]; then
   API_DIR="/vercel/path0/adminer/apps/api"
   WEB_DIR="/vercel/path0/adminer/apps/web"
   PUBLIC_DIR="$API_DIR/public"
+# Handle case where script runs from API directory in Vercel
+elif [[ "$SCRIPT_DIR" == "/vercel/path0/adminer/apps/api" ]]; then
+  API_DIR="$SCRIPT_DIR"
+  WEB_DIR="/vercel/path0/adminer/apps/web"
+  PUBLIC_DIR="$API_DIR/public"
 fi
 
 say() { printf "%s\n" "$*"; }
