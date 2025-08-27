@@ -2,6 +2,8 @@ import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 // import db etc if you compute used from DB
 
+const PLAN_FALLBACK = { code: 'free-10', name: 'Free', quota: 10, period: 'monthly' };
+
 type QuotaShape = {
   ok: boolean;
   planCode: string;
@@ -20,31 +22,43 @@ type QuotaShape = {
     monthlyCap: number;
     period: "monthly";
   };
+  // NEW: add plan object so t.plan.name is always safe
+  plan: {
+    code: string;
+    name: string;
+    quota: number;
+    period: string;
+  };
 };
 
 // quick helper — adapt to your real plan logic
-function computePlan(userId?: string) {
-  // e.g., map org to plan; default free plan
-  const planCode = "free-10";
-  const quota = 10;
-  const used = 0; // TODO: read from jobs table if you track consumption
-  const remaining = Math.max(0, quota - used);
+function buildQuotaPayload(userOrgPlan?: { code: string; name: string; quota: number }) {
+  const plan = userOrgPlan ?? PLAN_FALLBACK;
+  const used = 0; // compute real usage if you have it
+  const remaining = Math.max(0, plan.quota - used);
 
   const body: QuotaShape = {
     ok: true,
-    planCode,
-    quota,
+    planCode: plan.code,
+    quota: plan.quota,
     used,
     remaining,
     usage: {
       used,
-      quota,
+      quota: plan.quota,
       remaining,
       adsImported: false,
     },
     limit: {
-      monthlyCap: quota,
-      period: "monthly",
+      monthlyCap: plan.quota,
+      period: 'monthly',
+    },
+    // add a normalized plan object so `t.plan.name` is always safe
+    plan: { 
+      code: plan.code, 
+      name: plan.name, 
+      quota: plan.quota, 
+      period: 'monthly' 
     },
   };
 
@@ -57,11 +71,11 @@ export async function GET(req: NextRequest) {
   if (action === "quota/status") {
     try {
       const { orgId } = await auth();
-      const body = computePlan(orgId ?? undefined);
+      const body = buildQuotaPayload(orgId ? { code: 'free-10', name: 'Free', quota: 10 } : undefined);
       return Response.json(body, { status: 200 });
     } catch (e: any) {
       // Never 500 to client; keep UI alive
-      const body = computePlan(undefined);
+      const body = buildQuotaPayload();
       return Response.json(body, { status: 200 });
     }
   }
@@ -74,10 +88,10 @@ export async function GET(req: NextRequest) {
   if (action === "billing/quota") {
     try {
       const { orgId } = await auth();
-      const body = computePlan(orgId ?? undefined);
+      const body = buildQuotaPayload(orgId ? { code: 'free-10', name: 'Free', quota: 10 } : undefined);
       return Response.json(body, { status: 200 });
     } catch (e: any) {
-      const body = computePlan(undefined);
+      const body = buildQuotaPayload();
       return Response.json(body, { status: 200 });
     }
   }
@@ -92,10 +106,10 @@ export async function POST(req: NextRequest) {
   if (action === "quota/status") {
     try {
       const { orgId } = await auth();
-      const body = computePlan(orgId ?? undefined);
+      const body = buildQuotaPayload(orgId ? { code: 'free-10', name: 'Free', quota: 10 } : undefined);
       return Response.json(body, { status: 200 });
     } catch (e: any) {
-      const body = computePlan(undefined);
+      const body = buildQuotaPayload();
       return Response.json(body, { status: 200 });
     }
   }

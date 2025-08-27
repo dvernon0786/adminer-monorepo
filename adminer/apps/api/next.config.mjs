@@ -1,48 +1,29 @@
 /** @type {import('next').NextConfig} */
+const FRONTEND_API = 'https://clerk.adminer.online'; // your Clerk Frontend API URL
+
+const csp = [
+  "default-src 'self'",
+  // eval must live here, not in script-src-elem
+  `script-src 'self' 'unsafe-inline' 'unsafe-eval' 'wasm-unsafe-eval' ${FRONTEND_API} https://challenges.cloudflare.com`,
+  // Clerk FAPI + your APIs
+  `connect-src 'self' ${FRONTEND_API}`,
+  // Clerk images
+  "img-src 'self' https://img.clerk.com data:",
+  // Required for Clerk workers
+  "worker-src 'self' blob:",
+  // Inline styles for SPA/Vite + Clerk
+  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+  "font-src 'self' https://fonts.gstatic.com data:",
+  // Cloudflare turnstile / Stripe frames if you add them later
+  "frame-src 'self' https://challenges.cloudflare.com",
+  "form-action 'self'",
+].join('; ');
+
 const nextConfig = {
   // Temporarily bypass TypeScript errors to focus on CSP fixes
   typescript: { ignoreBuildErrors: true },
   
   async headers() {
-    const SELF = "'self'";
-    const UNSAFE_INLINE = "'unsafe-inline'";
-    const UNSAFE_EVAL = "'unsafe-eval'";
-    const WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'";
-
-    // Domains
-    const CLERK = [
-      "https://clerk.com",
-      "https://*.clerk.com",
-      "https://api.clerk.com",
-      "https://assets.clerk.com",
-      "https://img.clerk.com",
-      // your custom edge domain for Clerk:
-      "https://clerk.adminer.online",
-    ];
-    const GOOGLE_FONTS = [
-      "https://fonts.googleapis.com",
-      "https://fonts.gstatic.com",
-    ];
-    const CF_CHALLENGE = "https://challenges.cloudflare.com";
-
-    const csp = [
-      // Note: keep script-src and script-src-elem aligned
-      `default-src ${SELF}`,
-      `base-uri ${SELF}`,
-      `script-src ${SELF} ${UNSAFE_INLINE} ${UNSAFE_EVAL} ${WASM_UNSAFE_EVAL} ${CF_CHALLENGE} ${CLERK.join(" ")} `,
-      `script-src-elem ${SELF} ${UNSAFE_INLINE} ${UNSAFE_EVAL} ${WASM_UNSAFE_EVAL} ${CF_CHALLENGE} ${CLERK.join(" ")} `,
-      `style-src ${SELF} ${UNSAFE_INLINE} ${GOOGLE_FONTS.join(" ")}`,
-      `style-src-elem ${SELF} ${UNSAFE_INLINE} ${GOOGLE_FONTS.join(" ")}`,
-      `img-src ${SELF} data: blob: ${CLERK.join(" ")}`,
-      `font-src ${SELF} data: ${GOOGLE_FONTS.join(" ")}`,
-      `connect-src ${SELF} ${CLERK.join(" ")} https://api.openai.com https://*.ingest.sentry.io`,
-      `frame-src ${SELF} ${CLERK.join(" ")} ${CF_CHALLENGE}`,
-      `worker-src ${SELF} blob:`,
-      `object-src 'none'`,
-      `frame-ancestors ${SELF}`,
-      `upgrade-insecure-requests`,
-    ].join("; ");
-
     return [
       {
         source: "/(.*)",
@@ -51,7 +32,6 @@ const nextConfig = {
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },
           { key: "X-Frame-Options", value: "SAMEORIGIN" },
-          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
     ];
