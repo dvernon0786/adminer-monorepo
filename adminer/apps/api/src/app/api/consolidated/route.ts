@@ -1,57 +1,104 @@
 import { NextRequest } from "next/server";
 import { auth } from "@clerk/nextjs/server";
-// import { getPlanAndUsage } from "@/lib/quota"; // keep when DB is ready
+// import db etc if you compute used from DB
 
-export const runtime = "nodejs";
-export const dynamic = "force-dynamic";
+type QuotaShape = {
+  ok: boolean;
+  planCode: string;
+  quota: number;         // new
+  used: number;          // new
+  remaining: number;     // new
+  // legacy block expected by old SPA code:
+  usage: {
+    used: number;
+    quota: number;
+    remaining: number;
+    adsImported: boolean;
+  };
+  // NEW: add the shape the SPA is referencing
+  limit: {
+    monthlyCap: number;
+    period: "monthly";
+  };
+};
 
-function shape(quota:number, used:number, planCode:string, guest=false) {
+// quick helper — adapt to your real plan logic
+function computePlan(userId?: string) {
+  // e.g., map org to plan; default free plan
+  const planCode = "free-10";
+  const quota = 10;
+  const used = 0; // TODO: read from jobs table if you track consumption
   const remaining = Math.max(0, quota - used);
-  // Legacy + current fields, so UI never crashes:
-  const payload = {
+
+  const body: QuotaShape = {
     ok: true,
     planCode,
     quota,
     used,
     remaining,
-    guest,
-    // Legacy compatibility object:
     usage: {
       used,
       quota,
       remaining,
-      adsImported: false,   // <- prevents `adsImported` undefined
+      adsImported: false,
+    },
+    limit: {
+      monthlyCap: quota,
+      period: "monthly",
     },
   };
-  return payload;
+
+  return body;
 }
 
 export async function GET(req: NextRequest) {
   const action = req.nextUrl.searchParams.get("action");
 
+  if (action === "quota/status") {
+    try {
+      const { orgId } = await auth();
+      const body = computePlan(orgId ?? undefined);
+      return Response.json(body, { status: 200 });
+    } catch (e: any) {
+      // Never 500 to client; keep UI alive
+      const body = computePlan(undefined);
+      return Response.json(body, { status: 200 });
+    }
+  }
+
   if (action === "health") {
     return Response.json({ ok: true, healthy: true }, { status: 200 });
   }
 
-  if (action === "quota/status") {
+  // Back-compat shim if old clients call billing/quota
+  if (action === "billing/quota") {
     try {
       const { orgId } = await auth();
-
-      // Guest-safe defaults (no Clerk = still safe)
-      if (!orgId) {
-        return Response.json(shape(10, 0, "free-10", true), { status: 200 });
-      }
-
-      // If your DB/helper is ready, replace with real lookup; else safe defaults:
-      // const { quota, used, planCode } = await getPlanAndUsage(orgId);
-      const quota = 10, used = 0, planCode = "free-10";
-      return Response.json(shape(quota, used, planCode), { status: 200 });
-
-    } catch (e:any) {
-      // Never 500 to client; keep UI alive
-      return Response.json(shape(10, 0, "free-10", true), { status: 200 });
+      const body = computePlan(orgId ?? undefined);
+      return Response.json(body, { status: 200 });
+    } catch (e: any) {
+      const body = computePlan(undefined);
+      return Response.json(body, { status: 200 });
     }
   }
 
-  return Response.json({ ok: false, error: "unknown_action" }, { status: 400 });
+  return Response.json({ ok: false, error: "Unknown action" }, { status: 400 });
+}
+
+export async function POST(req: NextRequest) {
+  const action = req.nextUrl.searchParams.get("action");
+
+  // optional bootstrap endpoint, returns same shape to keep SPA happy
+  if (action === "quota/status") {
+    try {
+      const { orgId } = await auth();
+      const body = computePlan(orgId ?? undefined);
+      return Response.json(body, { status: 200 });
+    } catch (e: any) {
+      const body = computePlan(undefined);
+      return Response.json(body, { status: 200 });
+    }
+  }
+
+  return Response.json({ ok: false, error: "Unsupported POST action" }, { status: 400 });
 } 

@@ -1,119 +1,57 @@
 /** @type {import('next').NextConfig} */
-const SELF = "'self'";
-const UNSAFE_INLINE = "'unsafe-inline'";
-
-// Your Clerk proxy + origins used by Clerk widgets
-const CLERK_PROXY = "https://clerk.adminer.online";
-const CLERK_ORIGINS = [
-  CLERK_PROXY,
-  "https://*.clerk.com",
-  "https://clerk.com",
-];
-
-// eval-allowed policy (SPA + auth)
-const evalAllowed = [
-  "script-src 'self' 'unsafe-eval' 'wasm-unsafe-eval' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
-  "script-src-elem 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:", // <- no 'unsafe-eval' here
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https: wss:",
-  "img-src 'self' data: blob: https:",
-  "frame-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https:",
-  "worker-src 'self' blob:",
-  "default-src 'self'",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com",
-  "upgrade-insecure-requests",
-].join("; ");
-
-// strict policy (API)
-const strict = [
-  "script-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
-  "script-src-elem 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com data: blob:",
-  "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "style-src-elem 'self' 'unsafe-inline' https://fonts.googleapis.com",
-  "font-src 'self' data: https://fonts.gstatic.com",
-  "connect-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https: wss:",
-  "img-src 'self' data: blob: https:",
-  "frame-src 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com https:",
-  "worker-src 'self' blob:",
-  "default-src 'self'",
-  "object-src 'none'",
-  "base-uri 'none'",
-  "form-action 'self' https://clerk.adminer.online https://*.clerk.com https://clerk.com",
-  "upgrade-insecure-requests",
-].join("; ");
-
-const csp = (opts = { allowEval: false }) => {
-  return opts.allowEval ? evalAllowed : strict;
-};
-
-// Shared security headers (strict, modern)
-const securityHeaders = [
-  { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains; preload" },
-  { key: "X-Content-Type-Options", value: "nosniff" },
-  { key: "X-Frame-Options", value: "DENY" },
-  { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
-  { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), interest-cohort=()" },
-  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
-  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
-];
-
 const nextConfig = {
-  reactStrictMode: true,
   // Temporarily bypass TypeScript errors to focus on CSP fixes
   typescript: { ignoreBuildErrors: true },
-
+  
   async headers() {
+    const SELF = "'self'";
+    const UNSAFE_INLINE = "'unsafe-inline'";
+    const UNSAFE_EVAL = "'unsafe-eval'";
+    const WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'";
+
+    // Domains
+    const CLERK = [
+      "https://clerk.com",
+      "https://*.clerk.com",
+      "https://api.clerk.com",
+      "https://assets.clerk.com",
+      "https://img.clerk.com",
+      // your custom edge domain for Clerk:
+      "https://clerk.adminer.online",
+    ];
+    const GOOGLE_FONTS = [
+      "https://fonts.googleapis.com",
+      "https://fonts.gstatic.com",
+    ];
+    const CF_CHALLENGE = "https://challenges.cloudflare.com";
+
+    const csp = [
+      // Note: keep script-src and script-src-elem aligned
+      `default-src ${SELF}`,
+      `base-uri ${SELF}`,
+      `script-src ${SELF} ${UNSAFE_INLINE} ${UNSAFE_EVAL} ${WASM_UNSAFE_EVAL} ${CF_CHALLENGE} ${CLERK.join(" ")} `,
+      `script-src-elem ${SELF} ${UNSAFE_INLINE} ${UNSAFE_EVAL} ${WASM_UNSAFE_EVAL} ${CF_CHALLENGE} ${CLERK.join(" ")} `,
+      `style-src ${SELF} ${UNSAFE_INLINE} ${GOOGLE_FONTS.join(" ")}`,
+      `style-src-elem ${SELF} ${UNSAFE_INLINE} ${GOOGLE_FONTS.join(" ")}`,
+      `img-src ${SELF} data: blob: ${CLERK.join(" ")}`,
+      `font-src ${SELF} data: ${GOOGLE_FONTS.join(" ")}`,
+      `connect-src ${SELF} ${CLERK.join(" ")} https://api.openai.com https://*.ingest.sentry.io`,
+      `frame-src ${SELF} ${CLERK.join(" ")} ${CF_CHALLENGE}`,
+      `worker-src ${SELF} blob:`,
+      `object-src 'none'`,
+      `frame-ancestors ${SELF}`,
+      `upgrade-insecure-requests`,
+    ].join("; ");
+
     return [
-      // 1) Root route and SPA routes (allow eval for Vite bundle)
       {
-        source: "/((?!_next|api|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|sign-in|sign-up).*)",
+        source: "/(.*)",
         headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
-        ],
-      },
-      {
-        source: "/index.html",
-        headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
-        ],
-      },
-      {
-        source: "/assets/:path*",
-        headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
-
-      // 2) Clerk auth pages proxied/hosted in the app
-      {
-        source: "/sign-in",
-        headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
-        ],
-      },
-      {
-        source: "/sign-up",
-        headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
-        ],
-      },
-
-      // 3) API routes and other paths (strict CSP, no eval)
-      {
-        source: "/api/:path*",
-        headers: [
-          ...securityHeaders,
-          { key: "Content-Security-Policy", value: csp({ allowEval: false }) },
+          { key: "Content-Security-Policy", value: csp },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=()" },
         ],
       },
     ];
