@@ -59,10 +59,9 @@ const nextConfig = {
 
   async headers() {
     return [
-      // 1) SPA static bundle served by Next from /public (index.html + /assets/*)
-      //    Relax only here to allow Vite-built bundle & any leftover eval shims.
+      // 1) Root route and SPA routes (allow eval for Vite bundle)
       {
-        source: "/",
+        source: "/((?!_next|api|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|sign-in|sign-up).*)",
         headers: [
           ...securityHeaders,
           { key: "Content-Security-Policy", value: csp({ allowEval: true }) },
@@ -100,9 +99,9 @@ const nextConfig = {
         ],
       },
 
-      // 3) Default: everything else stays strict (no eval) - MUST BE LAST
+      // 3) API routes and other paths (strict CSP, no eval)
       {
-        source: "/((?!_next|api|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|sign-in|sign-up|index\\.html).*)",
+        source: "/api/:path*",
         headers: [
           ...securityHeaders,
           { key: "Content-Security-Policy", value: csp({ allowEval: false }) },
