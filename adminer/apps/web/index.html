@@ -1,65 +1,48 @@
 <!doctype html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
+    <meta charset="utf-8" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1, viewport-fit=cover"
     />
 
-    <title>Adminer – Competitive Ad Intelligence</title>
-    <meta
-      name="description"
-      content="Adminer helps you spy, analyze, and summarize competitors' ads across platforms with AI—fast, accurate, and production-ready."
-    />
-
-    <!-- Canonical + robots -->
-    <link rel="canonical" href="https://www.adminer.online/" />
+    <title>Adminer – Competitive Intelligence for Ads</title>
+    <meta name="description" content="Adminer analyzes competitor ads, creatives, and messaging to deliver actionable insights fast. Try the MVP and ship smarter campaigns." />
     <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://www.adminer.online/" />
 
-    <!-- Icons -->
-    <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <!-- Optional: add PNG fallbacks -->
-    <!-- <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" /> -->
-
-    <!-- Theme & PWA (optional but recommended if you add a manifest) -->
-    <meta name="theme-color" content="#0B1220" />
-    <!-- <link rel="manifest" href="/site.webmanifest" /> -->
+    <!-- PWA / Theming -->
+    <meta name="theme-color" content="#0B1021" />
+    <meta name="color-scheme" content="dark light" />
 
     <!-- Open Graph -->
-    <meta property="og:type" content="website" />
+    <meta property="og:title" content="Adminer – Competitive Intelligence for Ads" />
+    <meta property="og:description" content="Analyze competitor ads, creatives, and messaging. Actionable insights in minutes." />
     <meta property="og:url" content="https://www.adminer.online/" />
-    <meta property="og:title" content="Adminer – Competitive Ad Intelligence" />
-    <meta
-      property="og:description"
-      content="Spy, analyze, and summarize competitors' ads with AI."
-    />
-    <!-- Swap to your real image path when ready -->
-    <!-- <meta property="og:image" content="https://www.adminer.online/og-1200x630.png" /> -->
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.png" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:title" content="Adminer – Competitive Ad Intelligence" />
-    <meta
-      name="twitter:description"
-      content="Spy, analyze, and summarize competitors' ads with AI."
-    />
-    <!-- <meta name="twitter:image" content="https://www.adminer.online/og-1200x630.png" /> -->
+    <meta name="twitter:title" content="Adminer – Competitive Intelligence for Ads" />
+    <meta name="twitter:description" content="Analyze competitor ads, creatives, and messaging. Actionable insights in minutes." />
+    <meta name="twitter:image" content="/og-image.png" />
 
-    <!-- Perf: preconnect (safe; doesn't bypass CSP) -->
-    <!-- If you use a Clerk proxy domain, keep it. If not, remove the proxy line. -->
-    <link rel="preconnect" href="https://clerk.com" />
-    <link rel="preconnect" href="https://api.clerk.com" />
-    <link rel="preconnect" href="https://assets.clerk.com" />
-    <link rel="preconnect" href="https://img.clerk.com" />
-    <!-- <link rel="preconnect" href="https://clerk.adminer.online" /> -->
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/favicon.png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
 
-    <!-- Optional: preload your main brand font if self-hosted -->
-    <!-- <link rel="preload" href="/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin /> -->
+    <!-- Performance hints -->
+    <link rel="preconnect" href="https://clerk.adminer.online" crossorigin />
+    <link rel="dns-prefetch" href="https://clerk.adminer.online" />
+
+    <!-- Vite will inject the script tag here -->
   </head>
   <body>
-    <noscript>This app needs JavaScript enabled.</noscript>
+    <noscript>
+      Adminer requires JavaScript to run. Please enable it in your browser settings.
+    </noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
