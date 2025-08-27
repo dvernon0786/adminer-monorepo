@@ -1,29 +1,26 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
-import { useEffect } from 'react'
-import { useUser, SignIn, SignUp } from '@clerk/clerk-react'
-import { useLocation, useNavigate } from 'react-router-dom'
+import { useAuth, SignIn, SignUp } from '@clerk/clerk-react'
 import Homepage from './pages/Homepage'
 import Dashboard from './pages/dashboard'
 import AdminWebhookEvents from './pages/AdminWebhookEvents'
 
-// Post-auth redirect logic - only for non-auth routes
-function PostAuthRedirect() {
-  const { isSignedIn, isLoaded } = useUser()
-  const nav = useNavigate()
-  const { pathname } = useLocation()
-
-  useEffect(() => {
-    // Wait for Clerk to fully load before making auth decisions
-    if (!isLoaded) return
-    
-    // Only redirect if signed in and on home page (not on auth routes)
-    if (isSignedIn && pathname === '/') {
-      nav('/dashboard', { replace: true })
-    }
-  }, [isSignedIn, isLoaded, pathname, nav])
-
-  return null
+// Auth guard component for protected routes
+function RequireAuth({ children }: { children: React.ReactNode }) {
+  const { isLoaded, isSignedIn } = useAuth();
+  
+  if (!isLoaded) return null;
+  if (!isSignedIn) {
+    return (
+      <div className="w-full bg-blue-50 text-blue-800 border-b border-blue-200">
+        <div className="max-w-6xl mx-auto p-3 text-sm">
+          <strong>Sign In Required</strong>
+          <span className="ml-2">Please sign in to view your dashboard and quota information.</span>
+        </div>
+      </div>
+    );
+  }
+  return <>{children}</>;
 }
 
 // Auth page components
@@ -64,17 +61,20 @@ function SignUpPage() {
 function App() {
   return (
     <>
-      <PostAuthRedirect />
       <Routes>
         {/* Auth routes must accept nested steps */}
         <Route path="/sign-in/*" element={<SignInPage />} />
         <Route path="/sign-up/*" element={<SignUpPage />} />
         
-        {/* Public landing */}
+        {/* Public landing - accessible to all users */}
         <Route path="/" element={<Homepage />} />
         
-        {/* Protected area — guard here, not on auth routes */}
-        <Route path="/dashboard/*" element={<Dashboard />} />
+        {/* Protected area — properly gated with auth guard */}
+        <Route path="/dashboard/*" element={
+          <RequireAuth>
+            <Dashboard />
+          </RequireAuth>
+        } />
         
         {/* Admin routes */}
         <Route path="/admin/webhooks" element={<AdminWebhookEvents />} />
