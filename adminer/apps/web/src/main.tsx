@@ -16,7 +16,10 @@ if (!pk) {
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={pk}>
+    <ClerkProvider 
+      publishableKey={pk}
+      proxyUrl="https://clerk.adminer.online"
+    >
       <BrowserRouter>
         <App />
       </BrowserRouter>

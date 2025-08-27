@@ -5,10 +5,11 @@ const nextConfig = {
   eslint: { ignoreDuringBuilds: true },
 
   async headers() {
+    // Common pieces
     const SELF = "'self'";
     const UNSAFE_INLINE = "'unsafe-inline'";
     const UNSAFE_EVAL = "'unsafe-eval'";
-    const WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'";
+    const WASM_UNSAFE_EVAL = "'wasm-unsafe-eval'"; // keeps Safari happy if needed
 
     const CLERK = [
       "https://clerk.com",
@@ -16,12 +17,13 @@ const nextConfig = {
       "https://api.clerk.com",
       "https://assets.clerk.com",
       "https://img.clerk.com",
-      "https://clerk.adminer.online",
+      "https://clerk.adminer.online", // your proxy domain
     ];
     const TURNSTILE = ["https://challenges.cloudflare.com"];
 
     const baseScriptSrc = [SELF, UNSAFE_INLINE, ...CLERK, ...TURNSTILE].join(" ");
 
+    // Strict default CSP (no eval)
     const defaultCsp = [
       `default-src ${SELF}`,
       `script-src ${baseScriptSrc}`,
@@ -40,16 +42,22 @@ const nextConfig = {
       `frame-ancestors ${SELF}`,
     ].join("; ");
 
+    // Auth pages need eval (Clerk)
     const authScriptSrc = [baseScriptSrc, UNSAFE_EVAL, WASM_UNSAFE_EVAL].join(" ");
     const authCsp = defaultCsp
       .replace(`script-src ${baseScriptSrc}`, `script-src ${authScriptSrc}`)
       .replace(`script-src-elem ${baseScriptSrc}`, `script-src-elem ${authScriptSrc}`);
 
+    // SPA shell + its Vite assets need eval as well
+    // (index.html + /assets/**/*.js from Vite build)
+    const spaCsp = authCsp; // same relaxation as auth (eval allowed)
+
     return [
+      // 1) Relaxed CSP only for the SPA entry + assets (unblocks your Vite bundle)
       {
-        source: "/((?!sign-in|sign-up).*)",
+        source: "/(index.html|assets/:path*)",
         headers: [
-          { key: "Content-Security-Policy", value: defaultCsp },
+          { key: "Content-Security-Policy", value: spaCsp },
           { key: "Cache-Control", value: "no-store, must-revalidate" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },
@@ -57,6 +65,8 @@ const nextConfig = {
           { key: "X-XSS-Protection", value: "0" },
         ],
       },
+
+      // 2) Loosened only on auth pages (Clerk widgets)
       {
         source: "/sign-in",
         headers: [
@@ -71,7 +81,20 @@ const nextConfig = {
       {
         source: "/sign-up",
         headers: [
-          { key: "Content-Security-Policy", value: authCsp },
+          { key: "Content-Security-Policy", value: authCsp }, // (fixed: no duplicate key)
+          { key: "Cache-Control", value: "no-store, must-revalidate" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "X-Frame-Options", value: "SAMEORIGIN" },
+          { key: "X-XSS-Protection", value: "0" },
+        ],
+      },
+
+      // 3) Strict everywhere else (no eval)
+      {
+        source: "/((?!sign-in|sign-up|index.html|assets/).*)",
+        headers: [
+          { key: "Content-Security-Policy", value: defaultCsp },
           { key: "Cache-Control", value: "no-store, must-revalidate" },
           { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
           { key: "X-Content-Type-Options", value: "nosniff" },

@@ -2,11 +2,64 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+
+    <title>Adminer – Competitive Ad Intelligence</title>
+    <meta
+      name="description"
+      content="Adminer helps you spy, analyze, and summarize competitors' ads across platforms with AI—fast, accurate, and production-ready."
+    />
+
+    <!-- Canonical + robots -->
+    <link rel="canonical" href="https://www.adminer.online/" />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+
+    <!-- Icons -->
     <link rel="icon" type="image/svg+xml" href="/vite.svg" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Adminer - Competitive Ad Intelligence</title>
+    <!-- Optional: add PNG fallbacks -->
+    <!-- <link rel="icon" type="image/png" sizes="32x32" href="/icons/favicon-32.png" />
+    <link rel="icon" type="image/png" sizes="16x16" href="/icons/favicon-16.png" /> -->
+
+    <!-- Theme & PWA (optional but recommended if you add a manifest) -->
+    <meta name="theme-color" content="#0B1220" />
+    <!-- <link rel="manifest" href="/site.webmanifest" /> -->
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content="https://www.adminer.online/" />
+    <meta property="og:title" content="Adminer – Competitive Ad Intelligence" />
+    <meta
+      property="og:description"
+      content="Spy, analyze, and summarize competitors' ads with AI."
+    />
+    <!-- Swap to your real image path when ready -->
+    <!-- <meta property="og:image" content="https://www.adminer.online/og-1200x630.png" /> -->
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Adminer – Competitive Ad Intelligence" />
+    <meta
+      name="twitter:description"
+      content="Spy, analyze, and summarize competitors' ads with AI."
+    />
+    <!-- <meta name="twitter:image" content="https://www.adminer.online/og-1200x630.png" /> -->
+
+    <!-- Perf: preconnect (safe; doesn't bypass CSP) -->
+    <!-- If you use a Clerk proxy domain, keep it. If not, remove the proxy line. -->
+    <link rel="preconnect" href="https://clerk.com" />
+    <link rel="preconnect" href="https://api.clerk.com" />
+    <link rel="preconnect" href="https://assets.clerk.com" />
+    <link rel="preconnect" href="https://img.clerk.com" />
+    <!-- <link rel="preconnect" href="https://clerk.adminer.online" /> -->
+
+    <!-- Optional: preload your main brand font if self-hosted -->
+    <!-- <link rel="preload" href="/fonts/Inter-Variable.woff2" as="font" type="font/woff2" crossorigin /> -->
   </head>
   <body>
+    <noscript>This app needs JavaScript enabled.</noscript>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
