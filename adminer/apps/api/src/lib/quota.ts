@@ -34,4 +34,38 @@ export async function incUsage(orgId: string, by = 1) {
     ON CONFLICT (org_id, yyyymm)
     DO UPDATE SET used = usage.used + ${by};
   `);
+}
+
+// Add the missing functions that are being imported
+export async function getQuotaStatus(orgId: string) {
+  try {
+    const { quota, used } = await getPlanAndUsage(orgId);
+    
+    if (used >= quota) {
+      return {
+        ok: false,
+        reason: `Quota exceeded: ${used}/${quota}`,
+        quota,
+        used
+      };
+    }
+    
+    return {
+      ok: true,
+      quota,
+      used,
+      remaining: quota - used
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: `Error checking quota: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      quota: 0,
+      used: 0
+    };
+  }
+}
+
+export async function consumeQuota(orgId: string, amount = 1) {
+  return incUsage(orgId, amount);
 } 
