@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { webhookEvents } from "@/db/schema/webhookEvents";
+import { webhookEvents } from "@/db/schema";
 import { and, desc, gte, ilike, lte, sql } from "drizzle-orm";
 
 type Query = {
@@ -10,11 +10,11 @@ type Query = {
   from?: string;       // ISO date
   to?: string;         // ISO date
   limit?: string;      // number (default 50, max 200)
-  cursor?: string;     // pagination: receivedAt,id (URL-safe)
+  cursor?: string;     // pagination: seenAt,id (URL-safe)
 };
 
 export async function GET(req: Request) {
-  const { userId, sessionClaims } = auth();
+  const { userId, sessionClaims } = await auth();
   if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
 
   // Optional: email/domain/role allowlist
@@ -32,14 +32,14 @@ export async function GET(req: Request) {
   const limitParam = Number(searchParams.get("limit") || "50");
   const limit = Math.min(Math.max(limitParam, 1), 200);
 
-  // cursor format: `${received_at_iso},${id}`
+  // cursor format: `${seen_at_iso},${id}`
   const cursor = (searchParams.get("cursor") || "").trim();
-  let cursorReceivedAt: Date | null = null;
+  let cursorSeenAt: Date | null = null;
   let cursorId: string | null = null;
   if (cursor) {
     const [ts, id] = cursor.split(",");
     if (ts && id) {
-      cursorReceivedAt = new Date(ts);
+      cursorSeenAt = new Date(ts);
       cursorId = id;
     }
   }
@@ -47,11 +47,11 @@ export async function GET(req: Request) {
   const where = and(
     q ? sql`(${webhookEvents.id} ILIKE ${"%" + q + "%"} OR ${webhookEvents.type} ILIKE ${"%" + q + "%"})` : undefined,
     type ? ilike(webhookEvents.type, type) : undefined,
-    from ? gte(webhookEvents.receivedAt, new Date(from)) : undefined,
-    to ? lte(webhookEvents.receivedAt, new Date(to)) : undefined,
-    // keyset pagination (receivedAt DESC, id DESC)
-    cursorReceivedAt && cursorId
-      ? sql`(${webhookEvents.receivedAt}, ${webhookEvents.id}) < (${cursorReceivedAt!.toISOString()}, ${cursorId!})`
+    from ? gte(webhookEvents.seenAt, new Date(from)) : undefined,
+    to ? lte(webhookEvents.seenAt, new Date(to)) : undefined,
+    // keyset pagination (seenAt DESC, id DESC)
+    cursorSeenAt && cursorId
+      ? sql`(${webhookEvents.seenAt}, ${webhookEvents.id}) < (${cursorSeenAt!.toISOString()}, ${cursorId!})`
       : undefined
   );
 
@@ -59,18 +59,19 @@ export async function GET(req: Request) {
     .select({
       id: webhookEvents.id,
       type: webhookEvents.type,
-      receivedAt: webhookEvents.receivedAt,
+      source: webhookEvents.source,
+      seenAt: webhookEvents.seenAt,
       raw: webhookEvents.raw
     })
     .from(webhookEvents)
     .where(where)
-    .orderBy(desc(webhookEvents.receivedAt), desc(webhookEvents.id))
+    .orderBy(desc(webhookEvents.seenAt), desc(webhookEvents.id))
     .limit(limit + 1);
 
   let nextCursor: string | null = null;
   if (rows.length > limit) {
     const last = rows[limit - 1];
-    nextCursor = `${last.receivedAt.toISOString()},${last.id}`;
+    nextCursor = `${last.seenAt.toISOString()},${last.id}`;
     rows.splice(limit); // trim extra
   }
 

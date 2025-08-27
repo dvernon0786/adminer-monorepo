@@ -51,6 +51,8 @@ export const orgs = pgTable("orgs", {
 export const webhookEvents = pgTable("webhook_events", {
   id: varchar("id", { length: 128 }).primaryKey(),                  // event id from Dodo
   source: varchar("source", { length: 64 }).notNull().default("dodo"),
+  type: text("type").notNull(),                                    // event type (e.g., "subscription.updated")
+  raw: text("raw"),                                                // raw payload for debugging
   seenAt: timestamp("seen_at").notNull().defaultNow(),
 });
 

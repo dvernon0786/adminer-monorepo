@@ -4,8 +4,12 @@ import { db } from "@/db";
 import { orgs, plans, webhookEvents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// Use exact environment variable names from Dodo docs
-const WEBHOOK_KEY = process.env.DODO_PAYMENTS_WEBHOOK_KEY || process.env.DODO_WEBHOOK_SECRET || "";
+// Use official Dodo environment variable names
+const WEBHOOK_KEY =
+  process.env.DODO_PAYMENTS_WEBHOOK_KEY ??
+  process.env.DODO_WEBHOOK_SECRET ?? // legacy fallback
+  "";
+
 const PRO_CODE = process.env.DODO_PRO_PLANCODE || "pro-500";
 const ENT_CODE = process.env.DODO_ENTERPRISE_PLANCODE || "ent-2000";
 
@@ -14,13 +18,14 @@ const DODO_PRO_PRODUCT_ID = process.env.DODO_PRO_PRODUCT_ID;
 const DODO_ENT_PRODUCT_ID = process.env.DODO_ENT_PRODUCT_ID;
 
 if (!WEBHOOK_KEY) {
+  // Fail fast on boot if missing
   console.warn("[payments/webhook] Missing DODO_PAYMENTS_WEBHOOK_KEY");
 }
 
 // Use nodejs runtime for compatibility
 export const runtime = "nodejs";
 
-// Manual Standard Webhooks verification following the exact Dodo spec
+// Manual Standard Webhooks verification following the spec
 async function verifyStandardWebhook(
   rawBody: string, 
   webhookId: string, 
@@ -77,7 +82,7 @@ export async function POST(req: Request) {
     const rawBody = await req.text();
     const h = headers();
 
-    // Use exact header names from Dodo docs
+    // Prefer Standard Webhooks header names; accept legacy header for backward-compat
     const webhookId = h.get("webhook-id") ?? "";
     const timestamp = h.get("webhook-timestamp") ?? "";
     const signature = h.get("webhook-signature") ?? h.get("dodo-signature") ?? "";
@@ -100,10 +105,11 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, duplicate: true, id: webhookId });
       }
       
-      // Store webhook event for idempotency (using existing schema)
+      // Store webhook event for idempotency
       await db.insert(webhookEvents).values({ 
-        id: webhookId,
-        source: "dodo"
+        id: webhookId, 
+        source: "dodo",
+        type: "unknown" 
       });
     }
 
@@ -126,6 +132,14 @@ export async function POST(req: Request) {
 
     const planCode = mapToPlanCode({ plan, productId });
 
+    // Update webhook event with actual type and raw payload
+    if (webhookId) {
+      await db
+        .update(webhookEvents)
+        .set({ type: type || "unknown", raw: rawBody })
+        .where(eq(webhookEvents.id, webhookId));
+    }
+
     // Ensure plans exist
     await db.insert(plans).values([
       { code: "free-10", name: "Free", monthlyQuota: 10 },
@@ -139,7 +153,7 @@ export async function POST(req: Request) {
       .insert(orgs)
       .values({ 
         id: orgId, 
-        name: orgId, // Required field
+        name: orgId, // Use orgId as name if not provided
         planCode, 
         updatedAt: now 
       })
@@ -164,6 +178,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  // Consistent with Dodo docs: non-POST => 405
+  // Consistent with adaptor docs: non-POST => 405
   return NextResponse.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
 } 

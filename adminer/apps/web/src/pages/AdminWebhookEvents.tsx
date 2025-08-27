@@ -3,14 +3,15 @@ import React, { useEffect, useMemo, useState } from "react";
 type Item = {
   id: string;
   type: string;
-  receivedAt: string;
+  source: string;
+  seenAt: string;
   raw?: string | null;
 };
 
 type ApiResp = {
   ok: boolean;
   nextCursor: string | null;
-  items: Array<{ id: string; type: string; receivedAt: string; raw?: string | null }>;
+  items: Array<{ id: string; type: string; source: string; seenAt: string; raw?: string | null }>;
 };
 
 const fmtDateTime = (iso: string) =>
@@ -20,14 +21,14 @@ const fmtDateTime = (iso: string) =>
   });
 
 function toCSV(rows: Item[]): string {
-  const headers = ["id","type","receivedAt","raw"];
+  const headers = ["id","type","source","seenAt","raw"];
   const escape = (v: any) => {
     if (v == null) return "";
     const s = String(v).replace(/"/g, '""');
     return `"${s}"`;
   };
   const lines = [headers.join(",")].concat(
-    rows.map(r => [r.id, r.type, r.receivedAt, r.raw ?? ""].map(escape).join(","))
+    rows.map(r => [r.id, r.type, r.source, r.seenAt, r.raw ?? ""].map(escape).join(","))
   );
   return lines.join("\n");
 }
@@ -180,8 +181,9 @@ export default function AdminWebhookEvents() {
         <table className="min-w-full text-sm">
           <thead className="bg-gray-50">
             <tr className="text-left">
-              <th className="px-3 py-2">Received</th>
+              <th className="px-3 py-2">Seen</th>
               <th className="px-3 py-2">Type</th>
+              <th className="px-3 py-2">Source</th>
               <th className="px-3 py-2">ID</th>
               <th className="px-3 py-2 w-24">Raw</th>
             </tr>
@@ -192,8 +194,9 @@ export default function AdminWebhookEvents() {
               return (
                 <React.Fragment key={r.id}>
                   <tr className="border-t">
-                    <td className="px-3 py-2 whitespace-nowrap">{fmtDateTime(r.receivedAt)}</td>
+                    <td className="px-3 py-2 whitespace-nowrap">{fmtDateTime(r.seenAt)}</td>
                     <td className="px-3 py-2">{r.type}</td>
+                    <td className="px-3 py-2">{r.source}</td>
                     <td className="px-3 py-2 font-mono text-xs">{r.id}</td>
                     <td className="px-3 py-2">
                       <button
@@ -206,7 +209,7 @@ export default function AdminWebhookEvents() {
                   </tr>
                   {open && (
                     <tr className="bg-gray-50">
-                      <td colSpan={4} className="px-3 py-2">
+                      <td colSpan={5} className="px-3 py-2">
                         <pre className="text-xs overflow-auto max-h-64">
                           {(() => {
                             try {
@@ -224,7 +227,7 @@ export default function AdminWebhookEvents() {
             })}
             {!rows.length && !loading && (
               <tr>
-                <td colSpan={4} className="px-3 py-6 text-center text-gray-500">No events</td>
+                <td colSpan={5} className="px-3 py-6 text-center text-gray-500">No events</td>
               </tr>
             )}
           </tbody>
