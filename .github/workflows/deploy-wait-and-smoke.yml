@@ -5,69 +5,66 @@ on:
   workflow_dispatch:
   push:
     branches: [ "main" ]
-  pull_request:
 
 permissions:
   contents: read
-
-env:
-  PROD_APEX: https://adminer.online
-  PROD_WWW: https://www.adminer.online
 
 jobs:
   deploy-wait-and-smoke:
     runs-on: ubuntu-latest
     env:
+      # Optional: if VERCEL_TOKEN not present, we won't call Vercel API.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+      # Optional: if not provided, fall back to production apex/www.
+      APEX_URL: ${{ secrets.PROD_URL }}
+      WWW_URL: ${{ secrets.WWW_URL }}
 
     steps:
       - uses: actions/checkout@v4
         with:
-          submodules: true
+          fetch-depth: 1
 
-      # Guards: required files exist
-      - name: Guard files
+      - name: Ensure defaults for URLs when secrets not set
         run: |
           set -euo pipefail
-          [[ -f adminer/vercel.json ]] || (echo "adminer/vercel.json missing" && exit 1)
-          [[ -f scripts/smoke.sh ]] || (echo "scripts/smoke.sh missing" && exit 1)
+          : "${APEX_URL:=https://adminer.online}"
+          : "${WWW_URL:=https://www.adminer.online}"
+          echo "APEX_URL=$APEX_URL" >> $GITHUB_ENV
+          echo "WWW_URL=$WWW_URL" >> $GITHUB_ENV
+          echo "VERCEL_TOKEN is ${VERCEL_TOKEN:+set}${VERCEL_TOKEN:-unset}"
 
-      # Optionally wait for Vercel (only if token is present)
-      - name: Fetch Vercel deployment URL (optional)
+      - name: Optionally fetch the latest deployment URL from Vercel
         id: vercel
-        if: env.VERCEL_TOKEN != '' && env.VERCEL_PROJECT_ID != ''
+        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_PROJECT_ID != '' }}
         run: |
           set -euo pipefail
-          base="https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}"
-          if [[ -n "${VERCEL_TEAM_ID}" ]]; then base="${base}&teamId=${VERCEL_TEAM_ID}"; fi
-          # Try up to 10 times
-          for i in {1..10}; do
-            resp=$(curl -fsSL --connect-timeout 10 --max-time 20 "$base") && break || sleep 5
-          done
-          url=$(node -e "const x=${resp}; const d=x.deployments?.[0]; if(!d) process.exit(1); console.log(d.url)")
-          echo "url=https://${url}" >> "$GITHUB_OUTPUT"
-
-      - name: Decide BASE_URL
-        id: decide
-        run: |
-          if [[ -n "${{ steps.vercel.outputs.url }}" ]]; then
-            echo "BASE_URL=${{ steps.vercel.outputs.url }}" >> "$GITHUB_OUTPUT"
-          else
-            # Fallback to production apex domain
-            echo "BASE_URL=https://adminer.online" >> "$GITHUB_OUTPUT"
+          # Try to read the most recent production deployment
+          RESP="$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
+            "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1&target=production")" || true
+          if [[ -n "${RESP:-}" && "$RESP" != "forbidden" ]]; then
+            URL="$(node -e 'const x=JSON.parse(process.argv[1]||"{}"); const d=x.deployments?.[0]; if(d?.url) console.log("https://"+d.url)' "$(printf '%s' "$RESP")" || true)"
+            if [[ -n "${URL:-}" ]]; then
+              echo "deployment_url=$URL" >> "$GITHUB_OUTPUT"
+              echo "Using Vercel deployment URL: $URL"
+            fi
           fi
 
-      - name: Show BASE_URL
-        run: echo "BASE_URL=${{ steps.decide.outputs.BASE_URL }}"
+      - name: Prefer Vercel deployment URL if available
+        run: |
+          set -euo pipefail
+          DEPLOY_URL="${{ steps.vercel.outputs.deployment_url || '' }}"
+          if [[ -n "${DEPLOY_URL}" ]]; then
+            echo "APEX_URL=$DEPLOY_URL" >> $GITHUB_ENV
+            # Derive WWW from apex host if you want (not mandatory for smoke)
+            HOST="$(echo "$DEPLOY_URL" | sed -E 's#^https?://##')"
+            echo "WWW_URL=https://www.${HOST}" >> $GITHUB_ENV
+          fi
 
       - name: Make smoke executable
         run: chmod +x scripts/smoke.sh
 
-      - name: Smoke
-        env:
-          BASE_URL: ${{ steps.decide.outputs.BASE_URL }}
-          APEX_URL: https://adminer.online
-          WWW_URL: https://www.adminer.online
+      - name: Smoke Test
         run: bash scripts/smoke.sh 

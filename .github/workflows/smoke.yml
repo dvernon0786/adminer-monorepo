@@ -5,8 +5,13 @@ on:
     branches: [ main ]
   workflow_dispatch:
     inputs:
-      base_url:
-        description: "Base URL to test"
+      apex_url:
+        description: "APEX URL to test"
+        default: "https://adminer.online"
+        required: true
+        type: string
+      www_url:
+        description: "WWW URL to test"
         default: "https://www.adminer.online"
         required: true
         type: string
@@ -19,27 +24,29 @@ jobs:
   smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    env:
+      # Optional: if not provided, fall back to production apex/www.
+      APEX_URL: ${{ secrets.PROD_URL }}
+      WWW_URL: ${{ secrets.WWW_URL }}
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set BASE_URL
+      - name: Ensure defaults for URLs when secrets not set
         run: |
-          if [ -n "${{ github.event.inputs.base_url }}" ]; then
-            echo "BASE_URL=${{ github.event.inputs.base_url }}" >> $GITHUB_ENV
-          else
-            echo "BASE_URL=https://www.adminer.online" >> $GITHUB_ENV
-          fi
+          set -euo pipefail
+          : "${APEX_URL:=https://adminer.online}"
+          : "${WWW_URL:=https://www.adminer.online}"
+          echo "APEX_URL=$APEX_URL" >> $GITHUB_ENV
+          echo "WWW_URL=$WWW_URL" >> $GITHUB_ENV
 
       # Optional small buffer so Vercel DNS/edge finishes propagating
       - name: Warm-up wait
         run: sleep 15
 
+      - name: Make smoke executable
+        run: chmod +x scripts/smoke.sh
+
       - name: Run smoke tests
-        env:
-          BASE_URL: ${{ env.BASE_URL }}
-          RETRIES: "30"       # up to ~2.5 minutes per endpoint with 5s sleep
-          SLEEP_SECS: "5"
-        run: |
-          bash scripts/smoke.sh
+        run: bash scripts/smoke.sh
