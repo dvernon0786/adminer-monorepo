@@ -34,7 +34,7 @@ install_deps_and_build() {
     npm run "$build_cmd"
   else
     say "📦 Using npm (no lockfile) in $dir"
-    npm install
+    npm install --include=dev
     npm run "$build_cmd"
   fi
 }
