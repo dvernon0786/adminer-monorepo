@@ -1,32 +1,26 @@
 import { NextResponse } from "next/server";
-import { headers } from "next/server";
+import { headers } from "next/headers";
 import { db } from "@/db";
 import { orgs, plans, webhookEvents } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
-// Prefer DODO_WEBHOOK_KEY; fall back to legacy var so existing envs keep working
-const WEBHOOK_KEY =
-  process.env.DODO_WEBHOOK_KEY ??
-  process.env.DODO_WEBHOOK_SECRET ?? // legacy
-  "";
-
+// Use exact environment variable names from Dodo docs
+const WEBHOOK_KEY = process.env.DODO_PAYMENTS_WEBHOOK_KEY || process.env.DODO_WEBHOOK_SECRET || "";
 const PRO_CODE = process.env.DODO_PRO_PLANCODE || "pro-500";
 const ENT_CODE = process.env.DODO_ENTERPRISE_PLANCODE || "ent-2000";
 
 // Optional: if you already have these in env, add them on Vercel too.
-// Otherwise you can omit this mapping block entirely.
 const DODO_PRO_PRODUCT_ID = process.env.DODO_PRO_PRODUCT_ID;
 const DODO_ENT_PRODUCT_ID = process.env.DODO_ENT_PRODUCT_ID;
 
 if (!WEBHOOK_KEY) {
-  // Fail fast on boot if missing
-  console.warn("[payments/webhook] Missing DODO_WEBHOOK_KEY");
+  console.warn("[payments/webhook] Missing DODO_PAYMENTS_WEBHOOK_KEY");
 }
 
 // Use nodejs runtime for compatibility
 export const runtime = "nodejs";
 
-// Manual Standard Webhooks verification following the spec
+// Manual Standard Webhooks verification following the exact Dodo spec
 async function verifyStandardWebhook(
   rawBody: string, 
   webhookId: string, 
@@ -83,7 +77,7 @@ export async function POST(req: Request) {
     const rawBody = await req.text();
     const h = headers();
 
-    // Prefer Standard Webhooks header names; accept legacy header for backward-compat
+    // Use exact header names from Dodo docs
     const webhookId = h.get("webhook-id") ?? "";
     const timestamp = h.get("webhook-timestamp") ?? "";
     const signature = h.get("webhook-signature") ?? h.get("dodo-signature") ?? "";
@@ -106,10 +100,10 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: true, duplicate: true, id: webhookId });
       }
       
-      // Store webhook event for idempotency
+      // Store webhook event for idempotency (using existing schema)
       await db.insert(webhookEvents).values({ 
-        id: webhookId, 
-        type: "unknown" 
+        id: webhookId,
+        source: "dodo"
       });
     }
 
@@ -132,14 +126,6 @@ export async function POST(req: Request) {
 
     const planCode = mapToPlanCode({ plan, productId });
 
-    // Update webhook event with actual type and raw payload
-    if (webhookId) {
-      await db
-        .update(webhookEvents)
-        .set({ type: type || "unknown", raw: rawBody })
-        .where(eq(webhookEvents.id, webhookId));
-    }
-
     // Ensure plans exist
     await db.insert(plans).values([
       { code: "free-10", name: "Free", monthlyQuota: 10 },
@@ -148,10 +134,15 @@ export async function POST(req: Request) {
     ]).onConflictDoNothing();
 
     // Upsert org
-    const now = new Date().toISOString();
+    const now = new Date();
     await db
       .insert(orgs)
-      .values({ id: orgId, planCode, updatedAt: now })
+      .values({ 
+        id: orgId, 
+        name: orgId, // Required field
+        planCode, 
+        updatedAt: now 
+      })
       .onConflictDoUpdate({ target: orgs.id, set: { planCode, updatedAt: now } });
 
     return NextResponse.json({ 
@@ -173,6 +164,6 @@ export async function POST(req: Request) {
 }
 
 export async function GET() {
-  // Consistent with adaptor docs: non-POST => 405
+  // Consistent with Dodo docs: non-POST => 405
   return NextResponse.json({ ok: false, error: "Method Not Allowed" }, { status: 405 });
 } 

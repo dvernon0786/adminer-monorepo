@@ -20,6 +20,7 @@
   "dependencies": {
     "@clerk/clerk-js": "5.88.0",
     "@clerk/nextjs": "6.9.4",
+    "@dodopayments/nextjs": "^0.1.8",
     "@google/generative-ai": "0.24.1",
     "@neondatabase/serverless": "1.0.1",
     "@swc/helpers": "0.5.17",

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { db } from "@/db";
-import { webhookEvents } from "@/db/schema";
+import { webhookEvents } from "@/db/schema/webhookEvents";
 import { and, desc, gte, ilike, lte, sql } from "drizzle-orm";
 
 type Query = {
@@ -13,10 +14,15 @@ type Query = {
 };
 
 export async function GET(req: Request) {
-  // TODO: (Optional) enforce admin-only here.
-  // e.g., read a role from auth() or a list of admin emails from env.
-  // const { userId, sessionClaims } = auth();
-  // if (!isAdmin(sessionClaims)) return NextResponse.json({ ok: false }, { status: 403 });
+  const { userId, sessionClaims } = auth();
+  if (!userId) return NextResponse.json({ ok: false }, { status: 401 });
+
+  // Optional: email/domain/role allowlist
+  const email = (sessionClaims?.email as string | undefined)?.toLowerCase();
+  const isAdmin =
+    !!email &&
+    ["you@company.com", "dev@company.com"].includes(email); // replace with your admins
+  if (!isAdmin) return NextResponse.json({ ok: false }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const q = (searchParams.get("q") || "").trim();
