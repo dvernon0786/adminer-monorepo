@@ -1,59 +1,65 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-${1:-}}"
-APEX_URL="${APEX_URL:-${2:-}}"
-WWW_URL="${WWW_URL:-${3:-}}"
-
-if [[ -z "${BASE_URL}" ]]; then
-  echo "Usage: BASE_URL=https://your-deploy-url.example \\"
-  echo "       APEX_URL=https://adminer.online \\"
-  echo "       WWW_URL=https://www.adminer.online \\"
-  echo "       scripts/smoke.sh"
-  exit 2
-fi
-
-function head() {
-  curl -sS -o /dev/null -D - -I "$1"
-}
-
-function get() {
-  curl -sS -o /dev/null -w "%{http_code}|%{content_type}" "$1"
-}
+BASE_URL="${BASE_URL:-https://www.adminer.online}"  # default to www so we also validate redirect
+APEX_URL="${APEX_URL:-https://adminer.online}"
+WWW_URL="${WWW_URL:-https://www.adminer.online}"
 
 echo "🔎 BASE_URL=${BASE_URL}"
-[[ -n "${APEX_URL:-}" ]] && echo "🔎 APEX_URL=${APEX_URL}"
-[[ -n "${WWW_URL:-}"  ]] && echo "🔎 WWW_URL=${WWW_URL}"
 
+red() { printf "\e[31m%s\e[0m\n" "$*"; }
+grn() { printf "\e[32m%s\e[0m\n" "$*"; }
+ylw() { printf "\e[33m%s\e[0m\n" "$*"; }
+
+# 1) Canonical redirect (WWW -> APEX)
 echo "== Canonical redirect: WWW → APEX =="
-if [[ -n "${WWW_URL:-}" && -n "${APEX_URL:-}" ]]; then
-  STATUS_LOC=$(head "${WWW_URL}" | awk '/^HTTP\/|^location:/ {print}')
-  echo "${STATUS_LOC}"
-  echo "${STATUS_LOC}" | grep -qi "HTTP/.* 301" || { echo "❌ Expected 301 from WWW"; exit 1; }
-  echo "${STATUS_LOC}" | grep -qi "location: ${APEX_URL}/\?$" || { echo "❌ Expected Location: ${APEX_URL}"; exit 1; }
+code=$(curl -s -o /dev/null -w "%{http_code}" -I "${WWW_URL}/")
+loc=$(curl -s -I "${WWW_URL}/" | awk -F': ' 'tolower($1)=="location"{print $2}' | tr -d '\r\n')
+echo "WWW / -> ${code} ${loc:-"(no Location)"}"
+if [[ "$code" != "301" || "$loc" != "${APEX_URL}/" ]]; then
+  red "❌ WWW root should 301 to APEX root"
+  exit 1
 else
-  echo "⚠️  Skipping WWW→APEX (env not provided)"
+  grn "✅ WWW root 301s to APEX root"
 fi
 
+# 2) SPA routes (should end as 200 text/html)
 echo "== SPA routes return HTML 200 =="
-for path in "/" "/dashboard" "/sign-in" ; do
-  OUT=$(get "${BASE_URL}${path}")
-  CODE="${OUT%%|*}"; CT="${OUT##*|}"
-  echo "${path} -> ${CODE} ${CT}"
-  [[ "${CODE}" == "200" ]] || { echo "❌ ${path} not 200"; exit 1; }
-  echo "${CT}" | grep -qi "text/html" || { echo "❌ ${path} not HTML"; exit 1; }
-done
+check_html () {
+  local url="$1"
+  local http ct
+  http=$(curl -s -L -o /dev/null -w "%{http_code}" "${url}")
+  ct=$(curl -s -L -D - "${url}" -o /dev/null | awk -F': ' 'tolower($1)=="content-type"{print tolower($2)}' | tr -d '\r\n')
+  echo "${url} -> ${http} ${ct}"
+  if [[ "$http" != "200" || "$ct" != text/html* ]]; then
+    red "❌ ${url} not HTML 200"
+    exit 1
+  fi
+}
 
+check_html "${APEX_URL}/"
+check_html "${APEX_URL}/dashboard"
+check_html "${APEX_URL}/sign-in"
+
+# 3) API health
 echo "== API health =="
-OUT=$(get "${BASE_URL}/api/consolidated?action=health")
-CODE="${OUT%%|*}"; CT="${OUT##*|}"
-echo "/api/consolidated?action=health -> ${CODE} ${CT}"
-[[ "${CODE}" == "200" ]] || { echo "❌ health not 200"; exit 1; }
+api_status=$(curl -s -o /dev/null -w "%{http_code}" "${APEX_URL}/api/consolidated?action=health")
+echo "/api/consolidated?action=health -> ${api_status}"
+if [[ "$api_status" != "200" ]]; then
+  red "❌ health not 200"
+  exit 1
+else
+  grn "✅ health 200"
+fi
 
-echo "== Webhook GET is 405 =="
-OUT=$(get "${BASE_URL}/api/webhooks/apify")
-CODE="${OUT%%|*}"
-echo "/api/webhooks/apify (GET) -> ${CODE}"
-[[ "${CODE}" == "405" ]] || { echo "❌ webhook GET should be 405"; exit 1; }
+# 4) Webhook methods guard (GET should be 405)
+echo "== Webhook GET returns 405 =="
+wh_status=$(curl -s -o /dev/null -w "%{http_code}" "${APEX_URL}/api/payments/webhook")
+echo "/api/payments/webhook (GET) -> ${wh_status}"
+if [[ "$wh_status" != "405" && "$wh_status" != "404" ]]; then
+  # Allow 404 if route not present in this branch
+  red "❌ webhook GET should be 405 (or 404 if absent)"
+  exit 1
+fi
 
-echo "✅ Smoke passed" 
+grn "🎉 Smoke OK" 

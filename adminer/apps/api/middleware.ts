@@ -1,47 +1,44 @@
-import { NextResponse, NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from "next/server";
 
-// Update to your canonical hosts
-const APEX = 'adminer.online'
-const WWW  = `www.${APEX}`
+const APEX = "adminer.online";
+const WWW  = "www.adminer.online";
 
-// Paths that middleware should ignore entirely
-const IGNORE_PREFIXES = [
-  '/api/',               // Next API routes
-  '/_next/',             // Next internals
-  '/assets/',            // SPA assets copied to public/
-  '/favicon', '/robots', '/sitemap', '/manifest',
-  '/.well-known/',       // ACME etc.
-]
+/**
+ * Only do hostname normalization.
+ * Do NOT handle SPA rewrites here (vercel.json will).
+ * Always no-op on *.vercel.app and on local/preview environments.
+ */
+export function middleware(req: NextRequest) {
+  const { nextUrl } = req;
 
-export const config = {
-  matcher: ['/((?!_next|static).*)'], // run on most paths but we still early-return below
+  // Skip for API/static/_next and known assets
+  const path = nextUrl.pathname;
+  if (
+    path.startsWith("/api/") ||
+    path.startsWith("/_next/") ||
+    path.startsWith("/assets/") ||
+    path === "/favicon.ico" ||
+    path === "/robots.txt"
+  ) {
+    return NextResponse.next();
+  }
+
+  // Bypass preview deployments / local dev
+  const hostname = nextUrl.hostname; // <-- important: no ports (fixes :443 loops)
+  if (hostname.endsWith(".vercel.app") || hostname === "localhost") {
+    return NextResponse.next();
+  }
+
+  // Redirect WWW -> APEX (and only that)
+  if (hostname === WWW) {
+    nextUrl.hostname = APEX;
+    return NextResponse.redirect(nextUrl, 301);
+  }
+
+  // If already APEX or something else, do nothing here.
+  return NextResponse.next();
 }
 
-export default function middleware(req: NextRequest) {
-  const url = new URL(req.url)
-
-  // 1) Short-circuit: ignore paths we shouldn't touch
-  if (IGNORE_PREFIXES.some(p => url.pathname.startsWith(p))) {
-    return NextResponse.next()
-  }
-
-  // 2) Force apex (www -> apex) safely using hostname (no ports)
-  const hostname = url.hostname
-
-  if (hostname === WWW) {
-    url.hostname = APEX
-    // If you also want HTTPS enforcement, uncomment the next line:
-    // url.protocol = 'https:'
-    return NextResponse.redirect(url, 301)
-  }
-
-  // If someone hits an unexpected host, optionally normalize to apex.
-  // (Keeps previews working because Vercel previews won't match WWW/APEX.)
-  if (hostname !== APEX && !hostname.endsWith('.vercel.app')) {
-    url.hostname = APEX
-    return NextResponse.redirect(url, 301)
-  }
-
-  // 3) Default: continue
-  return NextResponse.next()
-} 
+export const config = {
+  matcher: ["/:path*"],
+}; 
