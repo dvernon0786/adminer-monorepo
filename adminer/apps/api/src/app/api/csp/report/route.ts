@@ -1,46 +1,53 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from "next/server";
 
-export const runtime = 'nodejs';
-export const dynamic = 'force-dynamic';
+// naive in-memory throttle (OK for hobby); replace with KV/DB if needed
+let lastLog = 0;
+const MIN_MS = 2000;
 
-export async function POST(req: NextRequest) {
-  try {
-    const violation = await req.json();
-    
-    // Log CSP violation for monitoring
-    console.log('🚨 CSP Violation Report:', {
-      timestamp: new Date().toISOString(),
-      documentUri: violation['document-uri'],
-      blockedUri: violation['blocked-uri'],
-      violatedDirective: violation['violated-directive'],
-      originalPolicy: violation['original-policy'],
-      userAgent: req.headers.get('user-agent'),
-    });
-
-    // Return 200 to acknowledge receipt
-    return NextResponse.json({ 
-      ok: true, 
-      received: true,
-      timestamp: new Date().toISOString()
-    }, { status: 200 });
-    
-  } catch (error) {
-    console.error('❌ Error processing CSP report:', error);
-    
-    // Still return 200 to prevent browser retries
-    return NextResponse.json({ 
-      ok: false, 
-      error: 'invalid_report',
-      timestamp: new Date().toISOString()
-    }, { status: 200 });
-  }
-}
-
-// Also handle GET for testing
 export async function GET() {
   return NextResponse.json({ 
     ok: true, 
-    message: 'CSP Report endpoint active',
-    timestamp: new Date().toISOString()
-  }, { status: 200 });
-} 
+    message: "CSP Report endpoint active", 
+    timestamp: new Date().toISOString() 
+  });
+}
+
+export async function POST(req: NextRequest) {
+  const ct = req.headers.get("content-type") || "";
+  let payload: any = {};
+  
+  try {
+    if (ct.includes("application/csp-report")) {
+      // Some UAs wrap under { "csp-report": { ... } }
+      const body = await req.json();
+      payload = body["csp-report"] ?? body;
+    } else {
+      payload = await req.json();
+      // Normalize common keys
+      if (payload["csp-report"]) payload = payload["csp-report"];
+    }
+  } catch {
+    // ignore parse errors
+  }
+
+  // minimal PII-safe log
+  const entry = {
+    ts: new Date().toISOString(),
+    doc: payload["document-uri"],
+    blocked: payload["blocked-uri"],
+    directive: payload["violated-directive"],
+    disposition: payload["disposition"],
+    sample: payload["script-sample"],
+  };
+
+  const now = Date.now();
+  if (now - lastLog > MIN_MS) {
+    console.log("[CSP]", JSON.stringify(entry));
+    lastLog = now;
+  }
+
+  return NextResponse.json({ ok: true, received: true });
+}
+
+export const runtime = 'nodejs';
+export const dynamic = 'force-dynamic'; 
