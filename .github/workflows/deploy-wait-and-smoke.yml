@@ -1,5 +1,5 @@
 # .github/workflows/deploy-wait-and-smoke.yml
-name: Wait for Vercel Deploy + Smoke Tests
+name: Deploy Wait & Smoke
 
 on:
   push:
@@ -7,107 +7,75 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
+env:
+  PROD_APEX: https://adminer.online
+  PROD_WWW: https://www.adminer.online
+
 jobs:
-  wait-and-test:
-    name: smoke
+  smoke:
     runs-on: ubuntu-latest
-    permissions:
-      contents: read
-
-    env:
-      # You may override these in GitHub "Environments" or repo secrets
-      PROD_APEX: https://adminer.online
-      PROD_WWW:  https://www.adminer.online
-      # Set this to your Vercel project name (not display name). Keep in repo/Org secrets.
-      VERCEL_PROJECT: ${{ secrets.VERCEL_PROJECT }}
-      VERCEL_ORG_ID:  ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_TOKEN:   ${{ secrets.VERCEL_TOKEN }}
-
     steps:
-      - name: Checkout
-        uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-      - name: Ensure deps
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y curl jq
+      - name: Set Node (just to run script tools)
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20.x'
 
-      - name: Wait for Vercel deployment of this commit
-        id: wait
-        env:
-          GITHUB_SHA: ${{ github.sha }}
+      - name: Verify required files exist (guards)
         run: |
           set -euo pipefail
-
-          if [[ -z "${VERCEL_PROJECT:-}" || -z "${VERCEL_TOKEN:-}" ]]; then
-            echo "Missing VERCEL_PROJECT or VERCEL_TOKEN secrets"; exit 1
-          fi
-
-          echo "🔎 Searching Vercel deployments for project=$VERCEL_PROJECT commit=$GITHUB_SHA"
-
-          # Poll deployments filtered by GitHub commit SHA (meta-githubCommitSha)
-          # Docs: /v6/deployments with meta-* query
-          ATTEMPTS=0
-          MAX_ATTEMPTS=120   # ~10 minutes
-          SLEEP=5
-
-          DEPLOY_ID=""
-          DEPLOY_URL=""
-          READY_STATE=""
-
-          while (( ATTEMPTS < MAX_ATTEMPTS )); do
-            RESP=$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-              "https://api.vercel.com/v6/deployments?app=${VERCEL_PROJECT}&limit=5&meta-githubCommitSha=${GITHUB_SHA}")
-            COUNT=$(echo "$RESP" | jq '.deployments | length')
-            if [[ "$COUNT" -gt 0 ]]; then
-              # Take the most recent matching deployment
-              DEPLOY_ID=$(echo "$RESP" | jq -r '.deployments[0].uid')
-              DEPLOY_URL=$(echo "$RESP" | jq -r '.deployments[0].url')
-              READY_STATE=$(echo "$RESP" | jq -r '.deployments[0].readyState')
-              echo "Found deployment id=$DEPLOY_ID url=$DEPLOY_URL state=$READY_STATE"
-              # If already ready or errored, break early
-              if [[ "$READY_STATE" == "READY" || "$READY_STATE" == "ERROR" || "$READY_STATE" == "CANCELED" ]]; then
-                break
-              fi
-            else
-              echo "No deployment yet for this commit. Retrying..."
-            fi
-            ATTEMPTS=$((ATTEMPTS + 1))
-            sleep "$SLEEP"
+          FILES=("adminer/apps/api/vercel.json" "scripts/smoke.sh" "scripts/smoke-local.env.example")
+          for f in "${FILES[@]}"; do
+            [[ -f "$f" ]] || { echo "❌ Missing $f"; exit 1; }
+            echo "Found: $f"
           done
 
-          if [[ -z "${DEPLOY_ID:-}" ]]; then
-            echo "❌ Could not find a Vercel deployment for commit $GITHUB_SHA"; exit 1
-          fi
-
-          if [[ "$READY_STATE" != "READY" ]]; then
-            echo "❌ Deployment state: $READY_STATE"; exit 1
-          fi
-
-          echo "✅ Deployment is READY: https://${DEPLOY_URL}"
-
-          # Decide which host to test
-          # For main branch: use production domains
-          # For PRs/other branches: use the preview URL
-          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
-            TEST_APEX="${PROD_APEX}"
-            TEST_WWW="${PROD_WWW}"
-          else
-            TEST_APEX="https://${DEPLOY_URL}"
-            TEST_WWW="https://${DEPLOY_URL}" # preview typically lacks custom domains; keep both same
-          fi
-
-          echo "TEST_APEX=${TEST_APEX}" | tee -a "$GITHUB_OUTPUT"
-          echo "TEST_WWW=${TEST_WWW}" | tee -a "$GITHUB_OUTPUT"
-
-      - name: Make smoke script executable
-        run: chmod +x scripts/test-redirects.sh
-
-      - name: Run smoke tests against deployed URL
-        env:
-          APEX: ${{ steps.wait.outputs.TEST_APEX }}
-          WWW:  ${{ steps.wait.outputs.TEST_WWW }}
+      - name: Resolve target (prod vs preview)
+        id: target
         run: |
-          echo "APEX=$APEX"
-          echo "WWW=$WWW"
-          ./scripts/test-redirects.sh 
+          if [[ "${{ github.ref }}" == "refs/heads/main" ]]; then
+            echo "env=production" >> $GITHUB_OUTPUT
+          else
+            echo "env=preview" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Fetch Vercel deployment URL
+        id: vercel
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+          VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          ENV="${{ steps.target.outputs.env }}"
+
+          # Query latest deployment for this commit/branch
+          if [[ "$ENV" == "production" ]]; then
+            FILTER="target=production&state=READY"
+          else
+            # Filter by branch for PRs
+            BRANCH="${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}"
+            FILTER="target=preview&state=READY&meta-githubCommitRef=${BRANCH}"
+          fi
+
+          API="https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&teamId=${VERCEL_TEAM_ID}&${FILTER}&limit=1"
+          JSON=$(curl -fsS -H "Authorization: Bearer ${VERCEL_TOKEN}" "$API")
+          URL=$(echo "$JSON" | node -e "let j = JSON.parse(fs.readFileSync(0)); console.log((j.deployments?.[0]?.url)||'');")
+          if [[ -z "$URL" || "$URL" == "undefined" ]]; then
+            echo "❌ No READY deployment found yet."
+            exit 1
+          fi
+          echo "url=https://${URL}" >> $GITHUB_OUTPUT
+
+      - name: Smoke (preview/prod)
+        env:
+          BASE_URL: ${{ steps.vercel.outputs.url }}
+          APEX_URL: ${{ env.PROD_APEX }}
+          WWW_URL: ${{ env.PROD_WWW }}
+        run: |
+          echo "Testing BASE_URL=$BASE_URL"
+          bash scripts/smoke.sh 

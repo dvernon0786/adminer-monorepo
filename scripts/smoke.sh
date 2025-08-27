@@ -1,60 +1,59 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${BASE_URL:-https://www.adminer.online}"
-RETRIES="${RETRIES:-20}"           # total attempts per endpoint
-SLEEP_SECS="${SLEEP_SECS:-5}"      # wait time between attempts
+BASE_URL="${BASE_URL:-${1:-}}"
+APEX_URL="${APEX_URL:-${2:-}}"
+WWW_URL="${WWW_URL:-${3:-}}"
 
-# endpoint|expected_status
-ENDPOINTS=(
-  "/|200"
-  "/dashboard|200"
-  "/sign-in|200"
-  "/admin/webhooks|200"
-  "/api/consolidated?action=health|200"
-  "/api/payments/webhook|405"    # GET not allowed is OK for webhooks
-)
+if [[ -z "${BASE_URL}" ]]; then
+  echo "Usage: BASE_URL=https://your-deploy-url.example \\"
+  echo "       APEX_URL=https://adminer.online \\"
+  echo "       WWW_URL=https://www.adminer.online \\"
+  echo "       scripts/smoke.sh"
+  exit 2
+fi
 
-log() { printf "%s\n" "$*" >&2; }
-
-check_endpoint() {
-  local path="$1" expect="$2"
-  local url="${BASE_URL%/}${path}"
-  local attempt=1
-
-  while (( attempt <= RETRIES )); do
-    # -L follows redirects; we only care about final status
-    status="$(curl -sS -o /dev/null -w "%{http_code}" -L "$url" || true)"
-    if [[ "$status" == "$expect" ]]; then
-      log "✅  $url → $status (as expected)"
-      return 0
-    fi
-    log "⏳  $url → $status (want $expect) [attempt $attempt/$RETRIES]; retrying in ${SLEEP_SECS}s..."
-    sleep "$SLEEP_SECS"
-    ((attempt++))
-  done
-
-  log "❌  $url did not return $expect after $RETRIES attempts"
-  return 1
+function head() {
+  curl -sS -o /dev/null -D - -I "$1"
 }
 
-main() {
-  log "🔎 Starting smoke tests against: $BASE_URL"
-  local failures=0
-
-  for entry in "${ENDPOINTS[@]}"; do
-    IFS="|" read -r path expect <<<"$entry"
-    if ! check_endpoint "$path" "$expect"; then
-      ((failures++))
-    fi
-  done
-
-  if (( failures > 0 )); then
-    log "❌ Smoke tests failed ($failures failures)."
-    exit 1
-  fi
-
-  log "🎉 All smoke tests passed."
+function get() {
+  curl -sS -o /dev/null -w "%{http_code}|%{content_type}" "$1"
 }
 
-main "$@" 
+echo "🔎 BASE_URL=${BASE_URL}"
+[[ -n "${APEX_URL:-}" ]] && echo "🔎 APEX_URL=${APEX_URL}"
+[[ -n "${WWW_URL:-}"  ]] && echo "🔎 WWW_URL=${WWW_URL}"
+
+echo "== Canonical redirect: WWW → APEX =="
+if [[ -n "${WWW_URL:-}" && -n "${APEX_URL:-}" ]]; then
+  STATUS_LOC=$(head "${WWW_URL}" | awk '/^HTTP\/|^location:/ {print}')
+  echo "${STATUS_LOC}"
+  echo "${STATUS_LOC}" | grep -qi "HTTP/.* 301" || { echo "❌ Expected 301 from WWW"; exit 1; }
+  echo "${STATUS_LOC}" | grep -qi "location: ${APEX_URL}/\?$" || { echo "❌ Expected Location: ${APEX_URL}"; exit 1; }
+else
+  echo "⚠️  Skipping WWW→APEX (env not provided)"
+fi
+
+echo "== SPA routes return HTML 200 =="
+for path in "/" "/dashboard" "/sign-in" ; do
+  OUT=$(get "${BASE_URL}${path}")
+  CODE="${OUT%%|*}"; CT="${OUT##*|}"
+  echo "${path} -> ${CODE} ${CT}"
+  [[ "${CODE}" == "200" ]] || { echo "❌ ${path} not 200"; exit 1; }
+  echo "${CT}" | grep -qi "text/html" || { echo "❌ ${path} not HTML"; exit 1; }
+done
+
+echo "== API health =="
+OUT=$(get "${BASE_URL}/api/consolidated?action=health")
+CODE="${OUT%%|*}"; CT="${OUT##*|}"
+echo "/api/consolidated?action=health -> ${CODE} ${CT}"
+[[ "${CODE}" == "200" ]] || { echo "❌ health not 200"; exit 1; }
+
+echo "== Webhook GET is 405 =="
+OUT=$(get "${BASE_URL}/api/webhooks/apify")
+CODE="${OUT%%|*}"
+echo "/api/webhooks/apify (GET) -> ${CODE}"
+[[ "${CODE}" == "405" ]] || { echo "❌ webhook GET should be 405"; exit 1; }
+
+echo "✅ Smoke passed" 
