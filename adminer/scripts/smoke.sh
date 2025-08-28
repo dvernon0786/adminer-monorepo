@@ -1,50 +1,61 @@
 #!/usr/bin/env bash
 set -euo pipefail
+APEX=https://adminer.online
+WWW=https://www.adminer.online
 
-DOMAIN="${1:-https://www.adminer.online}"
+echo "== WWW → APEX =="
+code=$(curl -s -o /dev/null -I -w "%{http_code}" "$WWW/")
+loc=$(curl -sI "$WWW/" | grep -i "^location:" | sed "s/^location: //i" | tr -d "\r")
+echo "DEBUG: code=$code, loc='$loc'"
+if [[ "$code" = "308" && "$loc" =~ ^https://adminer\.online ]]; then
+    echo "✅ WWW redirect OK"
+else
+    echo "❌ Wrong WWW redirect: $code -> $loc"
+    exit 1
+fi
 
-say() { printf "\n\033[1;36m== %s ==\033[0m\n" "$1"; }
+echo "== Health =="
+code=$(curl -s -o /dev/null -I -w "%{http_code}" "$APEX/api/consolidated?action=health")
+if [[ "$code" = "200" ]]; then
+    echo "✅ Health OK"
+else
+    echo "❌ Health expected 200, got $code"
+    exit 1
+fi
 
-say "1) Health"
-curl -fsS -i "$DOMAIN/api/consolidated?action=health" | sed -n '1,15p'
+echo "== SPA /dashboard (signed-out) =="
+code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/dashboard")
+if [[ "$code" = "200" ]]; then
+    echo "✅ Dashboard status OK"
+else
+    echo "❌ /dashboard expected 200, got $code"
+    exit 1
+fi
 
-say "2) Quota (unauth should 401)"
-curl -fsS -i "$DOMAIN/api/consolidated?action=quota/status" || true
+body=$(curl -s "$APEX/dashboard" | tr -d '\r' | head -n 50)
+if echo "$body" | grep -qi "html"; then
+    echo "✅ HTML content found"
+else
+    echo "❌ Expected HTML content not found"
+    exit 1
+fi
 
-say "3) Quota (auth should 200)"
-# Provide a valid Clerk Bearer token (Org or User) via CLERK_TOKEN env when running in CI
-curl -fsS -i \
-  -H "Authorization: Bearer ${CLERK_TOKEN:-MISSING}" \
-  "$DOMAIN/api/consolidated?action=quota/status" || true
+if echo "$body" | grep -qi "Sign In Required"; then
+    echo "✅ Sign-in banner found"
+else
+    echo "❌ Expected sign-in banner not found"
+    exit 1
+fi
 
-say "4) Dodo webhook (no-signature => 400/401)"
-curl -fsS -i "$DOMAIN/api/dodo/webhook" || true
+echo "✅ SPA OK (protected state visible)"
 
-say "5) Jobs list (auth; empty page ok)"
-curl -fsS -i \
-  -H "Authorization: Bearer ${CLERK_TOKEN:-MISSING}" \
-  "$DOMAIN/api/jobs?limit=5" || true
+echo "== Protected Endpoint (signed-out) =="
+code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/api/consolidated?action=quota/status")
+if [[ "$code" = "401" ]]; then
+    echo "✅ Protected endpoint OK (401 when signed out)"
+else
+    echo "❌ Protected endpoint expected 401, got $code"
+    exit 1
+fi
 
-say "6) Start job (auth, small keyword) => 202/200"
-curl -fsS -i \
-  -H "Authorization: Bearer ${CLERK_TOKEN:-MISSING}" \
-  -H "Content-Type: application/json" \
-  -d '{"keyword":"nike shoes india","limit":10}' \
-  "$DOMAIN/api/jobs/start" || true
-
-say "7) Apify webhook (bad sig => 401)"
-curl -fsS -i \
-  -H "Content-Type: application/json" \
-  -d '{"event":"RUN.SUCCEEDED"}' \
-  "$DOMAIN/api/webhooks/apify" || true
-
-say "8) Quota 402 test (Free plan with 10 ads limit)"
-# This test requires a Free plan org with 10 ads remaining
-# It should return 402 if quota exceeded
-curl -fsS -i \
-  -H "Authorization: Bearer ${CLERK_TOKEN:-MISSING}" \
-  -H "Content-Type: application/json" \
-  -d '{"keyword":"test-quota-limit","limit":11}' \
-  "$DOMAIN/api/jobs/start" || true
-
-say "✅ Smoke tests completed for $DOMAIN" 
+echo "== All tests passed! 🎉 =="

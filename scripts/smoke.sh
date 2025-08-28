@@ -1,41 +1,34 @@
 #!/usr/bin/env bash
 set -euo pipefail
+APEX=https://adminer.online
+WWW=https://www.adminer.online
 
-APEX_URL="${APEX_URL:-https://adminer.online}"
-WWW_URL="${WWW_URL:-https://www.adminer.online}"
+echo "== WWW → APEX =="
+code=$(curl -s -o /dev/null -I -w "%{http_code}" "$WWW/")
+loc=$(curl -sI "$WWW/" | grep -i "^location:" | sed 's/^location: //i' | tr -d '\r')
+echo "DEBUG: code=$code, loc='$loc'"
+test "$code" = "308" && [[ "$loc" =~ ^https://adminer\.online ]] || { echo "❌ Wrong WWW redirect: $code -> $loc"; exit 1; }
+echo "✅ WWW redirect OK"
 
-echo "🔎 APEX_URL=$APEX_URL"
-echo "🔎 WWW_URL=$WWW_URL"
+echo "== Health =="
+code=$(curl -s -o /dev/null -I -w "%{http_code}" "$APEX/api/consolidated?action=health")
+test "$code" = "200" || { echo "❌ Health expected 200, got $code"; exit 1; }
+echo "✅ Health OK"
 
-is_preview=0
-if [[ "$APEX_URL" == *".vercel.app"* ]]; then
-  is_preview=1
-fi
+echo "== SPA /dashboard (signed-out) =="
+# GET for 200 HTML content
+code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/dashboard")
+test "$code" = "200" || { echo "❌ /dashboard expected 200, got $code"; exit 1; }
+# Check for HTML content and expected banner
+body=$(curl -s "$APEX/dashboard" | tr -d '\r' | head -n 50)
+echo "$body" | grep -qi "html" || { echo "❌ Expected HTML content not found"; exit 1; }
+echo "$body" | grep -qi "Sign In Required" || { echo "❌ Expected sign-in banner not found"; exit 1; }
+echo "✅ SPA OK (protected state visible)"
 
-echo "== Canonical redirect: WWW → APEX =="
+echo "== Protected Endpoint (signed-out) =="
+# This should return 401 when not authenticated
+code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/api/consolidated?action=quota/status")
+test "$code" = "401" || { echo "❌ Protected endpoint expected 401, got $code"; exit 1; }
+echo "✅ Protected endpoint OK (401 when signed out)"
 
-if [[ $is_preview -eq 1 ]]; then
-  echo "ℹ️ Preview detected (.vercel.app) — skipping WWW redirect check to avoid SSL cert mismatch."
-else
-  # Check status code for redirect
-  code=$(curl -sS -o /dev/null -I -w "%{http_code}" "$WWW_URL/")
-
-  echo "WWW / -> $code"
-  if [[ "$code" != "301" && "$code" != "308" ]]; then
-    echo "❌ Expected 301 or 308 from $WWW_URL/ to $APEX_URL/"
-    exit 1
-  fi
-fi
-
-echo "== Health endpoint =="
-health_url="$APEX_URL/api/consolidated?action=health"
-code=$(curl -sS -o /dev/null -w "%{http_code}" "$health_url")
-if [[ "$code" != "200" ]]; then
-  echo "❌ Health check FAILED - Expected HTTP 200, got HTTP $code"
-  # dump small body for debugging
-  body=$(curl -sS "$health_url" || true)
-  echo "   Body: $(echo "$body" | head -c 300)"
-  exit 1
-fi
-
-echo "✅ Smoke OK" 
+echo "== All tests passed! 🎉 ==" 
