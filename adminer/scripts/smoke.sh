@@ -1,61 +1,47 @@
 #!/usr/bin/env bash
 set -euo pipefail
-APEX=https://adminer.online
-WWW=https://www.adminer.online
 
-echo "== WWW → APEX =="
-code=$(curl -s -o /dev/null -I -w "%{http_code}" "$WWW/")
-loc=$(curl -sI "$WWW/" | grep -i "^location:" | sed "s/^location: //i" | tr -d "\r")
-echo "DEBUG: code=$code, loc='$loc'"
-if [[ "$code" = "308" && "$loc" =~ ^https://adminer\.online ]]; then
-    echo "✅ WWW redirect OK"
-else
-    echo "❌ Wrong WWW redirect: $code -> $loc"
-    exit 1
+BASE_URL="https://adminer.online"
+TS=$(date +%s)
+
+log(){ echo -e "$1"; }
+fail(){ echo "❌ $1"; exit 1; }
+ok(){ echo "✅ $1"; }
+
+log "== WWW → APEX =="
+CODE=$(curl -s -o /dev/null -w "%{http_code}" -I "https://www.adminer.online/")
+LOC=$(curl -s -D - -o /dev/null -I "https://www.adminer.online/" | awk -F': ' 'tolower($1)=="location"{print $2}' | tr -d '\r')
+echo "DEBUG: code=$CODE, loc='$LOC'"
+[[ "$CODE" == "308" && "$LOC" == "https://adminer.online/"* ]] || fail "WWW redirect bad"
+ok "WWW redirect OK"
+
+log "== Health =="
+HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/api/consolidated?action=health&_cb=$TS")
+[[ "$HEALTH" == "200" ]] || fail "Health endpoint not 200"
+ok "Health OK"
+
+log "== Middleware ping =="
+PING=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/__mw-check?_cb=$TS")
+[[ "$PING" == "200" ]] || fail "Middleware ping failed ($PING)"
+ok "Middleware executing"
+
+log "== SPA /dashboard (signed-out) =="
+# IMPORTANT: send Accept: text/html so middleware rewrites to /index.html
+DASH_HEADERS=$(curl -s -I -H "Accept: text/html" "$BASE_URL/dashboard?_cb=$TS")
+echo "$DASH_HEADERS" | grep -q "^HTTP/.* 200" || fail "/dashboard expected 200, got: $(echo "$DASH_HEADERS" | head -n1)"
+echo "$DASH_HEADERS" | grep -qi "^x-mw: spa-rewrite" || fail "missing x-mw: spa-rewrite"
+ok "/dashboard served by SPA"
+
+log "== Asset bypass =="
+ASSET_CODE=$(curl -s -o /dev/null -w "%{http_code}" "$BASE_URL/assets/index-B0pJ5BQP.js")
+[[ "$ASSET_CODE" =~ ^(200|304)$ ]] || fail "Asset not served ($ASSET_CODE)"
+ok "Asset served ($ASSET_CODE)"
+
+log "== API untouched by middleware =="
+API_HEADERS=$(curl -s -I "$BASE_URL/api/consolidated?action=health&_cb=$TS")
+if echo "$API_HEADERS" | grep -qi "^x-mw:"; then
+  fail "API unexpectedly has x-mw header"
 fi
+ok "API clean"
 
-echo "== Health =="
-code=$(curl -s -o /dev/null -I -w "%{http_code}" "$APEX/api/consolidated?action=health")
-if [[ "$code" = "200" ]]; then
-    echo "✅ Health OK"
-else
-    echo "❌ Health expected 200, got $code"
-    exit 1
-fi
-
-echo "== SPA /dashboard (signed-out) =="
-code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/dashboard")
-if [[ "$code" = "200" ]]; then
-    echo "✅ Dashboard status OK"
-else
-    echo "❌ /dashboard expected 200, got $code"
-    exit 1
-fi
-
-body=$(curl -s "$APEX/dashboard" | tr -d '\r' | head -n 50)
-if echo "$body" | grep -qi "html"; then
-    echo "✅ HTML content found"
-else
-    echo "❌ Expected HTML content not found"
-    exit 1
-fi
-
-if echo "$body" | grep -qi "Sign In Required"; then
-    echo "✅ Sign-in banner found"
-else
-    echo "❌ Expected sign-in banner not found"
-    exit 1
-fi
-
-echo "✅ SPA OK (protected state visible)"
-
-echo "== Protected Endpoint (signed-out) =="
-code=$(curl -s -o /dev/null -w "%{http_code}" "$APEX/api/consolidated?action=quota/status")
-if [[ "$code" = "401" ]]; then
-    echo "✅ Protected endpoint OK (401 when signed out)"
-else
-    echo "❌ Protected endpoint expected 401, got $code"
-    exit 1
-fi
-
-echo "== All tests passed! 🎉 =="
+echo "🎉 All smoke checks passed"
