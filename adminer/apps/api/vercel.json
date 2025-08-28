@@ -5,8 +5,8 @@
 
   "redirects": [
     {
-      "source": "/(.*)",
-      "destination": "https://adminer.online/$1",
+      "source": "/:path*",
+      "destination": "https://adminer.online/:path*",
       "permanent": true,
       "has": [{ "type": "host", "value": "www.adminer.online" }]
     }
@@ -14,7 +14,7 @@
 
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/:path*",
       "headers": [
         { "key": "X-Frame-Options", "value": "DENY" },
         { "key": "X-Content-Type-Options", "value": "nosniff" },
@@ -24,16 +24,15 @@
     }
   ],
 
-  "routes": [
-    { "src": "/api/(.*)", "dest": "/api/$1" },
-    { "src": "/_next/(.*)", "dest": "/_next/$1" },
-    { "src": "/assets/(.*)", "dest": "/assets/$1" },
-    { "src": "/favicon.ico", "dest": "/favicon.ico" },
-    { "src": "/robots.txt", "dest": "/robots.txt" },
-    { "src": "/sitemap.xml", "dest": "/sitemap.xml" },
+  "rewrites": [
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/_next/:path*", "destination": "/_next/:path*" },
+    { "source": "/assets/:path*", "destination": "/assets/:path*" },
+    { "source": "/favicon.ico", "destination": "/favicon.ico" },
+    { "source": "/robots.txt", "destination": "/robots.txt" },
+    { "source": "/sitemap.xml", "destination": "/sitemap.xml" },
 
-    { "handle": "filesystem" },
-
-    { "src": "/(.*)", "dest": "/index.html" }
+    // ✅ SPA fallback: everything else → /index.html in /public
+    { "source": "/:path*", "destination": "/index.html" }
   ]
 }
