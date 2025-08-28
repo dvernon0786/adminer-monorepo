@@ -1,29 +1,37 @@
-import type { NextRequest } from 'next/server';
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 
-export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
-  
-  console.log(`[MIDDLEWARE] Processing: ${pathname}`);
+export function middleware(request: NextRequest) {
+  const { pathname } = request.nextUrl;
 
-  // Skip API and Next.js internal routes
-  if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
-    console.log(`[MIDDLEWARE] Skipping: ${pathname}`);
+  // If the request is for the API, let it pass through
+  if (pathname.startsWith('/api')) {
     return NextResponse.next();
   }
 
-  // Skip static files with extensions
-  if (/\.[a-zA-Z0-9]+$/.test(pathname)) {
-    console.log(`[MIDDLEWARE] Skipping file: ${pathname}`);
+  // If the request is for Next.js internals, let it pass through
+  if (pathname.startsWith('/_next')) {
     return NextResponse.next();
   }
 
-  // Everything else gets rewritten to index.html
-  console.log(`[MIDDLEWARE] Rewriting ${pathname} to /index.html`);
-  return NextResponse.rewrite(new URL('/index.html', req.url));
+  // If the request has a file extension, let it pass through
+  if (pathname.includes('.')) {
+    return NextResponse.next();
+  }
+
+  // For all other requests, rewrite to the index.html file
+  return NextResponse.rewrite(new URL('/index.html', request.url));
 }
 
-// Simpler matcher - catch everything except API and Next.js
 export const config = {
-  matcher: ['/((?!api|_next).*)'],
+  matcher: [
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+  ],
 };
