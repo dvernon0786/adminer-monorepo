@@ -1,0 +1,10 @@
+{
+  "redirects": [
+    {
+      "source": "/((?!api|_next|static|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+      "has": [{ "type": "host", "value": "www.adminer.online" }],
+      "destination": "https://adminer.online/:path*",
+      "permanent": true
+    }
+  ]
+} 
