@@ -4,26 +4,29 @@ const PROD_APEX = "adminer.online";
 
 export function middleware(req: NextRequest) {
   const host = req.headers.get("host") ?? "";
+  const { pathname } = req.nextUrl;
 
-  // Never canonicalize previews
-  if (host.endsWith(".vercel.app")) {
+  // Skip previews
+  if (host.endsWith(".vercel.app")) return NextResponse.next();
+
+  // Never touch API, Next assets, or files
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    /\.[a-z0-9]+$/i.test(pathname)
+  ) {
     return NextResponse.next();
   }
 
-  // Only canonicalize the production host from www -> apex
+  // Canonicalize public pages only
   if (host === `www.${PROD_APEX}`) {
     const url = req.nextUrl.clone();
-    url.hostname = PROD_APEX; // preserve path & query
+    url.hostname = PROD_APEX;
     return NextResponse.redirect(url, 308);
   }
 
   return NextResponse.next();
 }
 
-// Exclude API, _next and files entirely so health never sees middleware
-export const config = {
-  matcher: [
-    // anything that is NOT api, NOT _next, and NOT a file with extension
-    "/((?!api|_next|.*\\..*).*)"
-  ]
-}; 
+// Simple, supported matcher: run on all paths
+export const config = { matcher: ["/:path*"] }; 
