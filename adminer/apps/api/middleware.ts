@@ -1,37 +1,24 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
-
-export function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // If the request is for the API, let it pass through
-  if (pathname.startsWith('/api')) {
-    return NextResponse.next();
-  }
-
-  // If the request is for Next.js internals, let it pass through
-  if (pathname.startsWith('/_next')) {
-    return NextResponse.next();
-  }
-
-  // If the request has a file extension, let it pass through
-  if (pathname.includes('.')) {
-    return NextResponse.next();
-  }
-
-  // For all other requests, rewrite to the index.html file
-  return NextResponse.rewrite(new URL('/index.html', request.url));
-}
+import { NextResponse, NextRequest } from "next/server";
 
 export const config = {
+  // Exclude _next, assets, api, and common static file types
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    "/((?!api|_next|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml|.*\\.(?:png|jpg|jpeg|gif|webp|svg|css|js|map|txt|ico)).*)"
   ],
 };
+
+export default function middleware(req: NextRequest) {
+  // Only handle GET/HEAD for SPA documents
+  if (req.method !== "GET" && req.method !== "HEAD") return NextResponse.next();
+
+  // Accept header should prefer HTML (avoid rewriting XHR/JSON)
+  const accept = req.headers.get("accept") || "";
+  const isHtml = accept.includes("text/html");
+
+  if (!isHtml) return NextResponse.next();
+
+  // Rewrite anything that survives the matcher to index.html (Vite build in public/)
+  const url = req.nextUrl.clone();
+  url.pathname = "/index.html";
+  return NextResponse.rewrite(url);
+}
