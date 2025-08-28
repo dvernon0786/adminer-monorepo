@@ -12,10 +12,24 @@ export function middleware(req: NextRequest) {
     );
   }
 
-  // 2) For everything else (non-API), pass through but tag response
-  const res = NextResponse.next();
-  res.headers.set("x-mw", "hit");
-  return res;
+  // 2) Skip API and Next.js internal routes
+  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/_next')) {
+    return NextResponse.next();
+  }
+
+  // 3) Skip static files with extensions
+  if (/\.[a-zA-Z0-9]+$/.test(url.pathname)) {
+    return NextResponse.next();
+  }
+
+  // 4) SPA Fallback: Rewrite everything else to index.html
+  console.log(`[MIDDLEWARE] SPA fallback: ${url.pathname} → /index.html`);
+  const rewriteUrl = req.nextUrl.clone();
+  rewriteUrl.pathname = "/index.html";
+  
+  const response = NextResponse.rewrite(rewriteUrl);
+  response.headers.set("x-mw", "hit");
+  return response;
 }
 
 // Match EVERYTHING except /api, /_next, and real files with an extension
