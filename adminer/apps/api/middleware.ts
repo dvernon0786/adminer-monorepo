@@ -1,20 +1,39 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
-import { clerkMiddleware } from "@clerk/nextjs/server";
 
-// Run only on /api/* to avoid touching SPA routes
+/**
+ * Safe, single-purpose middleware:
+ * - If host is www.adminer.online → 308 to apex (adminer.online)
+ * - Never touches /api, /_next, or any file paths (.*\..*)
+ * - Returns NextResponse.next() for all other cases
+ */
+
 export const config = {
-  matcher: ["/api/:path*"],
+  // Run on everything, but we'll filter inside to be 100% safe.
+  matcher: ["/:path*"],
 };
 
 export default function middleware(req: NextRequest) {
-  const { pathname, searchParams } = req.nextUrl;
+  const url = new URL(req.url);
+  const host = req.headers.get("host") || url.host;
+  const pathname = url.pathname;
 
-  // Public health probe — bypass auth entirely
-  if (pathname === "/api/consolidated" && searchParams.get("action") === "health") {
+  // Hard exclusions: do not ever touch API, Next assets, or files
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    /\.[A-Za-z0-9]+$/.test(pathname) || // any file like .js, .css, .png, etc.
+    pathname === "/favicon.ico"
+  ) {
     return NextResponse.next();
   }
 
-  // Everything else under /api/* goes through Clerk
-  return clerkMiddleware()(req);
+  // Canonicalize: WWW → apex (permanent 308, satisfies smoke test)
+  if (host === "www.adminer.online") {
+    const target = `https://adminer.online${pathname}${url.search}`;
+    return NextResponse.redirect(target, 308);
+  }
+
+  // Everything else: do nothing
+  return NextResponse.next();
 } 
