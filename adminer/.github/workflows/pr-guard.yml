@@ -1,0 +1,27 @@
+name: PR Guard
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+  push:
+    branches: [main]
+
+jobs:
+  guard:
+    name: Verify Vercel config hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run vercel config guard
+        run: |
+          bash adminer/scripts/guard-vercel-config.sh
+
+      - name: Ensure SPA is present and index.html exists
+        run: |
+          test -f adminer/apps/api/public/index.html || {
+            echo "ERROR: Missing SPA at adminer/apps/api/public/index.html"
+            exit 1
+          }
