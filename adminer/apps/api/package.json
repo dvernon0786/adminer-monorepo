@@ -7,7 +7,7 @@
     "dev": "next dev -p 3000",
     "build": "next build",
     "spa:integrate": "node scripts/spa-integrate.cjs",
-    "postbuild": "node scripts/check-spa-paths.cjs",
+    "postbuild": "npm run spa:integrate",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000",
     "prevercel": "node ./scripts/guard-spa.mjs",
