@@ -1,24 +1,20 @@
-import { NextResponse, type NextRequest } from "next/server";
+import { NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { clerkMiddleware } from "@clerk/nextjs/server";
 
-const PREVIEW_HOST_SUFFIXES = [".vercel.app", "localhost", "127.0.0.1"];
+// Run only on /api/* to avoid touching SPA routes
+export const config = {
+  matcher: ["/api/:path*"],
+};
 
-export function middleware(req: NextRequest) {
-  const url = req.nextUrl;
-  const host = url.hostname;
+export default function middleware(req: NextRequest) {
+  const { pathname, searchParams } = req.nextUrl;
 
-  // Only bypass preview/localhost environments
-  // Let vercel.json handle all redirects to avoid conflicts
-  if (PREVIEW_HOST_SUFFIXES.some(s => host.endsWith(s))) {
+  // Public health probe — bypass auth entirely
+  if (pathname === "/api/consolidated" && searchParams.get("action") === "health") {
     return NextResponse.next();
   }
-  
-  // DISABLED: Let vercel.json handle www → apex redirects
-  // if (host === "www.adminer.online") {
-  //   url.hostname = "adminer.online";
-  //   return NextResponse.redirect(url, 301);
-  // }
-  
-  return NextResponse.next();
-}
 
-export const config = { matcher: ["/:path*"] }; 
+  // Everything else under /api/* goes through Clerk
+  return clerkMiddleware()(req);
+} 
