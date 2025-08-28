@@ -1,38 +1,49 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
+const isHtmlNav = (req: NextRequest) => {
+  const accept = req.headers.get("accept") || "";
+  // Treat as an HTML navigation when text/html appears (typical browser navs)
+  return accept.includes("text/html");
+};
+
 export function middleware(req: NextRequest) {
-  const url = req.nextUrl;
+  const { pathname } = req.nextUrl;
 
-  // 1) Quick "ping" endpoint that replies directly from middleware
-  if (url.pathname === "/__mw-check") {
-    return new NextResponse(
-      `mw: ok | path=${url.pathname} | ts=${Date.now()}\n`,
-      { status: 200, headers: { "x-mw": "hit" } }
-    );
+  // 0) Ping: prove execution without relying on headers
+  if (pathname === "/__mw-check") {
+    return new NextResponse(`mw: ok | path=${pathname} | ts=${Date.now()}\n`, {
+      status: 200,
+      headers: { "x-mw": "hit" },
+    });
   }
 
-  // 2) Skip API and Next.js internal routes
-  if (url.pathname.startsWith('/api') || url.pathname.startsWith('/_next')) {
+  // 1) Exclusions: API, Next internals, files (have an extension), and assets
+  if (
+    pathname.startsWith("/api") ||
+    pathname.startsWith("/_next") ||
+    pathname.startsWith("/assets/") || // let Vite bundle flow
+    /\.[a-zA-Z0-9]+$/.test(pathname)   // any file extension like .css/.js/.png
+  ) {
     return NextResponse.next();
   }
 
-  // 3) Skip static files with extensions
-  if (/\.[a-zA-Z0-9]+$/.test(url.pathname)) {
-    return NextResponse.next();
+  // 2) HTML navigations → SPA index.html (internal rewrite; no 308 cleanUrls)
+  if (isHtmlNav(req)) {
+    const url = req.nextUrl.clone();
+    url.pathname = "/index.html"; // lives in apps/api/public/index.html
+    const res = NextResponse.rewrite(url);
+    res.headers.set("x-mw", "spa-rewrite");
+    return res;
   }
 
-  // 4) SPA Fallback: Rewrite everything else to index.html
-  console.log(`[MIDDLEWARE] SPA fallback: ${url.pathname} → /index.html`);
-  const rewriteUrl = req.nextUrl.clone();
-  rewriteUrl.pathname = "/index.html";
-  
-  const response = NextResponse.rewrite(rewriteUrl);
-  response.headers.set("x-mw", "hit");
-  return response;
+  // 3) Non-HTML (e.g., XHR/JSON) → pass through (lets API handle 404/JSON)
+  const res = NextResponse.next();
+  res.headers.set("x-mw", "hit");
+  return res;
 }
 
-// Match EVERYTHING except /api, /_next, and real files with an extension
+// Match everything; we do exclusions in code for clarity
 export const config = {
-  matcher: ["/((?!api|_next|.*\\..*).*)"],
+  matcher: ["/:path*"],
 };
