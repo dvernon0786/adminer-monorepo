@@ -1,32 +1,12 @@
-import { NextRequest, NextResponse } from "next/server";
+import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-const PROD_APEX = "adminer.online";
+// Exclude API, Next assets, all files with extensions, and favicon
+export const config = {
+  matcher: ["/((?!api|_next|.*\\..*|favicon.ico).*)"]
+};
 
-export function middleware(req: NextRequest) {
-  const host = req.headers.get("host") ?? "";
-  const { pathname } = req.nextUrl;
-
-  // Skip previews
-  if (host.endsWith(".vercel.app")) return NextResponse.next();
-
-  // Never touch API, Next assets, or files
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    /\.[a-z0-9]+$/i.test(pathname)
-  ) {
-    return NextResponse.next();
-  }
-
-  // Canonicalize public pages only
-  if (host === `www.${PROD_APEX}`) {
-    const url = req.nextUrl.clone();
-    url.hostname = PROD_APEX;
-    return NextResponse.redirect(url, 308);
-  }
-
+export default function middleware(_req: NextRequest) {
+  // No redirects from middleware; keep it inert for now.
   return NextResponse.next();
-}
-
-// Simple, supported matcher: run on all paths
-export const config = { matcher: ["/:path*"] }; 
+} 
