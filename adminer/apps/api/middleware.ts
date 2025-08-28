@@ -1,39 +1,31 @@
-import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
+import { NextResponse } from "next/server";
 
-/**
- * Safe, single-purpose middleware:
- * - If host is www.adminer.online → 308 to apex (adminer.online)
- * - Never touches /api, /_next, or any file paths (.*\..*)
- * - Returns NextResponse.next() for all other cases
- */
+// Hard exclusions: API, Next internals, and any file-like request
+const EXCLUDED = [/^\/api\//, /^\/_next\//, /\/.*\.[^\/]+$/];
 
-export const config = {
-  // Run on everything, but we'll filter inside to be 100% safe.
-  matcher: ["/:path*"],
-};
+export function middleware(req: NextRequest) {
+  const { pathname, search } = req.nextUrl;
 
-export default function middleware(req: NextRequest) {
-  const url = new URL(req.url);
-  const host = req.headers.get("host") || url.host;
-  const pathname = url.pathname;
-
-  // Hard exclusions: do not ever touch API, Next assets, or files
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    /\.[A-Za-z0-9]+$/.test(pathname) || // any file like .js, .css, .png, etc.
-    pathname === "/favicon.ico"
-  ) {
+  // Skip middleware for excluded paths
+  if (EXCLUDED.some((re) => re.test(pathname))) {
     return NextResponse.next();
   }
 
-  // Canonicalize: WWW → apex (permanent 308, satisfies smoke test)
-  if (host === "www.adminer.online") {
-    const target = `https://adminer.online${pathname}${url.search}`;
-    return NextResponse.redirect(target, 308);
+  // Only canonicalize host: www.adminer.online → adminer.online
+  const host = req.headers.get("host") ?? "";
+  if (host.startsWith("www.")) {
+    const url = new URL(req.url);
+    url.host = host.slice(4); // strip "www."
+    // IMPORTANT: never put host into the pathname; only change url.host
+    return NextResponse.redirect(url, 308);
   }
 
-  // Everything else: do nothing
+  // Pass everything else through untouched
   return NextResponse.next();
-} 
+}
+
+// Apply to "all" paths, but NOT api, _next, or file-like paths
+export const config = {
+  matcher: ["/((?!api|_next|.*\\..*).*)"],
+}; 
