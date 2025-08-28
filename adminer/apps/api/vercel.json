@@ -1,10 +1,31 @@
 {
+  "version": 2,
+  "cleanUrls": true,
+  "trailingSlash": false,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "X-Frame-Options", "value": "DENY" },
+        { "key": "X-XSS-Protection", "value": "1; mode=block" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "camera=(), microphone=(), geolocation=()" }
+      ]
+    }
+  ],
   "redirects": [
     {
-      "source": "/((?!api|_next|static|assets|favicon\\.ico|robots\\.txt|sitemap\\.xml).*)",
+      "source": "/(.*)",
       "has": [{ "type": "host", "value": "www.adminer.online" }],
-      "destination": "https://adminer.online/:path*",
+      "destination": "https://adminer.online/$1",
       "permanent": true
     }
+  ],
+  "rewrites": [
+    { "source": "/api/(.*)", "destination": "/api/$1" },
+    { "source": "/_next/(.*)", "destination": "/_next/$1" },
+    { "source": "/(.*\\..+)", "destination": "/$1" },
+    { "source": "/(.*)", "destination": "/index.html" }
   ]
 } 
