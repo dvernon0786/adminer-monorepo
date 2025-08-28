@@ -10,13 +10,19 @@ if [[ "${#FILES[@]}" -ne 1 || "${FILES[0]}" != "./$KEEP" ]]; then
   exit 1
 fi
 
-# Block legacy patterns that break Next+Vercel
-if grep -q '"routes"' "$KEEP"; then
-  echo 'ERROR: "routes" found in vercel.json. Use "rewrites" instead.'
+# Must be valid JSON
+if ! jq . "$KEEP" >/dev/null 2>&1; then
+  echo "ERROR: $KEEP is not valid JSON."
   exit 1
 fi
-if grep -q '\$[0-9]' "$KEEP"; then
-  echo 'ERROR: Detected $1-style captures. Use :path* tokens in "source"/"destination".'
+
+# Block legacy/invalid patterns
+if grep -q '"routes"' "$KEEP"; then
+  echo 'ERROR: "routes" found. Use "rewrites" for Next.js projects.'
+  exit 1
+fi
+if grep -Eq '\$[0-9]' "$KEEP"; then
+  echo 'ERROR: Found $1-style captures. Use :path* tokens.'
   exit 1
 fi
 
@@ -26,4 +32,4 @@ if ! grep -q '"destination": "/index.html"' "$KEEP"; then
   exit 1
 fi
 
-echo "OK: vercel.json hygiene looks good."
+echo "OK: vercel.json is valid and hygienic."
