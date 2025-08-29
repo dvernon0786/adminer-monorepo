@@ -1,21 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
-BASE="${1:-http://localhost:3000}"
 
-echo "⛅ SPA index..."
-curl -fsSL "$BASE/" -o smoke_index.html
+BASE_URL="${1:-${BASE_URL:-https://adminer.online}}"
 
-echo "🔗 parse main bundle..."
-BUNDLE=$(grep -oE '/assets/index-[A-Za-z0-9]+\.js' smoke_index.html | head -n1 || true)
-test -n "$BUNDLE" || { echo "No bundle in index.html"; exit 1; }
+echo "⛅ SPA index via ${BASE_URL}..."
+# quick sanity ping first (don't fail the whole job if this line fails)
+curl -sSf "${BASE_URL}/" >/dev/null
 
-echo "📦 fetch bundle..."
-curl -fsSL "$BASE$BUNDLE" -o smoke_bundle.js
+# Delegate to the comprehensive checker if present; otherwise minimal fallback
+if [[ -x "scripts/system-check.sh" ]]; then
+  exec scripts/system-check.sh "${BASE_URL}"
+fi
 
-echo "🩺 health..."
-curl -fsSI "$BASE/api/consolidated?action=health" | head -n 1 | grep "200" >/dev/null
-
-echo "🧮 quota (unauth should be 401 or 200 shim per your impl)..."
-curl -fsSI "$BASE/api/consolidated?action=quota/status" | head -n 1
-
-echo "✅ Smoke passed for $BASE" 
+# Minimal fallback (kept for compatibility)
+set -x
+curl -sSf "${BASE_URL}/" >/dev/null
+curl -sSf "${BASE_URL}/dashboard" >/dev/null
+curl -sSf "${BASE_URL}/api/consolidated?action=health" | grep -qi "healthy"
+echo "✅ Smoke OK" 
