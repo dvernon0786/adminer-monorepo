@@ -5,13 +5,11 @@
   "type": "module",
   "scripts": {
     "dev": "next dev -p 3000",
-    "spa:integrate": "node scripts/spa-integrate.cjs",
     "build": "NEXT_EXPORT=false VERCEL_EXPORT=false next build",
     "postbuild": "echo 'Temporarily disabled: ./scripts/guard-static-export.sh'",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000",
     "prevercel": "node ./scripts/guard-spa.mjs",
-    "vercel-build": "bash ./vercel-build.sh",
     "db:check": "node scripts/check-neon-db.cjs",
     "db:migrate": "node scripts/check-neon-db.cjs",
     "db:migrate:dry": "node scripts/check-neon-db.cjs --dry-run",
