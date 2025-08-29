@@ -190,7 +190,7 @@ jobs:
         run: |
           set -euo pipefail
           chmod +x scripts/system-check.sh
-          ./scripts/system-check.sh "https://adminer.online"
+          ./scripts/system-check.sh "${{ steps.wait.outputs.deploy_url }}"
 
       - name: Upload smoke artifacts (if failed)
         if: steps.smoke.outcome == 'failure' || steps.system-check.outcome == 'failure'

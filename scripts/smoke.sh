@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE_URL="${1:-${BASE_URL:-https://adminer.online}}"
+# Debug trace
+echo "🔎 DEBUG: arg[1] = ${1:-<empty>}"
+echo "🔎 DEBUG: APEX_URL = ${APEX_URL:-<unset>}"
+
+# Accept URL from arg or environment
+BASE_URL="${1:-${APEX_URL:-}}"
+
+if [[ -z "$BASE_URL" ]]; then
+  echo "❌ No deployment URL provided (arg or APEX_URL env required)"
+  exit 1
+fi
 
 echo "⛅ SPA index via ${BASE_URL}..."
 # quick sanity ping first (don't fail the whole job if this line fails)

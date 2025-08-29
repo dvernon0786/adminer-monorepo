@@ -1,7 +1,17 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-BASE="${1:-https://adminer.online}"
+# Debug trace
+echo "🔎 DEBUG(system-check): arg[1] = ${1:-<empty>}"
+echo "🔎 DEBUG(system-check): APEX_URL = ${APEX_URL:-<unset>}"
+
+# Accept URL from arg or environment
+BASE="${1:-${APEX_URL:-}}"
+
+if [[ -z "$BASE" ]]; then
+  echo "❌ No deployment URL provided (arg or APEX_URL env required)"
+  exit 1
+fi
 
 fail() { echo "❌ $1"; exit 1; }
 ok()   { echo "✅ $1"; }

@@ -77,7 +77,7 @@ jobs:
       - name: Smoke test after deploy
         run: |
           chmod +x scripts/smoke.sh
-          ./scripts/smoke.sh "https://adminer.online"
+          ./scripts/smoke.sh "$APEX_URL"
 
       - name: Rollback on smoke failure
         if: failure()
