@@ -62,15 +62,40 @@ jobs:
         id: deploy
         run: |
           echo "🚀 Deploying to Vercel..."
+          
+          # Check required environment variables
+          if [[ -z "${VERCEL_ORG_ID:-}" ]]; then
+            echo "❌ VERCEL_ORG_ID is not set. Please add it to GitHub Secrets."
+            echo "   You can find it by running 'vercel teams ls' locally or checking vercel.com/account"
+            exit 1
+          fi
+          
+          if [[ -z "${VERCEL_PROJECT_ID:-}" ]]; then
+            echo "❌ VERCEL_PROJECT_ID is not set. Please add it to GitHub Secrets."
+            exit 1
+          fi
+          
+          echo "✅ Environment variables verified:"
+          echo "   VERCEL_ORG_ID: ${VERCEL_ORG_ID:0:8}..."
+          echo "   VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID:0:8}..."
+          
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy the API app
+          # Deploy the API app with proper project linking
           cd adminer/apps/api
-          vercel --prod --token "$VERCEL_TOKEN" --yes
+          
+          # Try to deploy with project linking first
+          if vercel --prod --token "$VERCEL_TOKEN" --yes --scope "$VERCEL_ORG_ID" 2>/dev/null; then
+            echo "✅ Deployed with project linking"
+          else
+            echo "⚠️ Project linking failed, trying simple deployment..."
+            # Fallback: simple deployment without project linking
+            vercel --prod --token "$VERCEL_TOKEN" --yes
+          fi
           
           # Get the deployment URL
-          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
+          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod --scope "$VERCEL_ORG_ID" 2>/dev/null | grep -o 'https://[^[:space:]]*' | head -n1 || vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
           echo "deployment_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "✅ Deployed to: $DEPLOY_URL"
 
