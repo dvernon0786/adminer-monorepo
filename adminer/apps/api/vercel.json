@@ -21,9 +21,18 @@
     }
   ],
   "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/dashboard", "destination": "/index.html" },
     { "source": "/dashboard/(.*)", "destination": "/index.html" },
-    { "source": "/(?!api)(.*)", "destination": "/index.html" }
+    { "source": "/", "destination": "/index.html" }
+  ],
+  "redirects": [
+    {
+      "source": "/:path*",
+      "destination": "/index.html",
+      "permanent": false,
+      "has": [
+        { "type": "header", "key": "accept", "value": "text/html" }
+      ]
+    }
   ]
 }
