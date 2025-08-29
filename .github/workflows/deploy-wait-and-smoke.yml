@@ -30,7 +30,7 @@ jobs:
           submodules: true
 
       - name: Verify repo structure
-        run: ls -R apps || true
+        run: ls -R adminer/apps || true
 
       - name: Setup Node
         uses: actions/setup-node@v4
@@ -39,14 +39,14 @@ jobs:
 
       - name: Build SPA
         run: |
-          cd apps/web
+          cd adminer/apps/web
           npm ci
           npm run build
 
       - name: Copy SPA into API public dir
         run: |
-          rm -rf apps/api/public/*
-          cp -r apps/web/dist/* apps/api/public/
+          rm -rf adminer/apps/api/public/*
+          cp -r adminer/apps/web/dist/* adminer/apps/api/public/
 
       - name: Guard SPA
         run: |
