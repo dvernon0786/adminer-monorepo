@@ -351,7 +351,8 @@ jobs:
         run: |
           set -euo pipefail
           export DOMAIN="${PROD_DOMAIN:-https://www.adminer.online}"
-          bash scripts/smoke.sh
+          chmod +x scripts/smoke.sh
+          ./scripts/smoke.sh "https://adminer.online" "https://www.adminer.online"
 
       - name: Rollback on smoke failure
         if: failure() && inputs.deploy == true

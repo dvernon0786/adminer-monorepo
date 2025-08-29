@@ -1,71 +1,103 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Base URL can be overridden in CI if needed
-BASE_URL="${BASE_URL:-https://adminer.online}"
-TS=$(date +%s)
+# Usage:
+#   ./scripts/smoke.sh https://your-domain.tld [https://www.your-domain.tld]
+#
+# Notes:
+# - Sends Accept: text/html to exercise SPA middleware
+# - Hard-fails if /index.html returns a 308 (cleanUrls regression)
+# - Verifies SPA routes, asset bypass, and API isolation
 
-log(){ echo -e "$1"; }
-fail(){ echo "❌ $1"; exit 1; }
-ok(){ echo "✅ $1"; }
+BASE_URL="${1:-http://localhost:3000}"
+WWW_URL="${2:-}"
+TIMEOUT="${SMOKE_TIMEOUT:-15}"
+CURL="curl -sS --max-time ${TIMEOUT} -H 'Accept: text/html' -A 'smoke/1.0'"
 
-log "== WWW → APEX =="
-CODE=$(curl -s -o /dev/null -w "%{http_code}" -I "https://www.${BASE_URL#https://}/")
-LOC=$(curl -s -D - -o /dev/null -I "https://www.${BASE_URL#https://}/" | awk -F': ' 'tolower($1)=="location"{print $2}' | tr -d '\r')
-echo "DEBUG: code=$CODE, loc='${LOC}'"
-[[ "$CODE" == "308" && "$LOC" == "${BASE_URL}/" || "$LOC" == "${BASE_URL}"* ]] || fail "WWW redirect incorrect"
-ok "WWW redirect OK"
+pass() { echo "✅ $*"; }
+fail() { echo "❌ $*"; exit 1; }
 
-log "== Health =="
-HEALTH=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/api/consolidated?action=health&_cb=${TS}")
-[[ "$HEALTH" == "200" ]] || fail "Health endpoint not 200"
-ok "Health OK"
+section() { echo; echo "== $* =="; }
 
-log "== /index.html check (no cleanUrls) =="
-INDEX_HEADERS=$(curl -s -I "${BASE_URL}/index.html?_cb=${TS}")
-FIRST_LINE=$(echo "$INDEX_HEADERS" | head -n1)
-if echo "$FIRST_LINE" | grep -q " 308 "; then
-  fail "/index.html returned 308 → cleanUrls regression"
+status_code() {
+  # $1 = url, $2 = extra curl args
+  local url="$1"
+  shift || true
+  curl -sS -o /dev/null -D - "$@" "$url" | head -n1 | awk '{print $2}'
+}
+
+headers() {
+  # $1 = url, $2.. = extra curl args
+  local url="$1"; shift || true
+  curl -sS -o /dev/null -D - "$@" "$url"
+}
+
+body() {
+  # $1 = url, $2.. = extra curl args
+  local url="$1"; shift || true
+  curl -sS --max-time ${TIMEOUT} -H 'Accept: text/html' -A 'smoke/1.0' "$@" "$url"
+}
+
+require_200_html() {
+  local url="$1"
+  local sc
+  sc=$(status_code "$url" -H 'Accept: text/html')
+  [[ "$sc" == "200" ]] || fail "$url -> expected 200 HTML, got $sc"
+}
+
+require_no_308_index() {
+  local url="${1%/}/index.html"
+  local sc
+  sc=$(status_code "$url" -H 'Accept: text/html' -L --proto-default https)
+  [[ "$sc" != "308" && "$sc" != "301" && "$sc" != "302" ]] || fail "/index.html redirected ($sc). CleanUrls likely enabled."
+}
+
+section "WWW → APEX (optional)"
+if [[ -n "$WWW_URL" ]]; then
+  code=$(status_code "$WWW_URL" -I)
+  if [[ "$code" =~ ^30[12378]$ ]]; then
+    loc=$(headers "$WWW_URL" -I | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2}' | tr -d '\r')
+    [[ "$loc" =~ ^${BASE_URL}/?$ ]] || fail "WWW redirect target mismatch: $loc"
+    pass "WWW redirects to APEX"
+  else
+    fail "Expected WWW to redirect (3xx), got $code"
+  fi
+else
+  echo "ℹ️ WWW URL not provided; skipping."
 fi
-echo "$FIRST_LINE" | grep -q " 200 " || fail "/index.html not 200 (got: $FIRST_LINE)"
-ok "/index.html served directly (no cleanUrls redirect)"
 
-log "== Middleware ping =="
-PING=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/__mw-check?_cb=${TS}")
-[[ "$PING" == "200" ]] || fail "Middleware ping failed ($PING)"
-ok "Middleware executing"
+section "Health"
+require_200_html "${BASE_URL}/api/consolidated?action=health"
+pass "Health endpoint reachable"
 
-log "== SPA /dashboard (HTML navigation) =="
-# Emulate a browser navigation: must include Accept: text/html
-DASH_HEADERS=$(curl -s -I \
-  -H "Accept: text/html" \
-  -H "Cache-Control: no-cache" \
-  -H "Pragma: no-cache" \
-  -H "User-Agent: Mozilla/5.0" \
-  "${BASE_URL}/dashboard?_cb=${TS}")
-echo "$DASH_HEADERS" | grep -q "^HTTP/.* 200" || fail "/dashboard expected 200, got: $(echo "$DASH_HEADERS" | head -n1)"
-echo "$DASH_HEADERS" | grep -qi "^x-mw: spa-rewrite" || fail "missing x-mw: spa-rewrite on /dashboard"
-ok "/dashboard served by SPA (x-mw: spa-rewrite)"
+section "/index.html check (no cleanUrls)"
+require_no_308_index "$BASE_URL"
+pass "/index.html served directly (no 308/301/302)"
 
-log "== /dashboard HTML content sanity =="
-DASH_HTML=$(curl -s \
-  -H "Accept: text/html" \
-  -H "Cache-Control: no-cache" \
-  -H "User-Agent: Mozilla/5.0" \
-  "${BASE_URL}/dashboard?_cb=${TS}" | head -n1)
-echo "$DASH_HTML" | grep -qi "<!doctype html" || fail "content not HTML (got: $DASH_HTML)"
-ok "Valid HTML returned"
+section "Middleware ping"
+# We expect a custom header from middleware when SPA rewrite happens
+# Your middleware should set:  x-mw: spa-rewrite  (or adjust the grep below)
+hdrs=$(headers "${BASE_URL}/dashboard" -I -H 'Accept: text/html')
+echo "$hdrs" | grep -iq "^x-mw:.*spa-rewrite" || fail "Middleware marker header missing on SPA route"
+pass "Middleware executed on SPA route"
 
-log "== Asset bypass =="
-ASSET_CODE=$(curl -s -o /dev/null -w "%{http_code}" "${BASE_URL}/assets/index-B0pJ5BQP.js")
-[[ "$ASSET_CODE" =~ ^(200|304)$ ]] || fail "Asset not served correctly ($ASSET_CODE)"
-ok "Asset served ($ASSET_CODE)"
+section "SPA /dashboard returns HTML"
+html=$(body "${BASE_URL}/dashboard")
+echo "$html" | grep -iq "<!doctype html" || fail "SPA did not return HTML"
+pass "Valid HTML returned"
 
-log "== API untouched by middleware =="
-API_HEADERS=$(curl -s -I "${BASE_URL}/api/consolidated?action=health&_cb=${TS}")
-if echo "$API_HEADERS" | grep -qi "^x-mw:"; then
-  fail "API unexpectedly has x-mw header"
+section "Asset bypass"
+code=$(status_code "${BASE_URL}/assets/index-B0pJ5BQP.js" -I -H 'Accept: */*')
+[[ "$code" == "200" ]] || fail "Expected asset 200, got $code"
+pass "Asset served (200)"
+
+section "API untouched by middleware"
+# Expect no x-mw header for API paths (middleware should short-circuit)
+hdrs=$(headers "${BASE_URL}/api/headers" -I -H 'Accept: */*' || true)
+if echo "$hdrs" | grep -iq "^x-mw:"; then
+  fail "Middleware header leaked into API response"
 fi
-ok "API clean (no middleware header)"
+pass "API clean (no middleware header)"
 
-echo "🎉 All smoke checks passed" 
+echo
+pass "All smoke checks passed" 

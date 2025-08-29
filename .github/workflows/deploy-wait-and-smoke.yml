@@ -75,9 +75,9 @@ jobs:
         run: sleep 20
 
       - name: Smoke test after deploy
-        env:
-          BASE_URL: https://adminer.online
-        run: scripts/smoke.sh
+        run: |
+          chmod +x scripts/smoke.sh
+          ./scripts/smoke.sh "https://adminer.online" "https://www.adminer.online"
 
       - name: Rollback on smoke failure
         if: failure()

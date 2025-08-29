@@ -59,5 +59,7 @@ jobs:
       # Prod smoke
       - name: Smoke test (prod)
         env:
-          BASE_URL: https://adminer.online
-        run: scripts/smoke.sh
+          SMOKE_TIMEOUT: "20"
+        run: |
+          chmod +x scripts/smoke.sh
+          ./scripts/smoke.sh "https://adminer.online" "https://www.adminer.online"
