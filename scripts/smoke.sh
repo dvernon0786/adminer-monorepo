@@ -92,6 +92,10 @@ html=$(body "${BASE_URL}/dashboard")
 echo "$html" | grep -iq "<!doctype html" || fail "SPA did not return HTML"
 pass "Valid HTML returned"
 
+section "SPA content verification"
+echo "$html" | grep -q 'id="root"' || fail "Missing #root element in dashboard HTML"
+pass "SPA root element found"
+
 section "Asset bypass"
 # Fetch /index.html and detect a built asset (js/css)
 index_html="$(curl -s -L -H 'Accept: text/html' "${BASE_URL}/index.html")"

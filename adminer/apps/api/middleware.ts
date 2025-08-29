@@ -18,11 +18,24 @@ export function middleware(req: NextRequest) {
     });
   }
 
-  // 1) Exclusions: API, Next internals, files (have an extension), and assets
+  // 1) Asset Allowlist - CRITICAL: Never rewrite these to SPA
+  const ASSET_ALLOWLIST = [
+    /^\/assets\//,           // Vite built assets
+    /^\/favicon\.ico$/,      // Favicon
+    /^\/robots\.txt$/,       // Robots
+    /^\/manifest\.webmanifest$/, // PWA manifest
+    /^\/clerk-runtime\//,    // Clerk runtime files
+    /^\/vendor\//            // Vendor files
+  ];
+  
+  if (ASSET_ALLOWLIST.some(rx => rx.test(pathname))) {
+    return NextResponse.next();
+  }
+
+  // 2) Other exclusions: API, Next internals, files with extensions
   if (
     pathname.startsWith("/api") ||
     pathname.startsWith("/_next") ||
-    pathname.startsWith("/assets/") || // let Vite bundle flow
     /\.[a-zA-Z0-9]+$/.test(pathname)   // any file extension like .css/.js/.png
   ) {
     return NextResponse.next();

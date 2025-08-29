@@ -37,6 +37,22 @@
     <link rel="preconnect" href="https://clerk.adminer.online" crossorigin />
     <link rel="dns-prefetch" href="https://clerk.adminer.online" />
 
+    <!-- Error Overlay for Production Debugging -->
+    <script>
+      window.addEventListener('error', e => {
+        const d = document.createElement('pre');
+        d.style.cssText = 'position:fixed;z-index:99999;left:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:8px;max-width:90vw;max-height:40vh;overflow:auto;font:12px/1.4 monospace';
+        d.textContent = 'JS error: ' + (e.error?.stack || e.message);
+        document.body.appendChild(d);
+      });
+      window.addEventListener('unhandledrejection', e => {
+        const d = document.createElement('pre');
+        d.style.cssText = 'position:fixed;z-index:99999;left:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:8px;max-width:90vw;max-height:40vh;overflow:auto;font:12px/1.4 monospace';
+        d.textContent = 'Unhandled promise: ' + (e.reason?.stack || e.reason?.message || e.reason);
+        document.body.appendChild(d);
+      });
+    </script>
+
     <!-- Vite will inject the script tag here -->
   </head>
   <body>
