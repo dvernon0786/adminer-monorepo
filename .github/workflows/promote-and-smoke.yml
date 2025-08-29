@@ -1,0 +1,123 @@
+name: Promote alias & smoke
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  promote-and-smoke:
+    runs-on: ubuntu-latest
+    env:
+      PROD_DOMAIN: https://adminer.online
+      HEALTH_PATH: /api/consolidated?action=health
+      WAIT_TIMEOUT_SEC: 600
+      WAIT_INTERVAL_SEC: 10
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ensure curl + jq
+        run: |
+          sudo apt-get update -y
+          sudo apt-get install -y jq
+
+      - name: Wait for latest prod deployment to be READY
+        id: wait
+        shell: bash
+        run: |
+          set -euo pipefail
+          deadline=$(( $(date +%s) + ${WAIT_TIMEOUT_SEC} ))
+          TEAM_ARG=""
+          [[ -n "${VERCEL_TEAM_ID:-}" ]] && TEAM_ARG="&teamId=${VERCEL_TEAM_ID}"
+
+          echo "Polling Vercel for latest production deployment readiness…"
+          DEPLOY_URL=""
+          DEPLOY_ID=""
+          STATE=""
+
+          while [ "$(date +%s)" -lt "$deadline" ]; do
+            resp="$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1${TEAM_ARG}" \
+              -H "Authorization: Bearer ${VERCEL_TOKEN}")"
+
+            STATE="$(echo "$resp" | jq -r '.deployments[0].state // ""')"
+            DEPLOY_URL="$(echo "$resp" | jq -r '.deployments[0].url // ""')"
+            DEPLOY_ID="$(echo "$resp" | jq -r '.deployments[0].uid // ""')"
+
+            echo "Latest deployment: state=${STATE:-n/a} url=${DEPLOY_URL:-n/a}"
+            case "$STATE" in
+              READY) break ;;
+              ERROR|CANCELED) echo "❌ Deployment state=$STATE. Exiting."; exit 1 ;;
+            esac
+            sleep "${WAIT_INTERVAL_SEC}"
+          done
+
+          if [ "$STATE" != "READY" ]; then
+            echo "❌ Timed out waiting for READY."
+            exit 1
+          fi
+
+          echo "deploy_url=https://${DEPLOY_URL}" >> "$GITHUB_OUTPUT"
+          echo "deploy_id=${DEPLOY_ID}" >> "$GITHUB_OUTPUT"
+          echo "✅ READY: https://${DEPLOY_URL}"
+
+      - name: Alias apex domain to latest deployment (REST)
+        id: alias
+        shell: bash
+        run: |
+          set -euo pipefail
+          TEAM_ARG=""
+          [[ -n "${VERCEL_TEAM_ID:-}" ]] && TEAM_ARG="?teamId=${VERCEL_TEAM_ID}"
+
+          echo "Aliasing ${PROD_DOMAIN} -> ${{ steps.wait.outputs.deploy_url }}"
+          curl -fsS -X POST \
+            -H "Authorization: Bearer ${VERCEL_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"alias\":\"${PROD_DOMAIN#https://}\"}" \
+            "https://vercel.com/api/v2/deployments/${{ steps.wait.outputs.deploy_id }}/aliases${TEAM_ARG}" >/dev/null
+
+          echo "✅ Alias updated."
+
+      - name: Enhanced smoke (detect nextExport:true and domain drift)
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_URL="${{ steps.wait.outputs.deploy_url }}"
+          APEX_URL="${PROD_DOMAIN%/}"
+
+          HEALTH_DEPLOY="${DEPLOY_URL%/}${HEALTH_PATH}"
+          HEALTH_APEX="${APEX_URL%/}${HEALTH_PATH}"
+
+          echo "🔎 Checking deployment URL: $HEALTH_DEPLOY"
+          code_deploy=$(curl -sS -o /tmp/deploy_body.txt -w "%{http_code}" "$HEALTH_DEPLOY" || true)
+          echo "Deployment health HTTP $code_deploy"
+          if [ "$code_deploy" -lt 200 ] || [ "$code_deploy" -ge 400 ]; then
+            echo "❌ Deployment URL failed health."
+            cat /tmp/deploy_body.txt || true
+            exit 1
+          fi
+
+          echo "🔎 Checking apex domain: $HEALTH_APEX"
+          code_apex=$(curl -sS -o /tmp/apex_body.txt -w "%{http_code}" "$HEALTH_APEX" || true)
+          echo "Apex health HTTP $code_apex"
+
+          # Flag classic static-export signature
+          if grep -q '"nextExport":true' /tmp/apex_body.txt; then
+            echo "❌ Apex is serving static export (\"nextExport\": true)."
+            echo "   Deployment is healthy: $DEPLOY_URL"
+            echo "   Fix: ensure alias pointed to the READY deployment (this job just did),"
+            echo "        then re-run smoke if DNS/edge cache needed a minute."
+            exit 1
+          fi
+
+          # Helpful diffs
+          if [ "$code_apex" -ne 200 ]; then
+            echo "❌ Apex returned HTTP $code_apex while deployment is OK."
+            echo "   Body (apex):"
+            head -c 1500 /tmp/apex_body.txt || true
+            exit 1
+          fi
+
+          echo "✅ Smoke passed. Apex serves non-export response and health is OK." 
