@@ -1,6 +1,7 @@
-import { Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router-dom'
+import { Routes, Route, Navigate, useSearchParams, useLocation, useNavigate } from 'react-router-dom'
 import { Toaster } from 'sonner'
 import { useAuth, SignIn, SignUp } from '@clerk/clerk-react'
+import { useEffect } from 'react'
 import Homepage from './pages/Homepage'
 import Dashboard from './pages/dashboard'
 import AdminWebhookEvents from './pages/AdminWebhookEvents'
@@ -9,12 +10,11 @@ import SignInBanner from './components/SignInBanner'
 // Auth guard component for protected routes
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { isLoaded, isSignedIn } = useAuth();
-  const location = useLocation();
+  const { pathname, search } = useLocation();
   
   if (!isLoaded) return null;
   if (!isSignedIn) {
-    // Redirect to sign-in with next parameter for post-auth return
-    const next = encodeURIComponent(location.pathname + location.search);
+    const next = encodeURIComponent(pathname + search);
     return <Navigate to={`/sign-in?next=${next}`} replace />;
   }
   return <>{children}</>;
@@ -23,9 +23,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 // Auth page components
 function SignInPage() {
   const [params] = useSearchParams();
-  // Allow ?next=/dashboard or any protected deep-link
-  const next = params.get("next");
-  const afterUrl = next && next.startsWith("/") ? next : "/dashboard";
+  const next = params.get("next") || "/dashboard";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -38,11 +36,10 @@ function SignInPage() {
         <SignIn
           routing="path"
           path="/sign-in"
-          // send user where they intended, else dashboard
-          afterSignInUrl={afterUrl}
-          // optional but nice: if they click "Sign up" from here,
-          // carry the same next param into the sign-up page.
-          signUpUrl={next ? `/sign-up?next=${encodeURIComponent(next)}` : "/sign-up"}
+          // Both props below are supported. afterSignInUrl is the one that triggers
+          // a client-side redirect post-auth; fallback to redirectUrl for older flows.
+          afterSignInUrl={next}
+          redirectUrl={next}
         />
       </div>
     </div>
@@ -51,8 +48,7 @@ function SignInPage() {
 
 function SignUpPage() {
   const [params] = useSearchParams();
-  const next = params.get("next");
-  const afterUrl = next && next.startsWith("/") ? next : "/dashboard";
+  const next = params.get("next") || "/dashboard";
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gray-50">
@@ -65,19 +61,30 @@ function SignUpPage() {
         <SignUp
           routing="path"
           path="/sign-up"
-          afterSignUpUrl={afterUrl}
-          // if they switch to sign-in, keep intent too
-          signInUrl={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"}
+          afterSignUpUrl={next}
+          redirectUrl={next}
         />
       </div>
     </div>
   )
 }
 
-function App() {
+export default function App() {
+  const { isSignedIn } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  // Fallback post-auth redirect: if user is on "/" and signed in, go to dashboard.
+  // This covers cases where Clerk's afterSignInUrl isn't triggered (e.g., returning to root).
+  useEffect(() => {
+    if (isSignedIn && location.pathname === "/") {
+      navigate("/dashboard", { replace: true });
+    }
+  }, [isSignedIn, location.pathname, navigate]);
+
   return (
-    <>
-      <SignInBanner />  {/* ← now banner appears ONLY on protected paths when signed out */}
+    <div className="min-h-screen flex flex-col">
+      <SignInBanner />
       <Routes>
         {/* Auth routes must accept nested steps */}
         <Route path="/sign-in/*" element={<SignInPage />} />
@@ -100,8 +107,6 @@ function App() {
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
       <Toaster position="top-right" />
-    </>
+    </div>
   )
-}
-
-export default App 
+} 

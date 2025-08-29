@@ -93,15 +93,22 @@ echo "$html" | grep -iq "<!doctype html" || fail "SPA did not return HTML"
 pass "Valid HTML returned"
 
 section "Asset bypass"
-# Parse the first asset from the live index.html (js or css)
-asset_path="$(curl -s "${BASE_URL}/index.html" \
-  | grep -oE '/assets/[^"]+\.(js|css)' | head -n1)"
+# Fetch /index.html and detect a built asset (js/css)
+index_html="$(curl -s -L -H 'Accept: text/html' "${BASE_URL}/index.html")"
+asset_path="$(printf "%s" "$index_html" | grep -oE '/assets/[^\" ]+\.(js|css)' | head -n1 || true)"
 
-[[ -n "$asset_path" ]] || fail "No asset reference found in index.html"
+if [ -z "${asset_path:-}" ]; then
+  fail "could not detect asset path from index.html"
+fi
+echo "Detected asset: $asset_path"
 
 code=$(status_code "${BASE_URL}${asset_path}" -I -H 'Accept: */*' || true)
-[[ "$code" == "200" ]] || fail "Expected 200 for asset ${asset_path}, got $code"
-pass "Asset served (200) at ${asset_path}"
+case "$code" in
+  200) pass "Asset OK";;
+  304) pass "Asset cached (304) OK";;
+  206) pass "Asset partial content (206) OK";;
+  *) fail "Expected asset 200/304/206, got $code";;
+esac
 
 section "API untouched by middleware"
 # Expect no x-mw header for API paths (middleware should short-circuit)

@@ -1,19 +1,34 @@
-import { useLocation } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { useAuth } from "@clerk/clerk-react";
 import { isProtectedPath } from "@/lib/isProtectedPath";
 
 export default function SignInBanner() {
-  const { pathname } = useLocation();
   const { isSignedIn } = useAuth();
+  const { pathname, search } = useLocation();
 
-  // Show the banner ONLY if path is protected AND user is signed out
   if (!isProtectedPath(pathname) || isSignedIn) return null;
 
+  const next = encodeURIComponent(pathname + search);
   return (
-    <div className="fixed inset-0 z-50 bg-black/70 text-white flex items-start justify-center">
-      <div className="mt-6 rounded-xl bg-white text-black p-4 shadow-xl max-w-md w-full">
-        <b>Sign In Required</b>
-        <p className="mt-1">Please sign in to view your dashboard and quota information.</p>
+    <div className="w-full bg-amber-50 border-b border-amber-200 text-amber-900">
+      <div className="mx-auto max-w-6xl px-4 py-2 flex items-center justify-between">
+        <span className="text-sm">
+          You need to sign in to view this page.
+        </span>
+        <div className="flex gap-2">
+          <Link
+            className="rounded-md px-3 py-1.5 text-sm bg-amber-600 text-white hover:bg-amber-700"
+            to={`/sign-in?next=${next}`}
+          >
+            Sign in
+          </Link>
+          <Link
+            className="rounded-md px-3 py-1.5 text-sm border border-amber-600 text-amber-700 hover:bg-amber-100"
+            to={`/sign-up?next=${next}`}
+          >
+            Create account
+          </Link>
+        </div>
       </div>
     </div>
   );

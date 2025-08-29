@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { useLocation } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/clerk-react";
+import { useLocation } from "react-router-dom";
 import { isProtectedPath } from "@/lib/isProtectedPath";
-import { getQuotaStatus, type QuotaStatus as ApiQuotaStatus } from "@/lib/quota";
 
 export type Plan = "free" | "pro" | "enterprise";
 export type QuotaStatus = {
@@ -14,16 +13,14 @@ export type QuotaStatus = {
 };
 
 export function useQuota() {
+  const { isSignedIn, getToken } = useAuth();
   const { pathname } = useLocation();
-  const { isSignedIn } = useAuth();
-  
-  const [data, setData] = useState<QuotaStatus | null>(null);
+  const [data, setData] = useState<null | { used: number; limit: number }>(null);
+  const [error, setError] = useState<null | string>(null);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [authStatus, setAuthStatus] = useState<'authenticated' | 'unauthenticated' | 'quota_exceeded' | null>(null);
 
-  const fetchStatus = useCallback(async () => {
-    // ⛔️ Skip fetching on public routes or when signed out
+  useEffect(() => {
+    // Gate by auth + protected route
     if (!isSignedIn || !isProtectedPath(pathname)) {
       setData(null);
       setError(null);
@@ -31,65 +28,31 @@ export function useQuota() {
       return;
     }
 
-    setLoading(true);
-    setError(null);
-    try {
-      const quota = await getQuotaStatus();
-      
-      if (quota.ok) {
-        // Success case - convert API format to component format
-        setData({
-          plan: quota.plan as Plan,
-          used: quota.used,
-          limit: quota.limit,
-          remaining: quota.limit - quota.used,
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        const token = await getToken();
+        const res = await fetch("/api/consolidated?action=quota/status", {
+          headers: {
+            Authorization: `Bearer ${token ?? ""}`,
+            Accept: "application/json",
+          },
         });
-        setAuthStatus('authenticated');
-      } else {
-        // Handle different error cases gracefully
-        if (quota.code === 401) {
-          // Signed out: don't block UI globally
-          setData(null);
-          setLoading(false);
-          return;
-        } else if (quota.code === 402) {
-          setAuthStatus('quota_exceeded');
-          setData({
-            plan: 'free' as Plan, // Default for exceeded case
-            used: 0,
-            limit: 0,
-            remaining: 0,
-            upgradeUrl: quota.upgradeUrl,
-          });
-          setError('Quota exceeded - upgrade to continue');
-        } else {
-          setError(`Quota error: ${quota.reason}`);
-        }
+        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+        const json = await res.json();
+        if (!cancelled) setData(json);
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Failed to fetch quota");
+      } finally {
+        if (!cancelled) setLoading(false);
       }
-    } catch (err: any) {
-      setError(err?.message || "Failed to load quota");
-    } finally {
-      setLoading(false);
-    }
-  }, [isSignedIn, pathname]);
+    })();
 
-  useEffect(() => {
-    fetchStatus();
-  }, [fetchStatus]);
+    return () => {
+      cancelled = false;
+    };
+  }, [isSignedIn, pathname, getToken]);
 
-  const overLimit = useMemo(() => {
-    if (!data) return false;
-    return data.used >= data.limit;
-  }, [data]);
-
-  return { 
-    data, 
-    loading, 
-    error, 
-    refresh: fetchStatus, 
-    overLimit,
-    authStatus,
-    needsAuth: !isSignedIn && isProtectedPath(pathname),
-    needsUpgrade: !!data && data.remaining <= 0
-  };
+  return { data, error, loading };
 } 
