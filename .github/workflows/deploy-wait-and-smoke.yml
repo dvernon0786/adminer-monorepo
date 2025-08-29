@@ -23,14 +23,19 @@ jobs:
       WWW_URL: ${{ secrets.WWW_URL }}
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout repo
+        uses: actions/checkout@v4
         with:
-          fetch-depth: 1
+          fetch-depth: 0
+          submodules: true
 
-      - name: Init submodules
-        run: |
-          git submodule sync --recursive
-          git submodule update --init --recursive
+      - name: Verify repo structure
+        run: ls -R apps || true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
       - name: Build SPA
         run: |
@@ -48,13 +53,8 @@ jobs:
           chmod +x scripts/guard-spa.sh
           ./scripts/guard-spa.sh
 
-      - name: Ensure defaults for URLs when secrets not set
+      - name: Ensure Vercel token is available
         run: |
-          set -euo pipefail
-          : "${APEX_URL:=https://adminer.online}"
-          : "${WWW_URL:=https://www.adminer.online}"
-          echo "APEX_URL=$APEX_URL" >> $GITHUB_ENV
-          echo "WWW_URL=$WWW_URL" >> $GITHUB_ENV
           echo "VERCEL_TOKEN is ${VERCEL_TOKEN:+set}${VERCEL_TOKEN:-unset}"
 
       - name: Optionally fetch the latest deployment URL from Vercel
@@ -93,7 +93,9 @@ jobs:
       - name: Smoke test after deploy
         run: |
           chmod +x scripts/smoke.sh
-          ./scripts/smoke.sh "$APEX_URL"
+          ./scripts/smoke.sh "${{ steps.vercel.outputs.deployment_url }}"
+        env:
+          APEX_URL: ${{ steps.vercel.outputs.deployment_url }}
 
       - name: Rollback on smoke failure
         if: failure()
