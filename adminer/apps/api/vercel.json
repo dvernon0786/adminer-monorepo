@@ -4,11 +4,8 @@
   "trailingSlash": false,
   "builds": [
     {
-      "src": "package.json",
-      "use": "@vercel/next",
-      "config": {
-        "buildCommand": "npm run vercel-build"
-      }
+      "src": "public/**",
+      "use": "@vercel/static"
     }
   ],
   "redirects": [
@@ -19,6 +16,12 @@
       "has": [
         { "type": "host", "value": "www.adminer.online" }
       ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
     }
   ],
   "headers": [
