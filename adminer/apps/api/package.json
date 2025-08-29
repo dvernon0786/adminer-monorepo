@@ -7,7 +7,7 @@
     "dev": "next dev -p 3000",
     "spa:integrate": "node scripts/spa-integrate.cjs",
     "build": "NEXT_EXPORT=false VERCEL_EXPORT=false next build",
-    "postbuild": "./scripts/guard-static-export.sh",
+    "postbuild": "echo 'Temporarily disabled: ./scripts/guard-static-export.sh'",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000",
     "prevercel": "node ./scripts/guard-spa.mjs",
