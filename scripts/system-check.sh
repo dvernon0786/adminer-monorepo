@@ -25,8 +25,8 @@ ok "Index fetched"
 
 # 2) parse main bundle from index.html
 echo "🔗 Parsing main bundle ref..."
-BUNDLE="$(grep -oE '/assets/index-[A-Za-z0-9]+\.js' smoke_index.html | head -n1 || true)"
-[ -n "${BUNDLE:-}" ] || fail "No /assets/index-*.js in index.html"
+BUNDLE="$(grep -oE '/assets/.*\.js' smoke_index.html | head -n1 || true)"
+[ -n "${BUNDLE:-}" ] || fail "No JS bundle reference found in index.html"
 ok "Found bundle: $BUNDLE"
 
 # 3) bundle is fetchable
