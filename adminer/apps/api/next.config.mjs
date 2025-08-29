@@ -10,8 +10,9 @@ const nextConfig = {
     // Force disable any export-related environment variables
     NEXT_EXPORT: 'false',
     VERCEL_EXPORT: 'false',
-    // Additional overrides
-    NEXT_TELEMETRY_DISABLED: '1',
+    // Vercel-specific overrides
+    VERCEL: '1',
+    VERCEL_ENV: 'production',
   },
   
   // Temporarily bypass TypeScript errors to focus on routing fix

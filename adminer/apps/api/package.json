@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "spa:integrate": "node scripts/spa-integrate.cjs",
-    "build": "node scripts/force-serverless.js && npm run spa:integrate && next build",
+    "build": "next build",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000",
     "prevercel": "node ./scripts/guard-spa.mjs",
