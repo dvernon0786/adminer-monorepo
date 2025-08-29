@@ -20,6 +20,22 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - name: Build SPA
+        run: |
+          cd apps/web
+          npm ci
+          npm run build
+
+      - name: Copy SPA into API public dir
+        run: |
+          rm -rf apps/api/public/*
+          cp -r apps/web/dist/* apps/api/public/
+
+      - name: Guard SPA
+        run: |
+          chmod +x scripts/guard-spa.sh
+          ./scripts/guard-spa.sh
+
       - name: Ensure tools
         run: |
           sudo apt-get update -y

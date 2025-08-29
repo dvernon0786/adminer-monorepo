@@ -32,6 +32,22 @@ jobs:
           git submodule sync --recursive
           git submodule update --init --recursive
 
+      - name: Build SPA
+        run: |
+          cd apps/web
+          npm ci
+          npm run build
+
+      - name: Copy SPA into API public dir
+        run: |
+          rm -rf apps/api/public/*
+          cp -r apps/web/dist/* apps/api/public/
+
+      - name: Guard SPA
+        run: |
+          chmod +x scripts/guard-spa.sh
+          ./scripts/guard-spa.sh
+
       - name: Ensure defaults for URLs when secrets not set
         run: |
           set -euo pipefail

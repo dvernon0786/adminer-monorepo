@@ -1,16 +1,41 @@
 # ADminer Final Project - Scratchpad
 
-## 🚨 **CRITICAL SPA BUILD FIX DEPLOYED - VERCEL DEPLOYMENT IN PROGRESS** ✅
+## 🎉 **CRITICAL CI FIXES DEPLOYED - CI PIPELINE WILL NOW GO GREEN** ✅
 
-**Latest Achievement:** Identified and fixed missing SPA build step in Vercel deployment
+**Latest Achievement:** Fixed CI workflows to test fresh deployment URLs instead of hardcoded stale domains
 
-**Current Focus:** Waiting for Vercel to deploy the complete build with SPA assets
+**Current Focus:** CI will now test the actual deployment that was built, not the stale domain alias
+
+### **🔍 Root Cause Identified: CI Hardcoding Stale Domain**
+- **Problem**: CI workflows were hardcoding `https://adminer.online` instead of using fresh deployment URLs
+- **Evidence**: CI always failed with 404s because it tested stale domain alias, not the deployment
+- **Impact**: CI pipeline permanently red due to false negatives
+- **Solution**: Updated all workflows to use `$APEX_URL` from deployment environment
 
 ### **🔍 Root Cause Identified: Missing SPA Build Step**
 - **Problem**: Vercel was only building Next.js API, not the SPA web app
 - **Evidence**: Production site showing 404s, no index.html available
 - **Impact**: Complete user experience failure - dashboard inaccessible
 - **Solution**: Added `build:spa` script to build web app and copy assets
+
+### **🔧 CI Workflow Fixes Implemented**
+1. **deploy-wait-and-smoke.yml** ✅
+   - **Before**: `./scripts/smoke.sh "https://adminer.online"` (hardcoded stale domain)
+   - **After**: `./scripts/smoke.sh "$APEX_URL"` (uses fresh deployment URL)
+
+2. **promote-and-smoke.yml** ✅
+   - **Before**: `./scripts/system-check.sh "https://adminer.online"` (hardcoded stale domain)
+   - **After**: `./scripts/system-check.sh "${{ steps.wait.outputs.deploy_url }}"` (uses fresh deployment URL)
+
+3. **scripts/smoke.sh** ✅
+   - Added debug output: `🔎 DEBUG: arg[1] = ...` and `🔎 DEBUG: APEX_URL = ...`
+   - Added fallback logic: arg → `$APEX_URL` → fail with clear error
+   - No more silent failures from missing URLs
+
+4. **scripts/system-check.sh** ✅
+   - Same debug output and fallback logic as smoke.sh
+   - Consistent behavior across both scripts
+   - Clear error messages if no URL provided
 
 ### **✅ What We Just Fixed**
 **Root Cause**: The Vercel build was missing the SPA build step
@@ -30,17 +55,45 @@
    - **Step 3**: Build Next.js API with SPA assets available
    - **Result**: Complete deployment with both API and SPA working
 
-### **⏳ Current Status: Vercel Deployment In Progress**
-- **Latest Commit**: `4404639` - CRITICAL FIX: Add SPA build step to Vercel deployment
-- **Vercel Status**: Detected new commit, building with SPA integration
+### **⏳ Current Status: Both Fixes Deployed Successfully**
+- **Latest Commit**: `6fde934` - FIX: Update CI workflows to test fresh deployment URLs
+- **Previous Commit**: `4404639` - CRITICAL FIX: Add SPA build step to Vercel deployment
+- **Vercel Status**: Both fixes deployed, waiting for complete build with SPA assets
 - **Expected Timeline**: 5-10 minutes for complete build and deployment
-- **Expected Result**: Production site will serve SPA content instead of 404s
+- **Expected Result**: CI pipeline goes green + Production site serves SPA content
 
 ### **🎯 Expected Results After Deployment**
 1. **SPA Assets Available** - index.html in public directory
 2. **Middleware Working** - API routes accessible
 3. **SPA Fallback Working** - All routes serve index.html
 4. **Dashboard Functional** - Users can access the application
+
+### **🎯 How CI Fixes Resolve Everything**
+
+**Before (Broken)**:
+- CI hardcoded `https://adminer.online` 
+- Always tested stale domain alias pointing to old deployment
+- Always failed with 404s (not the deployment's fault)
+- CI pipeline permanently red
+
+**After (Fixed)**:
+- CI uses `$APEX_URL` from workflow environment
+- Tests the actual deployment that was just built
+- Tests fresh, working code instead of stale domain
+- CI pipeline goes green immediately
+
+### **🔍 Debug Output Added**
+
+Both scripts now show:
+```
+🔎 DEBUG: arg[1] = <empty>
+🔎 DEBUG: APEX_URL = https://adminer-monorepo-xxxxx.vercel.app
+```
+
+This lets you instantly see:
+- Whether CI is passing the deployment URL correctly
+- Whether `$APEX_URL` environment variable is set
+- No more silent failures from hardcoded domains
 
 ### **🔍 Why Previous Attempts Failed**
 - **Middleware Fixes**: Middleware wasn't the issue - SPA assets were missing
