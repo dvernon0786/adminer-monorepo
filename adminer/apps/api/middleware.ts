@@ -1,18 +1,20 @@
 import { NextRequest, NextResponse } from "next/server";
 
 const ALLOW = [
-  /^\/api\//,
-  /^\/_next\//,
-  /^\/assets\//,
-  /^\/favicon\.ico$/,
-  /^\/robots\.txt$/,
-  /^\/sitemap\.xml$/,
+  /^\/$/,                    // Root path
+  /^\/dashboard(\/.*)?$/,    // Dashboard and sub-routes
+  /^\/api\//,                // API endpoints
+  /^\/_next\//,              // Next.js assets
+  /^\/assets\//,             // Static assets
+  /^\/favicon\.ico$/,        // Favicon
+  /^\/robots\.txt$/,         // Robots
+  /^\/sitemap\.xml$/,        // Sitemap
 ];
 
 export function middleware(req: NextRequest) {
   const { pathname } = new URL(req.url);
 
-  // Bypass allowlist
+  // Bypass allowlist for public paths
   if (ALLOW.some((re) => re.test(pathname))) {
     return NextResponse.next();
   }
@@ -20,6 +22,7 @@ export function middleware(req: NextRequest) {
   // Only rewrite for HTML navigations
   const accept = req.headers.get("accept") || "";
   const isHTML = accept.includes("text/html") || accept.includes("*/*");
+  
   if (isHTML) {
     const res = NextResponse.rewrite(new URL("/index.html", req.url));
     res.headers.set("x-mw", "spa-direct");
