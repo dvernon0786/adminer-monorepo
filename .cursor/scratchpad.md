@@ -597,7 +597,7 @@ The issue appears to be a **client-side rendering problem** rather than server-s
 - **Multi-environment testing**: Validate across staging and production
 - **Comprehensive validation**: Test routing, assets, middleware, and API isolation
 
-## 🚀 **Next Steps & Recommendations**
+## 🚀 **NEXT STEPS & RECOMMENDATIONS**
 
 ### **🚨 IMMEDIATE PRIORITY: Fix Dashboard Blank Page (CRITICAL)**
 1. **Debug client-side rendering** - identify why browser shows blank page despite correct HTML
@@ -3295,3 +3295,84 @@ The GitHub Actions workflow has been enhanced with comprehensive guards:
 - ✅ **Serverless Functions**: Generated - endpoints available in `.next/server/pages/api/`
 - 🔄 **Deployment**: In progress - Vercel building with fixed endpoints
 - ⏳ **Next Step**: Test enhanced workflow once deployment completes
+
+## 🚨 **BLANK DASHBOARD FIX - CRITICAL ENVIRONMENT VARIABLE ISSUE**
+
+### **🔍 Root Cause Identified (2025-08-29 14:30)**
+
+**The dashboard was blank because the `VITE_CLERK_PUBLISHABLE_KEY` environment variable was not set in the Vercel deployment environment.**
+
+#### **What Was Happening**
+1. **SPA Loaded**: HTML served correctly with `<div id="root"></div>`
+2. **JavaScript Failed**: Clerk couldn't initialize without the publishable key
+3. **No Hydration**: React app never mounted, resulting in blank page
+4. **Proxy References**: HTML still contained broken `clerk.adminer.online` references
+
+#### **What We Fixed Locally**
+1. ✅ **Vite Config**: Added `loadEnv` and `define` to inject Clerk key at build time
+2. ✅ **Proxy Removal**: Removed `clerk.adminer.online` proxy references
+3. ✅ **TypeScript**: Added proper type declarations for injected constants
+4. ✅ **Build Process**: Clerk key now properly injected into built JavaScript
+
+#### **What's Still Broken in Production**
+1. ❌ **Environment Variable**: `VITE_CLERK_PUBLISHABLE_KEY` not set in Vercel
+2. ❌ **Deployment Build**: Builds without Clerk key, causing blank dashboard
+3. ❌ **Key Mismatch**: Local build has key, production build doesn't
+
+### **🛠️ Immediate Fix Required**
+
+**The user must set the production Clerk publishable key in Vercel:**
+
+1. **Get Production Key**: Visit [Clerk Dashboard](https://dashboard.clerk.com/)
+2. **Copy Key**: Get the `pk_live_...` key (not the test key)
+3. **Set in Vercel**: Add environment variable `VITE_CLERK_PUBLISHABLE_KEY`
+4. **Redeploy**: Trigger new deployment to inject the key
+
+### **🔍 Technical Details**
+
+#### **Local Build (Working)**
+```bash
+# Clerk key properly injected
+grep -o "pk_test_[^\"]*" adminer/apps/web/dist/assets/index-*.js
+# ✅ pk_test_dG9waWNhbC1tZWVya2F0LTE3LmNsZXJrLmFjY291bnRzLmRldiQ
+```
+
+#### **Production Build (Broken)**
+```bash
+# Clerk key missing
+grep -o "pk_test_[^\"]*" deployed/assets/index-*.js
+# ❌ No key found
+```
+
+#### **Vite Config Fix Applied**
+```typescript
+export default defineConfig(({ mode }) => {
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    define: {
+      __VITE_CLERK_PUBLISHABLE_KEY__: JSON.stringify(env.VITE_CLERK_PUBLISHABLE_KEY),
+    },
+    // ... rest of config
+  };
+});
+```
+
+### **📊 Current Status**
+
+- **Local Development**: ✅ Working (Clerk key injected)
+- **Production Build**: ❌ Broken (missing environment variable)
+- **SPA Assets**: ✅ Accessible (200 OK)
+- **Clerk Initialization**: ❌ Failing (no key)
+- **Dashboard Rendering**: ❌ Blank (no hydration)
+
+### **🎯 Next Steps**
+
+1. **Set Environment Variable**: Add `VITE_CLERK_PUBLISHABLE_KEY` to Vercel
+2. **Redeploy**: Trigger new build with proper key injection
+3. **Verify Fix**: Confirm dashboard loads and Clerk initializes
+4. **Test Authentication**: Ensure sign-in/sign-up flows work
+
+---
+
+## 🚀 **EXECUTOR MODE: FIXING THE BLANK DASHBOARD**
