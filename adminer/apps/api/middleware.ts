@@ -41,12 +41,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // 2) HTML navigations → SPA index.html (internal rewrite; no 308 cleanUrls)
+  // 2) HTML navigations → Serve SPA files directly (bypass Next.js entirely)
   if (isHtmlNav(req)) {
+    // For SPA routes, serve the static files directly from public directory
+    // This bypasses Next.js and serves the Vite-built SPA as intended
     const url = req.nextUrl.clone();
     url.pathname = "/index.html"; // lives in apps/api/public/index.html
     const res = NextResponse.rewrite(url);
-    res.headers.set("x-mw", "spa-rewrite");
+    res.headers.set("x-mw", "spa-direct");
+    res.headers.set("content-type", "text/html; charset=utf-8");
     return res;
   }
 
