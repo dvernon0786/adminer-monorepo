@@ -11,7 +11,7 @@ import { ClerkProvider } from "@clerk/clerk-react";
 // Env wiring (Vite): define in .env and .env.production
 // VITE_CLERK_PUBLISHABLE_KEY=pk_live_xxx
 // ---------------------------------------------
-const pk = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY as string | undefined;
+const pk = __VITE_CLERK_PUBLISHABLE_KEY__ as string | undefined;
 if (!pk) {
   // Hard fail early so it never silently breaks in production
   throw new Error("Missing VITE_CLERK_PUBLISHABLE_KEY");
@@ -21,7 +21,7 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
   <React.StrictMode>
     <ClerkProvider
       publishableKey={pk}
-      proxyUrl="https://clerk.adminer.online"
+      // Removed proxyUrl - using direct Clerk CDN instead
       // Fallback redirects are helpful if your guarded routes live under /dashboard
       signInFallbackRedirectUrl="/dashboard"
       signUpFallbackRedirectUrl="/dashboard"

@@ -17,4 +17,6 @@ declare global {
   }
 }
 
+declare const __VITE_CLERK_PUBLISHABLE_KEY__: string | undefined;
+
 export {}; 
