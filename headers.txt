@@ -1,0 +1,14 @@
+HTTP/1.1 200 OK
+cache-control: no-store
+x-mw: spa-direct
+x-middleware-rewrite: /index.html
+Accept-Ranges: bytes
+Last-Modified: Fri, 29 Aug 2025 22:27:34 GMT
+ETag: W/"da4-198f7f17b21"
+Content-Type: text/html; charset=UTF-8
+Content-Length: 3492
+Vary: Accept-Encoding
+Date: Fri, 29 Aug 2025 22:28:20 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+

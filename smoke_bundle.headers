@@ -1,0 +1,12 @@
+HTTP/1.1 200 OK
+Accept-Ranges: bytes
+Cache-Control: public, max-age=0
+Last-Modified: Fri, 29 Aug 2025 22:27:34 GMT
+ETag: W/"bfa11-198f7f17b21"
+Content-Type: application/javascript; charset=UTF-8
+Content-Length: 784913
+Vary: Accept-Encoding
+Date: Fri, 29 Aug 2025 22:28:20 GMT
+Connection: keep-alive
+Keep-Alive: timeout=5
+
