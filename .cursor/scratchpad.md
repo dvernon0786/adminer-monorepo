@@ -2,7 +2,7 @@
 
 ## Current Status: SPA FALLBACK SUCCESSFULLY IMPLEMENTED - FULLY OPERATIONAL ✅
 
-**Latest Achievement:** Comprehensive CI/CD Safety Improvements Implemented - Ship Fast & Safe ✅
+**Latest Achievement:** Hardened Production Patches Deployed - Bulletproof CI System ✅
 
 **What We've Accomplished:**
 - ✅ **CI Smoke Test Fixed**: Updated smoke script with proper Accept: text/html headers for middleware testing
@@ -16,6 +16,8 @@
 - ✅ **Pre-Push Hooks**: Local smoke tests prevent bad pushes from ever hitting CI
 - ✅ **Multi-Environment Testing**: Easy testing across prod, staging, and preview environments
 - ✅ **Comprehensive Troubleshooting**: Fast triage guide for when things go wrong
+- ✅ **Hardened Production Patches**: Implemented bulletproof smoke testing and cleanUrls guard
+- ✅ **Robust Error Handling**: Timeout support, better curl commands, and comprehensive validation
 
 **What We've Accomplished:**
 - ✅ **Bulletproof Middleware**: Implemented comprehensive SPA fallback with proper exclusions
@@ -24,6 +26,28 @@
 - ✅ **Comprehensive Testing**: All smoke tests passing, multiple routes verified working
 - ✅ **Production Deployment**: Changes committed, pushed, and deployed successfully
 - ✅ **CI Smoke Test Fixed**: Updated to send proper browser headers for middleware testing
+
+**Hardened Production Patches Implemented:**
+
+1. **Bulletproof Smoke Script (scripts/smoke.sh)**
+   - **Command-Line Interface**: `./scripts/smoke.sh "https://domain.com" "https://www.domain.com"`
+   - **Timeout Support**: Configurable `SMOKE_TIMEOUT` environment variable (default: 15s)
+   - **Robust Error Handling**: Better curl commands with proper header handling
+   - **Accept: text/html**: Ensures middleware SPA rewrite is actually exercised
+   - **Hard-Fail on cleanUrls**: Explicit /index.html check prevents 308 regressions
+   - **Comprehensive Testing**: WWW→APEX, health, cleanUrls, middleware, SPA, assets, API isolation
+
+2. **Hardened Guard Script (scripts/check-guards.sh)**
+   - **Path Tolerance**: Supports both root and `adminer/apps/api/vercel.json` locations
+   - **cleanUrls Blocking**: Hard-fails if cleanUrls=true is detected (prevents SPA breakage)
+   - **Single Source of Truth**: Ensures exactly one vercel.json file exists
+   - **Clear Feedback**: Shows which vercel.json path is being used
+
+3. **Submodule-Aware Workflows**
+   - **All Workflows Updated**: monorepo-ci.yml, smoke.yml, deploy-wait-and-smoke.yml
+   - **Submodule Initialization**: `submodules: recursive` + manual init for reliability
+   - **Proper Script Usage**: All workflows now use the new hardened script format
+   - **Environment Variables**: Proper timeout and domain configuration
 
 **Comprehensive CI/CD Safety Improvements Implemented:**
 
@@ -132,8 +156,9 @@
 5. **Header Tracking**: Clear middleware execution tracking with `x-mw` headers
 6. **Accept Header Logic**: Distinguishes between browser navigation and programmatic requests
 
-**Deployment Status: ✅ COMPREHENSIVE CI/CD SAFETY IMPROVEMENTS COMPLETED & DEPLOYED**
-- **Latest Commit**: `d671ea0` - Comprehensive CI/CD safety improvements - PR gating, post-deploy smoke, rollback, pre-push hooks, troubleshooting guide
+**Deployment Status: ✅ HARDENED PRODUCTION PATCHES COMPLETED & DEPLOYED**
+- **Latest Commit**: `d2410d1` - Hardened production patches - robust smoke testing, cleanUrls guard, submodule-aware workflows
+- **Previous Commit**: `d671ea0` - Comprehensive CI/CD safety improvements - PR gating, post-deploy smoke, rollback, pre-push hooks, troubleshooting guide
 - **Previous Commit**: `55f80a3` - CI production patches - submodules, guard tolerance, smoke headers
 - **Previous Commit**: `ecc0e7a` - CI smoke test fix - proper Accept: text/html headers
 - **Previous Fix**: `ae5e391` - Disabled cleanUrls to prevent /index.html redirects
