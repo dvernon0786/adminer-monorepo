@@ -160,40 +160,47 @@ jobs:
       - name: Enhanced smoke (detect nextExport:true & drift)
         id: smoke
         shell: bash
-        continue-on-error: true   # allow artifact upload even on failure
+        continue-on-error: true
         run: |
           set -euo pipefail
           DEPLOY_URL="${{ steps.wait.outputs.deploy_url }}"
           APEX_URL="${PROD_DOMAIN%/}"
-
           HEALTH_DEPLOY="${DEPLOY_URL%/}${HEALTH_PATH}"
           HEALTH_APEX="${APEX_URL%/}${HEALTH_PATH}"
-
           echo "🔎 Check deployment: $HEALTH_DEPLOY"
           code_deploy=$(curl -sS -o deploy_body.html -w "%{http_code}" "$HEALTH_DEPLOY" || true)
           echo "Deployment HTTP $code_deploy"
-
           echo "🔎 Check apex: $HEALTH_APEX"
           code_apex=$(curl -sS -o apex_body.html -w "%{http_code}" "$HEALTH_APEX" || true)
           echo "Apex HTTP $code_apex"
-
           if grep -q '"nextExport":true' apex_body.html; then
             echo "❌ Apex still serving static export (\"nextExport\": true)."
             exit 1
           fi
-
           if [ "$code_apex" -ne 200 ] || [ "$code_deploy" -ne 200 ]; then
             echo "❌ Smoke failed: non-200 responses."
             exit 1
           fi
-
           echo "✅ Smoke passed."
 
+      - name: Full system check (prod)
+        id: system-check
+        shell: bash
+        continue-on-error: true
+        run: |
+          set -euo pipefail
+          chmod +x scripts/system-check.sh
+          ./scripts/system-check.sh "https://adminer.online"
+
       - name: Upload smoke artifacts (if failed)
-        if: steps.smoke.outcome == 'failure'
+        if: steps.smoke.outcome == 'failure' || steps.system-check.outcome == 'failure'
         uses: actions/upload-artifact@v4
         with:
-          name: smoke-debug
+          name: system-check-artifacts
           path: |
             deploy_body.html
-            apex_body.html 
+            apex_body.html
+            headers.txt
+            smoke_index.html
+            smoke_bundle.js
+            smoke_bundle.headers 
