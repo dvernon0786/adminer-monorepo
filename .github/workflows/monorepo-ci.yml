@@ -338,6 +338,10 @@ jobs:
       - name: Install curl+jq
         run: sudo apt-get update && sudo apt-get install -y curl jq
 
+      - name: Wait for edge cache
+        if: ${{ inputs.deploy == true }}
+        run: sleep 20
+
       - name: Smoke against PROD
         env:
           PROD_DOMAIN: ${{ secrets.PROD_DOMAIN }}
@@ -348,6 +352,15 @@ jobs:
           set -euo pipefail
           export DOMAIN="${PROD_DOMAIN:-https://www.adminer.online}"
           bash scripts/smoke.sh
+
+      - name: Rollback on smoke failure
+        if: failure() && inputs.deploy == true
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "❌ Smoke test failed - initiating rollback..."
+          chmod +x scripts/rollback.sh
+          scripts/rollback.sh
 
       - name: Upload failure artifacts
         if: failure()

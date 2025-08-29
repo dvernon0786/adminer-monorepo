@@ -1,6 +1,7 @@
 name: Smoke Tests (Production)
 
 on:
+  pull_request:
   push:
     branches: [ main ]
   workflow_dispatch:
@@ -32,11 +33,13 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          submodules: recursive     # if you use submodules
 
-      - name: Init submodules
+      - name: Init submodules (paranoid)
         run: |
-          git submodule sync --recursive
-          git submodule update --init --recursive
+          git submodule sync --recursive || true
+          git submodule update --init --recursive || true
 
       - name: Ensure defaults for URLs when secrets not set
         run: |
@@ -53,5 +56,8 @@ jobs:
       - name: Make smoke executable
         run: chmod +x scripts/smoke.sh
 
-      - name: Run smoke tests
-        run: bash scripts/smoke.sh
+      # Prod smoke
+      - name: Smoke test (prod)
+        env:
+          BASE_URL: https://adminer.online
+        run: scripts/smoke.sh

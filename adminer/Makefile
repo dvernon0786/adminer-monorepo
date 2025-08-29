@@ -9,8 +9,9 @@ build:
 dev:
 	cd apps/api && ./scripts/dev-with-env.sh
 
-smoke:
-	./scripts/smoke-test-production.sh
+smoke:      ; scripts/smoke.sh
+smoke-prod: ; BASE_URL=https://adminer.online scripts/smoke.sh
+smoke-stg:  ; BASE_URL=https://staging.adminer.online scripts/smoke.sh
 
 preflight:
 	./scripts/smoke/preflight_check.sh

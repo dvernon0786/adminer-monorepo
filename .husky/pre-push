@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+set -e
+scripts/smoke.sh || { echo "❌ Smoke failed. Aborting push."; exit 1; } 

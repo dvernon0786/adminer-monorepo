@@ -71,5 +71,19 @@ jobs:
       - name: Make smoke executable
         run: chmod +x scripts/smoke.sh
 
-      - name: Smoke Test
-        run: bash scripts/smoke.sh 
+      - name: Wait a bit for edge cache
+        run: sleep 20
+
+      - name: Smoke test after deploy
+        env:
+          BASE_URL: https://adminer.online
+        run: scripts/smoke.sh
+
+      - name: Rollback on smoke failure
+        if: failure()
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+        run: |
+          echo "❌ Smoke test failed - initiating rollback..."
+          chmod +x scripts/rollback.sh
+          scripts/rollback.sh 
