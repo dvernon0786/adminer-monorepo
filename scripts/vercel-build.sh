@@ -1,16 +1,25 @@
-#!/bin/bash
-set -e
+#!/usr/bin/env bash
+set -euo pipefail
+ROOT="$(cd "$(dirname "$0")/.."; pwd)"
 
-echo "Cache bust: $(date)"
-rm -rf adminer/apps/web/dist adminer/apps/api/public/assets
+npm -C "$ROOT/adminer/apps/web" install
+npm -C "$ROOT/adminer/apps/web" run build
 
-# Unset Clerk environment variables
-unset CLERK_FRONTEND_API CLERK_PROXY_URL
+rm -rf "$ROOT/adminer/apps/api/public"
+mkdir -p "$ROOT/adminer/apps/api/public"
+cp -r "$ROOT/adminer/apps/web/dist/"* "$ROOT/adminer/apps/api/public/"
 
-# Change to adminer directory and run build
-cd adminer
-npm run prebuild --workspace @adminer/api
-npm run build --workspace @adminer/api
-npm run spa:integrate --workspace @adminer/api
+HTML="$ROOT/adminer/apps/api/public/index.html"
+test -f "$HTML"
 
-echo "Build completed successfully" 
+JS_REF=$(grep -oE '/assets/index-[A-Za-z0-9]+\.js' "$HTML" | head -n1 || true)
+if [[ -z "${JS_REF:-}" ]] || [[ ! -f "$ROOT/adminer/apps/api/public${JS_REF}" ]]; then
+  echo "❌ Guard: index.html → ${JS_REF:-<none>} missing"; exit 1
+fi
+if grep -q "https://clerk\.adminer\.online" "$HTML"; then
+  echo "❌ Guard: proxy leak in index.html"; exit 1
+fi
+if ! grep -qE 'pk_(test|live)_' "$ROOT/adminer/apps/api/public${JS_REF}"; then
+  echo "❌ Guard: Clerk key not detected in bundle"; exit 1
+fi
+echo "✅ Guard OK: ${JS_REF}" 
