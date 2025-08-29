@@ -40,6 +40,7 @@ jobs:
 
       - name: Copy SPA into API public dir
         run: |
+          mkdir -p adminer/apps/api/public
           rm -rf adminer/apps/api/public/*
           cp -r adminer/apps/web/dist/* adminer/apps/api/public/
 
