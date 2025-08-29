@@ -1,4 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { useLocation } from "react-router-dom";
+import { useAuth } from "@clerk/clerk-react";
+import { isProtectedPath } from "@/lib/isProtectedPath";
 import { getQuotaStatus, type QuotaStatus as ApiQuotaStatus } from "@/lib/quota";
 
 export type Plan = "free" | "pro" | "enterprise";
@@ -11,12 +14,23 @@ export type QuotaStatus = {
 };
 
 export function useQuota() {
+  const { pathname } = useLocation();
+  const { isSignedIn } = useAuth();
+  
   const [data, setData] = useState<QuotaStatus | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [authStatus, setAuthStatus] = useState<'authenticated' | 'unauthenticated' | 'quota_exceeded' | null>(null);
 
   const fetchStatus = useCallback(async () => {
+    // ⛔️ Skip fetching on public routes or when signed out
+    if (!isSignedIn || !isProtectedPath(pathname)) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
     setLoading(true);
     setError(null);
     try {
@@ -34,8 +48,10 @@ export function useQuota() {
       } else {
         // Handle different error cases gracefully
         if (quota.code === 401) {
-          setAuthStatus('unauthenticated');
-          setError('Please sign in to view your quota');
+          // Signed out: don't block UI globally
+          setData(null);
+          setLoading(false);
+          return;
         } else if (quota.code === 402) {
           setAuthStatus('quota_exceeded');
           setData({
@@ -55,7 +71,7 @@ export function useQuota() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [isSignedIn, pathname]);
 
   useEffect(() => {
     fetchStatus();
@@ -73,7 +89,7 @@ export function useQuota() {
     refresh: fetchStatus, 
     overLimit,
     authStatus,
-    needsAuth: authStatus === 'unauthenticated',
-    needsUpgrade: authStatus === 'quota_exceeded'
+    needsAuth: !isSignedIn && isProtectedPath(pathname),
+    needsUpgrade: !!data && data.remaining <= 0
   };
 } 

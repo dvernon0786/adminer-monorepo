@@ -93,16 +93,15 @@ echo "$html" | grep -iq "<!doctype html" || fail "SPA did not return HTML"
 pass "Valid HTML returned"
 
 section "Asset bypass"
-# Test that assets are accessible by checking the assets directory structure
-# First try to access the assets directory (should redirect or list)
-code=$(status_code "${BASE_URL}/assets" -I -H 'Accept: */*' || true)
-if [[ "$code" == "200" || "$code" == "403" ]]; then
-  pass "Assets directory accessible ($code)"
-else
-  # If directory doesn't work, test that we can at least reach the assets path
-  # This verifies the routing is working even if directory listing is disabled
-  pass "Assets path accessible (directory listing disabled, normal for Vercel)"
-fi
+# Parse the first asset from the live index.html (js or css)
+asset_path="$(curl -s "${BASE_URL}/index.html" \
+  | grep -oE '/assets/[^"]+\.(js|css)' | head -n1)"
+
+[[ -n "$asset_path" ]] || fail "No asset reference found in index.html"
+
+code=$(status_code "${BASE_URL}${asset_path}" -I -H 'Accept: */*' || true)
+[[ "$code" == "200" ]] || fail "Expected 200 for asset ${asset_path}, got $code"
+pass "Asset served (200) at ${asset_path}"
 
 section "API untouched by middleware"
 # Expect no x-mw header for API paths (middleware should short-circuit)
