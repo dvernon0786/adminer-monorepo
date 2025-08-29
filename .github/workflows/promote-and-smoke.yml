@@ -1,9 +1,9 @@
 name: Promote alias & smoke
 
 on:
-  workflow_dispatch:
   push:
     branches: [ main ]
+  workflow_dispatch:
 
 jobs:
   promote-and-smoke:
@@ -13,55 +13,132 @@ jobs:
       HEALTH_PATH: /api/consolidated?action=health
       WAIT_TIMEOUT_SEC: 600
       WAIT_INTERVAL_SEC: 10
+      POST_ALIAS_RETRY_SEC: 45
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
       VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
     steps:
       - uses: actions/checkout@v4
 
-      - name: Ensure curl + jq
+      - name: Ensure tools
         run: |
           sudo apt-get update -y
           sudo apt-get install -y jq
 
-      - name: Wait for latest prod deployment to be READY
+      - name: Wait for latest production deployment to be READY
         id: wait
         shell: bash
         run: |
           set -euo pipefail
-          deadline=$(( $(date +%s) + ${WAIT_TIMEOUT_SEC} ))
+          deadline=$(( $(date +%s) + WAIT_TIMEOUT_SEC ))
           TEAM_ARG=""
           [[ -n "${VERCEL_TEAM_ID:-}" ]] && TEAM_ARG="&teamId=${VERCEL_TEAM_ID}"
 
-          echo "Polling Vercel for latest production deployment readiness…"
-          DEPLOY_URL=""
-          DEPLOY_ID=""
-          STATE=""
-
+          echo "Polling Vercel for latest prod deployment…"
           while [ "$(date +%s)" -lt "$deadline" ]; do
             resp="$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1${TEAM_ARG}" \
               -H "Authorization: Bearer ${VERCEL_TOKEN}")"
-
-            STATE="$(echo "$resp" | jq -r '.deployments[0].state // ""')"
-            DEPLOY_URL="$(echo "$resp" | jq -r '.deployments[0].url // ""')"
-            DEPLOY_ID="$(echo "$resp" | jq -r '.deployments[0].uid // ""')"
-
-            echo "Latest deployment: state=${STATE:-n/a} url=${DEPLOY_URL:-n/a}"
-            case "$STATE" in
+            state="$(jq -r '.deployments[0].state // empty' <<<"$resp")"
+            url="$(jq -r '.deployments[0].url // empty' <<<"$resp")"
+            id="$(jq -r '.deployments[0].uid // empty' <<<"$resp")"
+            echo "Latest: state=${state:-n/a} url=${url:-n/a}"
+            case "$state" in
               READY) break ;;
-              ERROR|CANCELED) echo "❌ Deployment state=$STATE. Exiting."; exit 1 ;;
+              ERROR|CANCELED) echo "❌ Deployment state=$state"; exit 1 ;;
             esac
-            sleep "${WAIT_INTERVAL_SEC}"
+            sleep "$WAIT_INTERVAL_SEC"
           done
 
-          if [ "$STATE" != "READY" ]; then
-            echo "❌ Timed out waiting for READY."
+          if [ "${state:-}" != "READY" ]; then
+            echo "❌ Timed out waiting for READY"
             exit 1
           fi
 
-          echo "deploy_url=https://${DEPLOY_URL}" >> "$GITHUB_OUTPUT"
-          echo "deploy_id=${DEPLOY_ID}" >> "$GITHUB_OUTPUT"
-          echo "✅ READY: https://${DEPLOY_URL}"
+          echo "deploy_url=https://${url}" >> "$GITHUB_OUTPUT"
+          echo "deploy_id=${id}" >> "$GITHUB_OUTPUT"
+          echo "✅ READY: https://${url}"
+
+      - name: Verify deployment is serverless (not static export)
+        id: verify
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_URL="${{ steps.wait.outputs.deploy_url }}"
+          
+          echo "🔍 Verifying deployment is serverless (not static export)..."
+          echo "Testing: ${DEPLOY_URL}/api/consolidated?action=health"
+          
+          # Test the health endpoint
+          BODY=$(curl -sS "${DEPLOY_URL}/api/consolidated?action=health" || true)
+          
+          # Check for static export signature
+          if echo "$BODY" | grep -q '"nextExport":\s*true'; then
+            echo "❌ CRITICAL: Static export detected in deployment"
+            echo "   Response body: $BODY"
+            echo "   This deployment cannot be aliased - it will break the apex domain"
+            echo "   Root cause: API project built in export mode instead of serverless"
+            exit 1
+          fi
+          
+          # Check for successful response
+          if ! echo "$BODY" | grep -q '"ok":\s*true'; then
+            echo "❌ Deployment health check failed"
+            echo "   Response body: $BODY"
+            echo "   Cannot alias unhealthy deployment"
+            exit 1
+          fi
+          
+          echo "✅ Deployment verified as serverless and healthy"
+          echo "   No static export detected"
+          echo "   Health endpoint responding correctly"
+
+      - name: Pre-alias guard: Verify deployment has consolidated endpoint
+        id: prealias
+        shell: bash
+        run: |
+          set -euo pipefail
+          DEPLOY_URL="${{ steps.wait.outputs.deploy_url }}"
+          
+          echo "🔍 Pre-alias guard: Verifying deployment has consolidated endpoint..."
+          echo "Testing: ${DEPLOY_URL}/api/consolidated?action=health"
+          
+          # Test the consolidated endpoint specifically
+          RESPONSE=$(curl -sS -w "%{http_code}" "${DEPLOY_URL}/api/consolidated?action=health" || true)
+          HTTP_CODE="${RESPONSE: -3}"
+          BODY="${RESPONSE%???}"
+          
+          echo "HTTP Status: $HTTP_CODE"
+          echo "Response Body: $BODY"
+          
+          # Check for 404 (endpoint not found)
+          if [ "$HTTP_CODE" = "404" ]; then
+            echo "❌ CRITICAL: Consolidated endpoint not found (404)"
+            echo "   This deployment is missing the health check endpoint"
+            echo "   Cannot alias deployment without working health endpoint"
+            echo "   Root cause: TypeScript compilation failed or endpoint not built"
+            exit 1
+          fi
+          
+          # Check for 500 (server error)
+          if [ "$HTTP_CODE" = "500" ]; then
+            echo "❌ CRITICAL: Consolidated endpoint server error (500)"
+            echo "   This deployment has the endpoint but it's broken"
+            echo "   Cannot alias deployment with broken health endpoint"
+            exit 1
+          fi
+          
+          # Check for successful response
+          if [ "$HTTP_CODE" = "200" ] && echo "$BODY" | grep -q '"ok":\s*true'; then
+            echo "✅ Pre-alias guard passed"
+            echo "   Consolidated endpoint working correctly"
+            echo "   Deployment ready for aliasing"
+          else
+            echo "❌ CRITICAL: Health endpoint not responding correctly"
+            echo "   HTTP Status: $HTTP_CODE"
+            echo "   Response: $BODY"
+            echo "   Cannot alias deployment with non-functional health endpoint"
+            exit 1
+          fi
 
       - name: Alias apex domain to latest deployment (REST)
         id: alias
@@ -70,18 +147,20 @@ jobs:
           set -euo pipefail
           TEAM_ARG=""
           [[ -n "${VERCEL_TEAM_ID:-}" ]] && TEAM_ARG="?teamId=${VERCEL_TEAM_ID}"
-
+          DEPLOY_ID="${{ steps.wait.outputs.deploy_id }}"
           echo "Aliasing ${PROD_DOMAIN} -> ${{ steps.wait.outputs.deploy_url }}"
           curl -fsS -X POST \
             -H "Authorization: Bearer ${VERCEL_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"alias\":\"${PROD_DOMAIN#https://}\"}" \
-            "https://vercel.com/api/v2/deployments/${{ steps.wait.outputs.deploy_id }}/aliases${TEAM_ARG}" >/dev/null
+            "https://api.vercel.com/v2/deployments/${DEPLOY_ID}/aliases${TEAM_ARG}" >/dev/null
+          echo "✅ Alias updated. Sleeping ${POST_ALIAS_RETRY_SEC}s for edge cache…"
+          sleep "${POST_ALIAS_RETRY_SEC}"
 
-          echo "✅ Alias updated."
-
-      - name: Enhanced smoke (detect nextExport:true and domain drift)
+      - name: Enhanced smoke (detect nextExport:true & drift)
+        id: smoke
         shell: bash
+        continue-on-error: true   # allow artifact upload even on failure
         run: |
           set -euo pipefail
           DEPLOY_URL="${{ steps.wait.outputs.deploy_url }}"
@@ -90,34 +169,31 @@ jobs:
           HEALTH_DEPLOY="${DEPLOY_URL%/}${HEALTH_PATH}"
           HEALTH_APEX="${APEX_URL%/}${HEALTH_PATH}"
 
-          echo "🔎 Checking deployment URL: $HEALTH_DEPLOY"
-          code_deploy=$(curl -sS -o /tmp/deploy_body.txt -w "%{http_code}" "$HEALTH_DEPLOY" || true)
-          echo "Deployment health HTTP $code_deploy"
-          if [ "$code_deploy" -lt 200 ] || [ "$code_deploy" -ge 400 ]; then
-            echo "❌ Deployment URL failed health."
-            cat /tmp/deploy_body.txt || true
+          echo "🔎 Check deployment: $HEALTH_DEPLOY"
+          code_deploy=$(curl -sS -o deploy_body.html -w "%{http_code}" "$HEALTH_DEPLOY" || true)
+          echo "Deployment HTTP $code_deploy"
+
+          echo "🔎 Check apex: $HEALTH_APEX"
+          code_apex=$(curl -sS -o apex_body.html -w "%{http_code}" "$HEALTH_APEX" || true)
+          echo "Apex HTTP $code_apex"
+
+          if grep -q '"nextExport":true' apex_body.html; then
+            echo "❌ Apex still serving static export (\"nextExport\": true)."
             exit 1
           fi
 
-          echo "🔎 Checking apex domain: $HEALTH_APEX"
-          code_apex=$(curl -sS -o /tmp/apex_body.txt -w "%{http_code}" "$HEALTH_APEX" || true)
-          echo "Apex health HTTP $code_apex"
-
-          # Flag classic static-export signature
-          if grep -q '"nextExport":true' /tmp/apex_body.txt; then
-            echo "❌ Apex is serving static export (\"nextExport\": true)."
-            echo "   Deployment is healthy: $DEPLOY_URL"
-            echo "   Fix: ensure alias pointed to the READY deployment (this job just did),"
-            echo "        then re-run smoke if DNS/edge cache needed a minute."
+          if [ "$code_apex" -ne 200 ] || [ "$code_deploy" -ne 200 ]; then
+            echo "❌ Smoke failed: non-200 responses."
             exit 1
           fi
 
-          # Helpful diffs
-          if [ "$code_apex" -ne 200 ]; then
-            echo "❌ Apex returned HTTP $code_apex while deployment is OK."
-            echo "   Body (apex):"
-            head -c 1500 /tmp/apex_body.txt || true
-            exit 1
-          fi
+          echo "✅ Smoke passed."
 
-          echo "✅ Smoke passed. Apex serves non-export response and health is OK." 
+      - name: Upload smoke artifacts (if failed)
+        if: steps.smoke.outcome == 'failure'
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-debug
+          path: |
+            deploy_body.html
+            apex_body.html 

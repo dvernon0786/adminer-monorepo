@@ -1,9 +1,12 @@
+import sharedConfig from './next.config.shared.mjs';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  reactStrictMode: true,
+  ...sharedConfig,
   
   // ⚠️ EXPLICITLY FORCE SERVERLESS MODE - prevent export mode
-  output: 'standalone', // Force serverless mode, not export mode
+  // For Next.js 14.2.10, we need to be more explicit
+  output: undefined, // Remove output setting to prevent export mode
   
   // Environment variable overrides to prevent export mode
   env: {
@@ -13,10 +16,7 @@ const nextConfig = {
     // Vercel-specific overrides
     VERCEL: '1',
     VERCEL_ENV: 'production',
-  },
-  
-  // Temporarily bypass TypeScript errors to focus on routing fix
-  typescript: { ignoreBuildErrors: true }
+  }
 };
 
 export default nextConfig; 

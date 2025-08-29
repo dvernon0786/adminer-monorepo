@@ -11,7 +11,9 @@
     "test:local": "scripts/test-endpoints.sh",
     "test:dev": "scripts/test-dev-mode.sh",
     "smoke:dev": "DOMAIN=http://localhost:3000 scripts/smoke-dev.sh",
-    "smoke:prod": "scripts/smoke-prod.sh"
+    "smoke:prod": "scripts/smoke-prod.sh",
+    "build:api": "cd adminer/apps/api && npm run build",
+    "start:api": "cd adminer/apps/api && npm run start"
   },
   "type": "module",
   "dependencies": {

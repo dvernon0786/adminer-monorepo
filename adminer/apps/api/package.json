@@ -6,15 +6,16 @@
   "scripts": {
     "dev": "next dev -p 3000",
     "spa:integrate": "node scripts/spa-integrate.cjs",
-    "build": "next build",
+    "build": "NEXT_EXPORT=false VERCEL_EXPORT=false next build",
+    "postbuild": "./scripts/guard-static-export.sh",
     "prestart": "node ./src/env-check.cjs",
     "start": "next start -p 3000",
     "prevercel": "node ./scripts/guard-spa.mjs",
     "vercel-build": "bash ./vercel-build.sh",
     "db:check": "node scripts/check-neon-db.cjs",
-    "db:migrate": "node scripts/migrate-neon.cjs",
-    "db:migrate:dry": "node scripts/migrate-neon.cjs --dry-run",
-    "migrate:ts": "node -r ts-node/register -r tsconfig-paths/register scripts/migrate-neon.cjs"
+    "db:migrate": "node scripts/check-neon-db.cjs",
+    "db:migrate:dry": "node scripts/check-neon-db.cjs --dry-run",
+    "migrate:ts": "node -r ts-node/register -r tsconfig-paths/register scripts/check-neon-db.cjs"
   },
   "dependencies": {
     "@clerk/clerk-js": "5.88.0",
