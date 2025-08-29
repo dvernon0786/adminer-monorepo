@@ -1,0 +1,4 @@
+# Force Vercel Cache Invalidation
+# This file ensures Vercel redeploys with our fixed export mode configuration
+# Deployed: 2025-08-29 07:50 IST
+# Purpose: Fix export mode issue by forcing fresh deployment 
