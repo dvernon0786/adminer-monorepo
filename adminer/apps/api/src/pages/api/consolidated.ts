@@ -1,8 +1,6 @@
-import { NextRequest, NextResponse } from 'next/server';
+import type { NextApiRequest, NextApiResponse } from "next";
 import { auth } from "@clerk/nextjs/server";
-import { getPlanAndUsage } from '../../../lib/quota';
-
-export const runtime = "edge";
+import { getPlanAndUsage } from '../../lib/quota';
 
 type Plan = {
   code: string;
@@ -72,19 +70,18 @@ function computePlan(userId?: string) {
   return body;
 }
 
-export async function GET(req: NextRequest) {
-  const { searchParams } = new URL(req.url);
-  const action = searchParams.get('action');
+export default async function handler(req: NextApiRequest, res: NextApiResponse) {
+  const { action } = req.query;
 
   if (action === 'health') {
-    return NextResponse.json({ ok: true, healthy: true }, { status: 200 });
+    return res.status(200).json({ ok: true, healthy: true });
   }
 
   if (action === 'quota/status') {
     try {
       const { orgId } = await auth();
       if (!orgId) {
-        return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
+        return res.status(401).json({ ok: false, error: "unauthenticated" });
       }
 
       const { quota, used, planCode } = await getPlanAndUsage(orgId);
@@ -92,7 +89,7 @@ export async function GET(req: NextRequest) {
       const upgradeUrl = `${process.env.APP_BASE_URL}/upgrade`;
 
       if (remaining <= 0) {
-        return NextResponse.json({
+        return res.status(402).json({
           ok: false,
           error: "quota_exceeded",
           planCode,
@@ -100,7 +97,7 @@ export async function GET(req: NextRequest) {
           used,
           upgradeUrl,
           message: `Quota exceeded for plan ${planCode}. Upgrade to continue.`
-        }, { status: 402 });
+        });
       }
 
       // Legacy compatibility layer
@@ -128,11 +125,11 @@ export async function GET(req: NextRequest) {
         },
       };
 
-      return NextResponse.json(body);
+      return res.status(200).json(body);
     } catch (e: any) {
       console.error('Quota status error:', e);
       // Don't fall back to default response - return 401 if auth fails
-      return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
     }
   }
 
@@ -141,7 +138,7 @@ export async function GET(req: NextRequest) {
     try {
       const { orgId } = await auth();
       if (!orgId) {
-        return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
+        return res.status(401).json({ ok: false, error: "unauthenticated" });
       }
 
       const { quota, used, planCode } = await getPlanAndUsage(orgId);
@@ -149,7 +146,7 @@ export async function GET(req: NextRequest) {
       const upgradeUrl = `${process.env.APP_BASE_URL}/upgrade`;
 
       if (remaining <= 0) {
-        return NextResponse.json({
+        return res.status(402).json({
           ok: false,
           error: "quota_exceeded",
           planCode,
@@ -157,7 +154,7 @@ export async function GET(req: NextRequest) {
           used,
           upgradeUrl,
           message: `Quota exceeded for plan ${planCode}. Upgrade to continue.`
-        }, { status: 402 });
+        });
       }
 
       // Legacy compatibility layer
@@ -185,15 +182,13 @@ export async function GET(req: NextRequest) {
         },
       };
 
-      return NextResponse.json(body);
+      return res.status(200).json(body);
     } catch (e: any) {
       console.error('Legacy quota error:', e);
       // Don't fall back to default response - return 401 if auth fails
-      return NextResponse.json({ ok: false, error: "unauthenticated" }, { status: 401 });
+      return res.status(401).json({ ok: false, error: "unauthenticated" });
     }
   }
 
-  return NextResponse.json({ ok: false, error: 'unknown_action' }, { status: 400 });
-}
-
-export const dynamic = 'force-dynamic'; 
+  return res.status(400).json({ ok: false, error: 'unknown_action' });
+} 

@@ -1,7 +1,8 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Keep this while you tidy ESLint config later
-  eslint: { ignoreDuringBuilds: true },
+  reactStrictMode: true,
+  // ⚠️ Do NOT set `output: 'export'` — we need API routes + Middleware
+  // output: 'standalone' is optional on Vercel, default is fine.
   
   // Temporarily bypass TypeScript errors to focus on SPA routing
   typescript: { ignoreBuildErrors: true }
