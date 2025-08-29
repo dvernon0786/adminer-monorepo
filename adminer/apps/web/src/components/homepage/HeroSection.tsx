@@ -33,13 +33,8 @@ export default function HeroSection() {
     console.log('HeroSection - isLoaded:', isLoaded, 'isSignedIn:', isSignedIn)
   }
   
-  // Programmatic redirect after authentication
-  useEffect(() => {
-    if (!isLoaded) return; // Wait for auth to load
-    if (isSignedIn) {
-      navigate('/dashboard', { replace: true }); // Replace to avoid back-button loops
-    }
-  }, [isLoaded, isSignedIn, navigate]);
+  // Removed auto-redirect - let users choose their destination
+  // Users can stay on homepage or navigate to dashboard manually
   
   const {
     register,

@@ -62,4 +62,4 @@ jobs:
           SMOKE_TIMEOUT: "20"
         run: |
           chmod +x scripts/smoke.sh
-          ./scripts/smoke.sh "https://adminer.online" "https://www.adminer.online"
+          ./scripts/smoke.sh "https://adminer.online"

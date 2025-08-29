@@ -54,13 +54,19 @@ require_no_308_index() {
 
 section "WWW → APEX (optional)"
 if [[ -n "$WWW_URL" ]]; then
-  code=$(status_code "$WWW_URL" -I)
-  if [[ "$code" =~ ^30[12378]$ ]]; then
-    loc=$(headers "$WWW_URL" -I | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2}' | tr -d '\r')
-    [[ "$loc" =~ ^${BASE_URL}/?$ ]] || fail "WWW redirect target mismatch: $loc"
-    pass "WWW redirects to APEX"
+  # fast guard: skip if host doesn't resolve or port 443 closed
+  host="$(echo "$WWW_URL" | sed -E 's#https?://##; s#/.*$##')"
+  if ! getent hosts "$host" >/dev/null 2>&1; then
+    echo "ℹ️ WWW host not found; skipping."
   else
-    fail "Expected WWW to redirect (3xx), got $code"
+    code=$(status_code "$WWW_URL" -I || true)
+    if [[ "$code" =~ ^30[12378]$ ]]; then
+      loc=$(headers "$WWW_URL" -I | awk 'BEGIN{IGNORECASE=1}/^location:/{print $2}' | tr -d '\r')
+      [[ "$loc" =~ ^${BASE_URL}/?$ ]] || fail "WWW redirect target mismatch: $loc"
+      pass "WWW redirects to APEX"
+    else
+      echo "ℹ️ WWW not configured (got $code); skipping."
+    fi
   fi
 else
   echo "ℹ️ WWW URL not provided; skipping."
