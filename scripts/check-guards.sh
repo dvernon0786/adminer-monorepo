@@ -31,12 +31,19 @@ if [ ! -d "adminer/.git" ]; then
 fi
 
 # Check if key configuration files exist
-if [ ! -f "adminer/vercel.json" ]; then
-    echo "❌ Error: adminer/vercel.json not found"
-    echo "📁 Contents of adminer/ directory:"
-    ls -la adminer/ || echo "Cannot list adminer directory"
-    exit 1
+# find vercel.json in either legacy or current location
+VERCEL_JSON="adminer/vercel.json"
+if [ ! -f "$VERCEL_JSON" ]; then
+  # new monorepo layout
+  VERCEL_JSON="adminer/apps/api/vercel.json"
 fi
+
+if [ ! -f "$VERCEL_JSON" ]; then
+  echo "❌ Error: vercel.json not found (checked adminer/vercel.json and adminer/apps/api/vercel.json)"
+  exit 1
+fi
+
+echo "ℹ️  Using Vercel config at: $VERCEL_JSON"
 
 # Check if package-lock.json exists (npm workspace requirement)
 if [ ! -f "package-lock.json" ]; then

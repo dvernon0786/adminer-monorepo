@@ -27,6 +27,11 @@ jobs:
         with:
           fetch-depth: 1
 
+      - name: Init submodules
+        run: |
+          git submodule sync --recursive
+          git submodule update --init --recursive
+
       - name: Ensure defaults for URLs when secrets not set
         run: |
           set -euo pipefail
