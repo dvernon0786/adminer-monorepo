@@ -37,20 +37,33 @@
     <link rel="preconnect" href="https://clerk.adminer.online" crossorigin />
     <link rel="dns-prefetch" href="https://clerk.adminer.online" />
 
-    <!-- Error Overlay for Production Debugging -->
+    <!-- Minimal runtime error overlay (hidden unless an error occurs) -->
+    <style>
+      #__err_overlay__ {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.85); color: #fff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        padding: 16px; overflow: auto; z-index: 999999; display: none;
+      }
+      #__err_overlay__ .title { font-weight: 700; margin-bottom: 8px; }
+      #__err_overlay__ pre { white-space: pre-wrap; word-break: break-word; }
+    </style>
+    <div id="__err_overlay__" role="alert" aria-live="assertive">
+      <div class="title">💥 A runtime error occurred</div>
+      <pre id="__err_overlay_msg__"></pre>
+    </div>
     <script>
-      window.addEventListener('error', e => {
-        const d = document.createElement('pre');
-        d.style.cssText = 'position:fixed;z-index:99999;left:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:8px;max-width:90vw;max-height:40vh;overflow:auto;font:12px/1.4 monospace';
-        d.textContent = 'JS error: ' + (e.error?.stack || e.message);
-        document.body.appendChild(d);
-      });
-      window.addEventListener('unhandledrejection', e => {
-        const d = document.createElement('pre');
-        d.style.cssText = 'position:fixed;z-index:99999;left:8px;bottom:8px;background:#111;color:#fff;padding:12px;border-radius:8px;max-width:90vw;max-height:40vh;overflow:auto;font:12px/1.4 monospace';
-        d.textContent = 'Unhandled promise: ' + (e.reason?.stack || e.reason?.message || e.reason);
-        document.body.appendChild(d);
-      });
+      (function () {
+        const show = (msg) => {
+          try {
+            const el = document.getElementById('__err_overlay__');
+            const pre = document.getElementById('__err_overlay_msg__');
+            pre.textContent = (msg && (msg.stack || msg.message || String(msg))) || 'Unknown error';
+            el.style.display = 'block';
+          } catch (_) {}
+        };
+        window.addEventListener('error', (e) => show(e.error || e.message || e));
+        window.addEventListener('unhandledrejection', (e) => show(e.reason || e));
+      })();
     </script>
 
     <!-- Vite will inject the script tag here -->

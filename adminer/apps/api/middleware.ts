@@ -1,65 +1,52 @@
-import { NextResponse } from "next/server";
-import type { NextRequest } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 
-const isHtmlNav = (req: NextRequest) => {
-  const accept = req.headers.get("accept") || "";
-  // Treat as an HTML navigation when text/html appears (typical browser navs)
-  return accept.includes("text/html");
-};
+// File/route allowlist that should NEVER be rewritten
+function isAllowedPath(pathname: string): boolean {
+  if (pathname === "/") return false; // we want SPA at /
+  if (pathname.startsWith("/api")) return true;
+  if (pathname.startsWith("/_next")) return true;
+  if (pathname.startsWith("/assets/")) return true;              // Vite build output
+  if (pathname.startsWith("/public/")) return true;              // static dir (defensive)
+  if (pathname === "/favicon.ico") return true;
+  if (pathname.startsWith("/favicon-")) return true;             // hashed favicons
+  if (pathname === "/robots.txt") return true;
+  if (pathname === "/sitemap.xml") return true;
+  if (pathname === "/manifest.webmanifest" || pathname.endsWith(".webmanifest")) return true;
+  if (pathname === "/service-worker.js") return true;
+
+  // Any direct file request like /something.ext (png, jpg, css, js, map, etc.)
+  if (/\.[a-z0-9]+$/i.test(pathname)) return true;
+  return false;
+}
 
 export function middleware(req: NextRequest) {
-  const { pathname } = req.nextUrl;
+  const { method, nextUrl, headers } = req;
+  const { pathname } = nextUrl;
 
-  // 0) Ping: prove execution without relying on headers
-  if (pathname === "/__mw-check") {
-    return new NextResponse(`mw: ok | path=${pathname} | ts=${Date.now()}\n`, {
-      status: 200,
-      headers: { "x-mw": "hit" },
-    });
-  }
+  // Only consider GET navigations
+  if (method !== "GET") return NextResponse.next();
 
-  // 1) Asset Allowlist - CRITICAL: Never rewrite these to SPA
-  const ASSET_ALLOWLIST = [
-    /^\/assets\//,           // Vite built assets
-    /^\/favicon\.ico$/,      // Favicon
-    /^\/robots\.txt$/,       // Robots
-    /^\/manifest\.webmanifest$/, // PWA manifest
-    /^\/clerk-runtime\//,    // Clerk runtime files
-    /^\/vendor\//            // Vendor files
-  ];
-  
-  if (ASSET_ALLOWLIST.some(rx => rx.test(pathname))) {
-    return NextResponse.next();
-  }
+  // If the request is clearly for a non-HTML resource, bail
+  const accept = headers.get("accept") || "";
+  const wantsHTML = accept.includes("text/html");
+  if (!wantsHTML) return NextResponse.next();
 
-  // 2) Other exclusions: API, Next internals, files with extensions
-  if (
-    pathname.startsWith("/api") ||
-    pathname.startsWith("/_next") ||
-    /\.[a-zA-Z0-9]+$/.test(pathname)   // any file extension like .css/.js/.png
-  ) {
-    return NextResponse.next();
-  }
+  // Pass-through for assets and infrastructure files
+  if (isAllowedPath(pathname)) return NextResponse.next();
 
-  // 2) HTML navigations → Serve SPA files directly (bypass Next.js entirely)
-  if (isHtmlNav(req)) {
-    // For SPA routes, serve the static files directly from public directory
-    // This bypasses Next.js and serves the Vite-built SPA as intended
-    const url = req.nextUrl.clone();
-    url.pathname = "/index.html"; // lives in apps/api/public/index.html
-    const res = NextResponse.rewrite(url);
-    res.headers.set("x-mw", "spa-direct");
-    res.headers.set("content-type", "text/html; charset=utf-8");
-    return res;
-  }
-
-  // 3) Non-HTML (e.g., XHR/JSON) → pass through (lets API handle 404/JSON)
-  const res = NextResponse.next();
-  res.headers.set("x-mw", "hit");
+  // Rewrite all other HTML navigations to the SPA entry
+  const url = new URL("/index.html", req.url);
+  const res = NextResponse.rewrite(url);
+  // Marker for smoke tests; also avoid caching during stabilization
+  res.headers.set("x-mw", "spa-direct");
+  res.headers.set("cache-control", "no-store, max-age=0");
   return res;
 }
 
-// Match everything; we do exclusions in code for clarity
+// Extra safety: limit where middleware runs to reduce overhead.
 export const config = {
-  matcher: ["/:path*"],
+  matcher: [
+    // Everything except explicit excludes; runtime guard above will re-check.
+    "/((?!api|_next|assets|favicon.ico|robots.txt|sitemap.xml|manifest.webmanifest|service-worker.js).*)",
+  ],
 };
