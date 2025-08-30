@@ -62,7 +62,7 @@ jobs:
         id: deploy
         timeout-minutes: 10
         run: |
-          echo "🚀 Attempting to deploy to Vercel..."
+          echo "🚀 Deploying to Vercel with verified credentials..."
           
           # Check required environment variables
           if [[ -z "${VERCEL_ORG_ID:-}" ]]; then
@@ -83,23 +83,33 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # CRITICAL WORKAROUND: Since deployment is failing due to project access issues,
-          # we'll skip deployment and test against the existing production site
-          echo "⚠️  DEPLOYMENT SKIPPED: Project access issues detected"
-          echo "🔍 Testing against existing production site instead"
-          echo "💡 This will allow us to verify our fixes work without deployment issues"
+          # Set up Vercel project context
+          echo "🔗 Setting up Vercel project context..."
+          cd adminer/apps/api
           
-          # Set deployment URL to production site
-          DEPLOY_URL="https://adminer.online"
+          # Deploy to production using the same method as monorepo-ci
+          echo "🚀 Deploying to production..."
+          vercel --prod --yes
+          
+          # Get the deployment URL
+          DEPLOY_URL=$(vercel ls --cwd adminer/apps/api | grep -E ".*\.vercel\.app.*production" | head -1 | awk '{print $2}')
+          
+          if [[ -z "${DEPLOY_URL:-}" ]]; then
+            echo "❌ Failed to get deployment URL from vercel ls"
+            exit 1
+          fi
+          
           echo "deployment_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
-          echo "✅ Using production site: $DEPLOY_URL"
+          echo "✅ Deployment successful: $DEPLOY_URL"
           
-          # Test if production site is accessible
-          echo "🔍 Testing production site accessibility..."
+          # Verify deployment is accessible
+          echo "🔍 Verifying deployment accessibility..."
+          sleep 10  # Wait for deployment to propagate
+          
           if curl -s -o /dev/null -w "HTTP %{http_code}" "$DEPLOY_URL/" | grep -q "200\|404\|500"; then
-            echo "✅ Production site is accessible (even if returning errors)"
+            echo "✅ New deployment is accessible"
           else
-            echo "❌ Production site is not accessible"
+            echo "❌ New deployment is not accessible"
             exit 1
           fi
 
