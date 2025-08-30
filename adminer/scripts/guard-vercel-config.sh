@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KEEP="vercel.json"
+KEEP="adminer/apps/api/vercel.json"
 mapfile -t FILES < <(find . -name vercel.json -type f | sort)
 
 if [[ "${#FILES[@]}" -ne 1 || "${FILES[0]}" != "./$KEEP" ]]; then
-  echo "ERROR: Expected exactly one vercel.json at $KEEP (root level)"
+  echo "ERROR: Expected exactly one vercel.json at $KEEP (build context)"
   printf 'Found:\n - %s\n' "${FILES[@]}"
   exit 1
 fi
@@ -26,9 +26,9 @@ if grep -Eq '\$[0-9]' "$KEEP"; then
   exit 1
 fi
 
-# Require SPA fallback rule
-if ! grep -q '"destination": "/index.html"' "$KEEP"; then
-  echo 'ERROR: Missing SPA fallback rewrite to /index.html.'
+# Require SPA fallback rule (Next.js Pages Router uses "/" not "/index.html")
+if ! grep -q '"destination": "/"' "$KEEP"; then
+  echo 'ERROR: Missing SPA fallback rewrite to / (Next.js Pages Router).'
   exit 1
 fi
 

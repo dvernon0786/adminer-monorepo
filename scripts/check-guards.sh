@@ -2,14 +2,14 @@
 set -euo pipefail
 
 # Ensures:
-# - vercel.json is present at root (single source of truth)
+# - vercel.json is present in adminer/apps/api (build context)
 # - cleanUrls is NOT enabled
 # - Prints the path used for clarity
 
-ROOT="vercel.json"
+ROOT="adminer/apps/api/vercel.json"
 
 if [[ ! -f "$ROOT" ]]; then
-  echo "❌ vercel.json not found (expected at ./vercel.json)"
+  echo "❌ vercel.json not found (expected at ${ROOT})"
   exit 1
 fi
 
@@ -23,4 +23,4 @@ if grep -qE '"cleanUrls"\s*:\s*true' "$VCONF"; then
 fi
 
 # Friendly success
-echo "✅ Guard passed: cleanUrls disabled; single vercel.json at ${VCONF}" 
+echo "✅ Guard passed: cleanUrls disabled; vercel.json at ${VCONF}" 
