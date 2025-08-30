@@ -31,33 +31,27 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Allow Next.js internals
-  if (pathname.startsWith('/_next')) {
-    console.log(`[MIDDLEWARE] Next.js internal - passing through: ${pathname}`);
+  // Allow Next.js internals and static files
+  if (pathname.startsWith('/_next') || pathname.includes('.') || pathname === '/favicon.ico') {
+    console.log(`[MIDDLEWARE] Next.js/Static - passing through: ${pathname}`);
     return NextResponse.next();
   }
 
-  // Allow static files
-  if (pathname.includes('.') || pathname === '/favicon.ico') {
-    console.log(`[MIDDLEWARE] Static file - passing through: ${pathname}`);
-    return NextResponse.next();
-  }
-
-  // Serve SPA for all other routes (dashboard, homepage, etc.)
-  console.log(`[MIDDLEWARE] Rewriting to SPA: ${pathname} -> /index.html`);
-  return NextResponse.rewrite(new URL('/index.html', req.url));
+  // CRITICAL: Serve SPA for ALL other routes (dashboard, homepage, etc.)
+  // This must happen BEFORE Next.js can intercept the route
+  console.log(`[MIDDLEWARE] SPA ROUTE DETECTED - rewriting ${pathname} -> /index.html`);
+  
+  // Use rewrite instead of redirect to preserve the URL
+  const url = req.nextUrl.clone();
+  url.pathname = '/index.html';
+  
+  return NextResponse.rewrite(url);
 }
 
-// Run middleware on all routes to handle SPA routing
+// CRITICAL: Run middleware on ALL routes to ensure SPA routing works
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    '/((?!api|_next/static|_next/image|favicon.ico).*)',
+    // Match ALL routes except Next.js internals and static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };

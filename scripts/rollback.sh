@@ -12,28 +12,34 @@ if [ -z "${VERCEL_TOKEN:-}" ]; then
     exit 1
 fi
 
-# Remove current alias (non-interactive)
-echo "🗑️  Removing current alias..."
-echo "y" | vercel alias rm $ALIAS --token=$VERCEL_TOKEN || true
+# Check if we have the required project context
+if [ -z "${VERCEL_PROJECT_ID:-}" ] || [ -z "${VERCEL_ORG_ID:-}" ]; then
+    echo "❌ ERROR: VERCEL_PROJECT_ID and VERCEL_ORG_ID environment variables are required"
+    echo "   These are needed for proper project context in the rollback script"
+    exit 1
+fi
 
-# Try to get project context from current directory or environment
-if [ -n "${VERCEL_PROJECT_ID:-}" ]; then
-    echo "🔍 Using VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID"
-    # Use project-specific deployment listing
-    DEPLOYMENTS=$(vercel deployments ls --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID 2>/dev/null || echo "")
-elif [ -n "${VERCEL_ORG_ID:-}" ]; then
-    echo "🔍 Using VERCEL_ORG_ID: $VERCEL_ORG_ID"
-    # Try to list deployments with org context
-    DEPLOYMENTS=$(vercel deployments ls --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID 2>/dev/null || echo "")
-else
-    echo "🔍 No project context, trying generic listing..."
-    # Fallback to generic listing
-    DEPLOYMENTS=$(vercel ls --token=$VERCEL_TOKEN 2>/dev/null || echo "")
+echo "🔍 Using project context:"
+echo "   VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID:0:8}..."
+echo "   VERCEL_ORG_ID: ${VERCEL_ORG_ID:0:8}..."
+
+# Remove current alias (non-interactive) with proper project context
+echo "🗑️  Removing current alias..."
+echo "y" | vercel alias rm $ALIAS --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID --cwd adminer/apps/api || true
+
+# List deployments with proper project context using --cwd flag
+echo "🔍 Listing deployments with project context..."
+DEPLOYMENTS=$(vercel deployments ls --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID --cwd adminer/apps/api 2>/dev/null || echo "")
+
+if [ -z "$DEPLOYMENTS" ]; then
+    echo "❌ ERROR: Could not list deployments. Trying alternative approach..."
+    # Fallback: try vercel ls with --cwd flag
+    DEPLOYMENTS=$(vercel ls --token=$VERCEL_TOKEN --cwd adminer/apps/api 2>/dev/null || echo "")
 fi
 
 if [ -z "$DEPLOYMENTS" ]; then
-    echo "❌ ERROR: Could not list deployments. Project context may be missing."
-    echo "   Try setting VERCEL_PROJECT_ID and VERCEL_ORG_ID environment variables."
+    echo "❌ ERROR: Could not list deployments even with --cwd flag."
+    echo "   Project context may still be missing or there's a deeper issue."
     exit 1
 fi
 
@@ -52,9 +58,9 @@ fi
 
 echo "📋 Found previous deployment: $PREVIOUS_URL"
 
-# Set alias to the previous deployment
+# Set alias to the previous deployment with proper project context
 echo "🔗 Setting alias to previous deployment..."
-vercel alias set "$PREVIOUS_URL" $ALIAS --token=$VERCEL_TOKEN
+vercel alias set "$PREVIOUS_URL" $ALIAS --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID --cwd adminer/apps/api
 
 echo "✅ Successfully rolled back to $PREVIOUS_URL"
 echo "🌐 $ALIAS now points to: $PREVIOUS_URL"
