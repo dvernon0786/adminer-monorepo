@@ -92,7 +92,7 @@ jobs:
             --cwd adminer/apps/api
           
           # Get the deployment URL from the simple deployment
-          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
+          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod --cwd adminer/apps/api | grep -o 'https://[^[:space:]]*' | head -n1)
           echo "deployment_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "✅ Deployed to: $DEPLOY_URL"
           
