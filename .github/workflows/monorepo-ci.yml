@@ -71,6 +71,7 @@ jobs:
           FILES=(
             "vercel.json"
             "adminer/vercel.json"
+            "adminer/apps/api/vercel.json"
             "scripts/smoke.sh"
             "scripts/smoke-local.env.example"
           )
