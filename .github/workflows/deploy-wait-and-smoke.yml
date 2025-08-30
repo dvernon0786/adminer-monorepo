@@ -83,6 +83,10 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
+          # Link the project first to ensure proper context
+          echo "🔗 Linking project to ensure proper context..."
+          vercel link --yes --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
+          
           # Deploy using --cwd flag for proper project context (Vercel CLI 46.1.1 compatible)
           echo "🚀 Deploying with --cwd flag for proper project context..."
           vercel --prod \
