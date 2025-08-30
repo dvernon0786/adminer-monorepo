@@ -86,17 +86,12 @@ jobs:
           # Deploy the API app with proper project linking
           cd adminer/apps/api
           
-          # Try to deploy with project linking first
-          if vercel --prod --token "$VERCEL_TOKEN" --yes --scope "$VERCEL_ORG_ID" 2>/dev/null; then
-            echo "✅ Deployed with project linking"
-          else
-            echo "⚠️ Project linking failed, trying simple deployment..."
-            # Fallback: simple deployment without project linking
-            vercel --prod --token "$VERCEL_TOKEN" --yes
-          fi
+          # Deploy using simple approach (no complex project linking)
+          echo "🚀 Deploying with simple deployment..."
+          vercel --prod --token "$VERCEL_TOKEN" --yes
           
-          # Get the deployment URL
-          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod --scope "$VERCEL_ORG_ID" 2>/dev/null | grep -o 'https://[^[:space:]]*' | head -n1 || vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
+          # Get the deployment URL from the simple deployment
+          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
           echo "deployment_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "✅ Deployed to: $DEPLOY_URL"
 
