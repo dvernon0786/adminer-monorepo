@@ -11,12 +11,10 @@ const nextConfig = {
   // SPA routing - handle client-side routes (exclude API routes)
   async rewrites() {
     return [
-      { source: "/dashboard", destination: "/" },
-      { source: "/dashboard/:path*", destination: "/" },
-      { source: "/settings", destination: "/" },
-      { source: "/settings/:path*", destination: "/" },
-      { source: "/profile", destination: "/" },
-      { source: "/profile/:path*", destination: "/" }
+      // Preserve API routes exactly as they are
+      { source: "/api/:path*", destination: "/api/:path*" },
+      // All other routes should serve the SPA index
+      { source: "/((?!api).*)", destination: "/" }
     ];
   },
   

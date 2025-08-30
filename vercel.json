@@ -1,5 +1,11 @@
 {
-  "builds": [
-    { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
-  ]
+  "projects": [
+    {
+      "src": "adminer/apps/api",
+      "use": "@vercel/next"
+    }
+  ],
+  "buildCommand": "cd adminer/apps/api && npm run build",
+  "outputDirectory": "adminer/apps/api/.next",
+  "installCommand": "cd adminer/apps/api && npm ci"
 } 
