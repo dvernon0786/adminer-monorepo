@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "installCommand": "pwd; ls -la; find . -name 'package.json' -path '*/api/*' | head -5; ls -la adminer/ || true; cd adminer/apps/api && npm ci",
+  "installCommand": "npm ci",
   "buildCommand": "npm run build",
-  "outputDirectory": "adminer/apps/api/.next",
+  "outputDirectory": ".next",
   "framework": "nextjs",
   "rewrites": [
     { "source": "/api/:path*", "destination": "/api/:path*" },
