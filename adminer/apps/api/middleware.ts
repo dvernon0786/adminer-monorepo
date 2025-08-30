@@ -37,16 +37,21 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
-  // Vercel handles SPA routing via vercel.json rewrites
-  // Let Vercel serve the frontend for all non-API routes
-  console.log(`[MIDDLEWARE] Non-API route - letting Vercel handle: ${pathname}`);
-  return NextResponse.next();
+  // For all non-API routes, serve the SPA (frontend)
+  // This ensures /dashboard, /, and other routes work properly
+  console.log(`[MIDDLEWARE] SPA route detected - serving frontend for: ${pathname}`);
+  
+  // Rewrite to index.html to let React Router handle the routing
+  const url = req.nextUrl.clone();
+  url.pathname = '/index.html';
+  
+  return NextResponse.rewrite(url);
 }
 
-// Only run middleware on API routes to avoid conflicts with Vercel SPA routing
+// Run middleware on all routes to ensure proper handling
 export const config = {
   matcher: [
-    // Only match API routes - let Vercel handle frontend routing
-    '/api/:path*',
+    // Match all routes except Next.js internals and static files
+    '/((?!_next/static|_next/image|favicon.ico).*)',
   ],
 };
