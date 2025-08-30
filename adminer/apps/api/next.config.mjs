@@ -8,9 +8,9 @@ const nextConfig = {
   // For Next.js 14.2.10, we need to be more explicit
   output: undefined, // Remove output setting to prevent export mode
   
-  // 🚨 CRITICAL FIX: Prevent Next.js from generating conflicting pages
-  // Only allow API routes, no client-side pages
-  pageExtensions: ['api.ts', 'api.tsx', 'api.js', 'api.jsx'],
+  // 🚨 CRITICAL FIX: Allow API routes while preventing client-side pages
+  // API routes need regular extensions, not api.* extensions
+  pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
   
   // 🚨 DISABLE STATIC PAGE GENERATION
   // This prevents Next.js from creating 404.html, 500.html, etc.
