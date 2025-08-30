@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "next dev",
-    "build": "npm run build:spa",
+    "build": "npm run build:spa && NEXT_EXPORT=false VERCEL_EXPORT=false next build",
     "build:spa": "cd ../web && echo \"DEBUG: VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY\" && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "postbuild": "echo 'Temporarily disabled: ./scripts/guard-static-export.sh' && echo '🚨 CRITICAL: Removing conflicting Next.js HTML files' && rm -f .next/server/pages/404.html .next/server/pages/500.html && echo '✅ Removed conflicting HTML files'",
     "prestart": "node ./src/env-check.cjs",
