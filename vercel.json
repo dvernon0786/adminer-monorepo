@@ -1,5 +1,9 @@
 {
   "builds": [
     { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
+  ],
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/" },
+    { "source": "/(.*)", "destination": "/" }
   ]
 } 

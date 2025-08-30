@@ -15,8 +15,8 @@ jobs:
     env:
       # Optional: if VERCEL_TOKEN not present, we won't call Vercel API.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
 
       # Optional: if not provided, fall back to production apex/www.
@@ -72,14 +72,11 @@ jobs:
             exit 1
           fi
           
-          if [[ -z "${VERCEL_PROJECT_ID:-}" ]]; then
-            echo "❌ VERCEL_PROJECT_ID is not set. Please add it to GitHub Secrets."
-            exit 1
-          fi
+
           
           echo "✅ Environment variables verified:"
           echo "   VERCEL_ORG_ID: ${VERCEL_ORG_ID:0:8}..."
-          echo "   VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID:0:8}..."
+
           
           # Install Vercel CLI
           npm install -g vercel@latest
@@ -98,12 +95,12 @@ jobs:
 
       - name: Optionally fetch the latest deployment URL from Vercel
         id: vercel
-        if: ${{ env.VERCEL_TOKEN != '' && env.VERCEL_PROJECT_ID != '' }}
+        if: ${{ env.VERCEL_TOKEN != '' }}
         run: |
           set -euo pipefail
           # Try to read the most recent production deployment
           RESP="$(curl -sS -H "Authorization: Bearer $VERCEL_TOKEN" \
-            "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1&target=production")" || true
+            "https://api.vercel.com/v6/deployments?limit=1&target=production")" || true
           if [[ -n "${RESP:-}" && "$RESP" != "forbidden" ]]; then
             URL="$(node -e 'const x=JSON.parse(process.argv[1]||"{}"); const d=x.deployments?.[0]; if(d?.url) console.log("https://"+d.url)' "$(printf '%s' "$RESP")" || true)"
             if [[ -n "${URL:-}" ]]; then

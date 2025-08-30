@@ -15,9 +15,20 @@ if [[ -z "${VERCEL_TOKEN:-}" ]]; then
   exit 1
 fi
 
-# Use vercel rollback command (unified method)
-echo "🚀 Rolling back to previous deployment..."
-vercel rollback \
+# Get latest successful production deployment for this org
+echo "🔍 Finding latest production deployment..."
+DEPLOY_ID=$(vercel ls \
+  --scope "$VERCEL_ORG_ID" \
+  --token "$VERCEL_TOKEN" \
+  --confirm | grep Production | head -n 1 | awk '{print $2}')
+
+if [ -z "$DEPLOY_ID" ]; then
+  echo "❌ No previous deployment found to rollback to."
+  exit 1
+fi
+
+echo "🚀 Rolling back to deployment: $DEPLOY_ID"
+vercel rollback "$DEPLOY_ID" \
   --token "$VERCEL_TOKEN" \
   --scope "$VERCEL_ORG_ID" \
   --yes
