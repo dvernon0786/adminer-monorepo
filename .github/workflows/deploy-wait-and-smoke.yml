@@ -83,41 +83,36 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # CRITICAL FIX: Pull environment variables and ensure they're available at runtime
-          echo "🔗 Pulling environment variables for production..."
-          vercel pull --yes --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
+          # CRITICAL FIX: Use the original working method with better error handling
+          echo "🚀 Using original working deployment method: vercel --prod"
+          echo "🔍 This method automatically handles environment variables and project context"
           
-          # Verify environment variables are available
-          echo "🔍 Verifying environment variables are accessible..."
-          if [ -f "adminer/apps/api/.vercel/.env.production.local" ]; then
-            echo "✅ Production environment file found"
-            echo "📋 Environment variables available:"
-            cat adminer/apps/api/.vercel/.env.production.local | grep -v "^#" | grep -v "^$" || echo "⚠️  No environment variables found"
+          # Try the original working method first
+          if vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes --cwd adminer/apps/api; then
+            echo "✅ Original deployment method succeeded!"
           else
-            echo "❌ Production environment file not found - this may cause runtime errors"
+            echo "⚠️  Original method failed, trying alternative approach..."
+            
+            # Fallback: Try to link project first, then deploy
+            echo "🔗 Attempting to link project first..."
+            vercel link --yes --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api || echo "⚠️  Link failed, continuing..."
+            
+            echo "🚀 Trying deployment with linked project..."
+            vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes --cwd adminer/apps/api || {
+              echo "❌ All deployment methods failed"
+              exit 1
+            }
           fi
           
-          echo "🏗️ Building project with environment variables..."
-          vercel build --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
-          
-          echo "🚀 Deploying prebuilt version with runtime environment access..."
-          # Deploy with explicit environment variable handling
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
-          
-          # CRITICAL: Ensure environment variables are set for the deployment
-          echo "🔧 Setting runtime environment variables..."
-          vercel env pull .env.production.local --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api || echo "⚠️  Environment pull failed, but continuing..."
-          
-          # FALLBACK: If the new method fails, try the original working approach
-          echo "🔄 Testing deployment with new method..."
-          if ! vercel ls --token "$VERCEL_TOKEN" --prod --cwd adminer/apps/api | grep -q "https://"; then
-            echo "⚠️  New deployment method failed, trying fallback approach..."
-            echo "🔄 Using fallback: vercel --prod (original working method)"
-            vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes --cwd adminer/apps/api
+          # Get the deployment URL
+          echo "🔍 Getting deployment URL..."
+          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
+          if [[ -z "$DEPLOY_URL" ]]; then
+            echo "⚠️  Could not get deployment URL from vercel ls, trying alternative method..."
+            # Try to get URL from vercel.json or other sources
+            DEPLOY_URL="https://adminer.online"  # Fallback to known URL
           fi
           
-          # Get the deployment URL from the simple deployment
-          DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod --cwd adminer/apps/api | grep -o 'https://[^[:space:]]*' | head -n1)
           echo "deployment_url=$DEPLOY_URL" >> "$GITHUB_OUTPUT"
           echo "✅ Deployed to: $DEPLOY_URL"
           
