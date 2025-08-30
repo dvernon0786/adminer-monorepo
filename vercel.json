@@ -2,7 +2,7 @@
   "version": 2,
   "buildCommand": "npm run build",
   "outputDirectory": ".next",
-  "framework": "nextjs",
+  "framework": null,
   "routes": [
     { "src": "/dashboard", "dest": "/index.html" },
     { "src": "/dashboard/(.*)", "dest": "/index.html" },
