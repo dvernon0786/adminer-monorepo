@@ -17,6 +17,6 @@ fi
 
 # Use same simple root deploy approach as main workflow
 echo "🚀 Deploying from root directory with explicit project..."
-vercel --prod --token "$VERCEL_TOKEN" --project "$VERCEL_PROJECT_ID" --yes
+vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
 
 echo "✅ Rollback complete!" 
