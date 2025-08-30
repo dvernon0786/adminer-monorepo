@@ -1,11 +1,5 @@
 {
-  "version": 2,
   "builds": [
     { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
-  ],
-  "rewrites": [
-    { "source": "/api/(.*)", "destination": "/api/$1" },
-    { "source": "/assets/(.*)", "destination": "/assets/$1" },
-    { "source": "/(.*)", "destination": "/index.html" }
   ]
 } 

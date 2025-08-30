@@ -12,11 +12,14 @@ fi
 # Check if VERCEL_TOKEN is available
 if [[ -z "${VERCEL_TOKEN:-}" ]]; then
   echo "ℹ️ VERCEL_TOKEN not set; skipping rollback (informational only)."
-  exit 0
+  exit 1
 fi
 
-# Use same simple root deploy approach as main workflow
-echo "🚀 Deploying from root directory with explicit project..."
-vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+# Use vercel rollback command (unified method)
+echo "🚀 Rolling back to previous deployment..."
+vercel rollback \
+  --token "$VERCEL_TOKEN" \
+  --scope "$VERCEL_ORG_ID" \
+  --yes
 
 echo "✅ Rollback complete!" 

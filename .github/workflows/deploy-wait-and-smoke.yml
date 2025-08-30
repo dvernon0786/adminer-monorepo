@@ -84,9 +84,12 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy from root directory with explicit project to prevent hanging
-          echo "🚀 Deploying from root directory with explicit project..."
-          vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
+          # Deploy from root directory with unified method (--scope only)
+          echo "🚀 Deploying from root directory with unified method..."
+          vercel --prod \
+            --token "$VERCEL_TOKEN" \
+            --scope "$VERCEL_ORG_ID" \
+            --yes
           
           # Get the deployment URL from the simple deployment
           DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
@@ -144,10 +147,17 @@ jobs:
             smoke_bundle.headers
             headers.txt
 
+      - name: Ensure rollback script is fresh
+        run: |
+          echo "🔍 Verifying rollback script is current..."
+          cat scripts/rollback.sh
+          echo "✅ Rollback script verified"
+
       - name: Rollback on smoke failure
         if: failure()
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
         run: |
           echo "❌ Smoke test failed - initiating rollback..."
           chmod +x scripts/rollback.sh
