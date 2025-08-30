@@ -320,24 +320,21 @@ jobs:
           VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
           VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
-          cd adminer/apps/api
-          vercel pull --yes --environment=production --token "$VERCEL_TOKEN"
+          vercel pull --yes --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
 
       - name: Vercel build (prebuilt)
         if: ${{ inputs.deploy == true }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          cd adminer/apps/api
-          vercel build --prod --token "$VERCEL_TOKEN"
+          vercel build --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
 
       - name: Vercel deploy
         if: ${{ inputs.deploy == true }}
         env:
           VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          cd adminer/apps/api
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN"
+          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
 
       - name: Install curl+jq
         run: sudo apt-get update && sudo apt-get install -y curl jq
