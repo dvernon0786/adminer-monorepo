@@ -83,9 +83,9 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy from root directory to avoid project linking issues
-          echo "🚀 Deploying from root directory (no project linking)..."
-          vercel --prod --token "$VERCEL_TOKEN" --yes
+          # Deploy to specific project to avoid hanging
+          echo "🚀 Deploying to project ${VERCEL_PROJECT_ID:0:8}..."
+          vercel --prod --token "$VERCEL_TOKEN" --project "$VERCEL_PROJECT_ID" --yes
           
           # Get the deployment URL from the simple deployment
           DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
