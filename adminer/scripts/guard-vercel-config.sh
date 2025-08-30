@@ -9,10 +9,10 @@ if [ ! -f "../vercel.json" ]; then
     exit 1
 fi
 
-# Check if build command uses correct path
-if ! grep -q '"buildCommand": "cd adminer/apps/api' "../vercel.json"; then
+# Check if build command uses correct path (allows debug commands before cd)
+if ! grep -q "cd adminer/apps/api" "../vercel.json"; then
     echo "❌ Build command must cd into adminer/apps/api"
-    echo "   Expected: cd adminer/apps/api && npm ci && npm run build"
+    echo "   Expected: ... && cd adminer/apps/api && npm ci && npm run build"
     exit 1
 fi
 

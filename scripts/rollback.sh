@@ -12,28 +12,28 @@ if [ -z "${VERCEL_TOKEN:-}" ]; then
     exit 1
 fi
 
-# Remove current alias (if exists) - ignore errors
+# Remove current alias (non-interactive)
 echo "🗑️  Removing current alias..."
-vercel alias rm $ALIAS --token=$VERCEL_TOKEN || true
+echo "y" | vercel alias rm $ALIAS --token=$VERCEL_TOKEN || true
 
-# Find the previous successful deployment (skip the latest which may have failed)
+# Get deployments (no --limit flag, use head instead)  
 echo "🔍 Finding previous deployment..."
-PREVIOUS_DEPLOY=$(vercel ls --token=$VERCEL_TOKEN --limit=2 --json | jq -r '.[1].url')
+DEPLOYMENTS=$(vercel ls --token=$VERCEL_TOKEN)
+PREVIOUS_URL=$(echo "$DEPLOYMENTS" | sed -n '3p' | awk '{print $2}')
 
-if [ -z "$PREVIOUS_DEPLOY" ] || [ "$PREVIOUS_DEPLOY" = "null" ]; then
-    echo "❌ ERROR: No previous deployment found to roll back to."
-    echo "   This usually means there's only one deployment or the latest failed."
+if [ -z "$PREVIOUS_URL" ]; then
+    echo "❌ ERROR: No previous deployment found"
     exit 1
 fi
 
-echo "📋 Found previous deployment: $PREVIOUS_DEPLOY"
+echo "📋 Found previous deployment: $PREVIOUS_URL"
 
 # Set alias to the previous deployment
 echo "🔗 Setting alias to previous deployment..."
-vercel alias set https://$PREVIOUS_DEPLOY $ALIAS --token=$VERCEL_TOKEN
+vercel alias set "$PREVIOUS_URL" $ALIAS --token=$VERCEL_TOKEN
 
-echo "✅ Successfully rolled back to $PREVIOUS_DEPLOY"
-echo "🌐 $ALIAS now points to: https://$PREVIOUS_DEPLOY"
+echo "✅ Successfully rolled back to $PREVIOUS_URL"
+echo "🌐 $ALIAS now points to: $PREVIOUS_URL"
 echo ""
 echo "💡 Rollback complete! The site should be accessible again."
 echo "   Next deployment will automatically update the alias." 

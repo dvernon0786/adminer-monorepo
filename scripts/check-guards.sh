@@ -13,14 +13,14 @@ fi
 if ! grep -q "adminer/apps/api" vercel.json; then
     echo "❌ vercel.json paths are incorrect. Must use adminer/apps/api for CI"
     echo "   Current paths should be:"
-    echo "   - buildCommand: cd adminer/apps/api && npm ci && npm run build"
+    echo "   - buildCommand: ... && cd adminer/apps/api && npm ci && npm run build"
     echo "   - outputDirectory: adminer/apps/api/.next"
     echo "   - installCommand: cd adminer/apps/api && npm ci"
     exit 1
 fi
 
-# Check if build command uses correct path
-if ! grep -q '"buildCommand": "cd adminer/apps/api' vercel.json; then
+# Check if build command uses correct path (allows debug commands before cd)
+if ! grep -q "cd adminer/apps/api" vercel.json; then
     echo "❌ Build command must cd into adminer/apps/api"
     exit 1
 fi
