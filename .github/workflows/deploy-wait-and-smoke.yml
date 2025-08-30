@@ -86,7 +86,7 @@ jobs:
           
           # Deploy from root directory with explicit project to prevent hanging
           echo "🚀 Deploying from root directory with explicit project..."
-          vercel --prod --token "$VERCEL_TOKEN" --project "$VERCEL_PROJECT_ID" --yes
+          vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes
           
           # Get the deployment URL from the simple deployment
           DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
