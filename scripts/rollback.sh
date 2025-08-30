@@ -15,11 +15,12 @@ if [[ -z "${VERCEL_TOKEN:-}" ]]; then
   exit 1
 fi
 
-# Use Vercel CLI 46.1.1 compatible method (no --project flag)
+# Use Vercel CLI 46.1.1 compatible method with --project flag
 echo "🚀 Rolling back to previous deployment..."
 vercel rollback \
   --token "$VERCEL_TOKEN" \
   --scope "$VERCEL_ORG_ID" \
+  --project "$VERCEL_PROJECT_ID" \
   --yes
 
 echo "✅ Rollback complete!" 

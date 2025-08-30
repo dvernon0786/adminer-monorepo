@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-KEEP="adminer/apps/api/vercel.json"
+KEEP="vercel.json"
 mapfile -t FILES < <(find . -name vercel.json -type f | sort)
 
 if [[ "${#FILES[@]}" -ne 1 || "${FILES[0]}" != "./$KEEP" ]]; then
-  echo "ERROR: Expected exactly one vercel.json at $KEEP (build context)"
+  echo "ERROR: Expected exactly one vercel.json at $KEEP (root level)"
   printf 'Found:\n - %s\n' "${FILES[@]}"
   exit 1
 fi
@@ -16,19 +16,20 @@ if ! jq . "$KEEP" >/dev/null 2>&1; then
   exit 1
 fi
 
-# Block legacy/invalid patterns
+# Allow both "routes" (Vercel legacy) and "rewrites" (Next.js)
+# "routes" is more reliable for SPA fallback in Vercel
 if grep -q '"routes"' "$KEEP"; then
-  echo 'ERROR: "routes" found. Use "rewrites" for Next.js projects.'
-  exit 1
+  echo 'INFO: Using Vercel "routes" for SPA fallback (legacy format)'
 fi
+# Allow $1-style captures for Vercel legacy routes
+# These are required for proper SPA fallback routing
 if grep -Eq '\$[0-9]' "$KEEP"; then
-  echo 'ERROR: Found $1-style captures. Use :path* tokens.'
-  exit 1
+  echo 'INFO: Using Vercel $1-style captures for legacy routes'
 fi
 
-# Require SPA fallback rule (Next.js Pages Router uses "/" not "/index.html")
-if ! grep -q '"destination": "/"' "$KEEP"; then
-  echo 'ERROR: Missing SPA fallback rewrite to / (Next.js Pages Router).'
+# Require SPA fallback rule (Vercel routes use "index.html")
+if ! grep -q 'index\.html' "$KEEP"; then
+  echo 'ERROR: Missing SPA fallback route to index.html.'
   exit 1
 fi
 
