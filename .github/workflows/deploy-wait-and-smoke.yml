@@ -16,7 +16,6 @@ jobs:
       # Optional: if VERCEL_TOKEN not present, we won't call Vercel API.
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
 
       # Optional: if not provided, fall back to production apex/www.
       APEX_URL: ${{ secrets.PROD_URL }}
@@ -71,25 +70,21 @@ jobs:
             exit 1
           fi
           
-          if [[ -z "${VERCEL_PROJECT_ID:-}" ]]; then
-            echo "❌ VERCEL_PROJECT_ID is not set. Please add it to GitHub Secrets."
-            exit 1
-          fi
+
           
           echo "✅ Environment variables verified:"
           echo "   VERCEL_ORG_ID: ${VERCEL_ORG_ID:0:8}..."
-          echo "   VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID:0:8}..."
+
 
           
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy from root directory with Vercel's required method
-          echo "🚀 Deploying from root directory with Vercel's required method..."
+          # Deploy from root directory with Vercel CLI 46.1.1 compatible method
+          echo "🚀 Deploying from root directory with Vercel CLI 46.1.1 compatible method..."
           vercel --prod \
             --token "$VERCEL_TOKEN" \
             --scope "$VERCEL_ORG_ID" \
-            --project "$VERCEL_PROJECT_ID" \
             --yes
           
           # Get the deployment URL from the simple deployment
