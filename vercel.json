@@ -1,18 +1,11 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd apps/api && npm ci && npm run build",
-  "outputDirectory": "apps/api/.next",
-  "installCommand": "cd apps/api && npm ci",
+  "buildCommand": "cd adminer/apps/api && npm ci && npm run build",
+  "outputDirectory": "adminer/apps/api/.next",
+  "installCommand": "cd adminer/apps/api && npm ci",
   "framework": "nextjs",
-
   "rewrites": [
-    {
-      "source": "/api/:path*",
-      "destination": "/api/:path*"
-    },
-    {
-      "source": "/((?!api).*)",
-      "destination": "/"
-    }
+    { "source": "/api/:path*", "destination": "/api/:path*" },
+    { "source": "/((?!api).*)", "destination": "/" }
   ]
 } 

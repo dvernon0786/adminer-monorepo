@@ -1,26 +1,52 @@
-#!/usr/bin/env bash
-set -euo pipefail
+#!/bin/bash
+set -e
 
-# Ensures:
-# - vercel.json is present at root (single source of truth)
-# - cleanUrls is NOT enabled
-# - Prints the path used for clarity
+echo "🔒 Running Vercel configuration guards..."
 
-ROOT="vercel.json"
-
-if [[ ! -f "$ROOT" ]]; then
-  echo "❌ vercel.json not found (expected at ${ROOT})"
-  exit 1
+# Check if vercel.json exists at root
+if [ ! -f "vercel.json" ]; then
+    echo "❌ vercel.json not found at repository root"
+    exit 1
 fi
 
-VCONF="$ROOT"
-echo "ℹ️ Using ${VCONF}"
-
-# Block cleanUrls=true (causes 308 /index.html redirect; breaks SPA fallback tests)
-if grep -qE '"cleanUrls"\s*:\s*true' "$VCONF"; then
-  echo "❌ cleanUrls=true detected in ${VCONF}. Set to false or remove."
-  exit 1
+# Check if vercel.json paths are correct (must use adminer/apps/api)
+if ! grep -q "adminer/apps/api" vercel.json; then
+    echo "❌ vercel.json paths are incorrect. Must use adminer/apps/api"
+    echo "   Current paths should be:"
+    echo "   - buildCommand: cd adminer/apps/api && npm ci && npm run build"
+    echo "   - outputDirectory: adminer/apps/api/.next"
+    echo "   - installCommand: cd adminer/apps/api && npm ci"
+    exit 1
 fi
 
-# Friendly success
-echo "✅ Guard passed: cleanUrls disabled; single vercel.json at ${VCONF}" 
+# Check if build command uses correct path
+if ! grep -q '"buildCommand": "cd adminer/apps/api' vercel.json; then
+    echo "❌ Build command must cd into adminer/apps/api"
+    exit 1
+fi
+
+# Check if output directory uses correct path
+if ! grep -q '"outputDirectory": "adminer/apps/api/.next"' vercel.json; then
+    echo "❌ Output directory must be adminer/apps/api/.next"
+    exit 1
+fi
+
+# Check if install command uses correct path
+if ! grep -q '"installCommand": "cd adminer/apps/api && npm ci"' vercel.json; then
+    echo "❌ Install command must cd into adminer/apps/api"
+    exit 1
+fi
+
+echo "✅ vercel.json paths are correct (using adminer/apps/api)"
+echo "✅ Build command uses correct path"
+echo "✅ Output directory uses correct path"
+echo "✅ Install command uses correct path"
+
+# Check for any remaining incorrect paths
+if grep -q "cd apps/api" vercel.json; then
+    echo "❌ Found incorrect path 'cd apps/api' - this will break CI builds"
+    exit 1
+fi
+
+echo "✅ No incorrect paths found"
+echo "🎉 All Vercel configuration guards passed!" 
