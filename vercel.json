@@ -3,11 +3,6 @@
   "builds": [
     { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
   ],
-  "functions": {
-    "adminer/apps/api/pages/api/**/*.ts": {
-      "maxDuration": 30
-    }
-  },
   "rewrites": [
     { "source": "/api/(.*)", "destination": "/api/$1" },
     { "source": "/assets/(.*)", "destination": "/assets/$1" },
