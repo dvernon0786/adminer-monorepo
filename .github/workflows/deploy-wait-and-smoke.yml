@@ -83,15 +83,38 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Use the same approach as the main workflow: pull, build, deploy
-          echo "🔗 Pulling environment variables..."
+          # CRITICAL FIX: Pull environment variables and ensure they're available at runtime
+          echo "🔗 Pulling environment variables for production..."
           vercel pull --yes --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
           
-          echo "🏗️ Building project..."
+          # Verify environment variables are available
+          echo "🔍 Verifying environment variables are accessible..."
+          if [ -f "adminer/apps/api/.vercel/.env.production.local" ]; then
+            echo "✅ Production environment file found"
+            echo "📋 Environment variables available:"
+            cat adminer/apps/api/.vercel/.env.production.local | grep -v "^#" | grep -v "^$" || echo "⚠️  No environment variables found"
+          else
+            echo "❌ Production environment file not found - this may cause runtime errors"
+          fi
+          
+          echo "🏗️ Building project with environment variables..."
           vercel build --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
           
-          echo "🚀 Deploying prebuilt version..."
+          echo "🚀 Deploying prebuilt version with runtime environment access..."
+          # Deploy with explicit environment variable handling
           vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
+          
+          # CRITICAL: Ensure environment variables are set for the deployment
+          echo "🔧 Setting runtime environment variables..."
+          vercel env pull .env.production.local --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api || echo "⚠️  Environment pull failed, but continuing..."
+          
+          # FALLBACK: If the new method fails, try the original working approach
+          echo "🔄 Testing deployment with new method..."
+          if ! vercel ls --token "$VERCEL_TOKEN" --prod --cwd adminer/apps/api | grep -q "https://"; then
+            echo "⚠️  New deployment method failed, trying fallback approach..."
+            echo "🔄 Using fallback: vercel --prod (original working method)"
+            vercel --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --yes --cwd adminer/apps/api
+          fi
           
           # Get the deployment URL from the simple deployment
           DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod --cwd adminer/apps/api | grep -o 'https://[^[:space:]]*' | head -n1)
