@@ -4,11 +4,7 @@
   "outputDirectory": ".next",
   "installCommand": "npm ci",
   "framework": "nextjs",
-  "functions": {
-    "pages/api/**/*.ts": {
-      "runtime": "@vercel/node@20"
-    }
-  },
+
   "rewrites": [
     {
       "source": "/api/:path*",
