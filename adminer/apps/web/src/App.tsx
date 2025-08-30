@@ -74,13 +74,8 @@ export default function App() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  // Fallback post-auth redirect: if user is on "/" and signed in, go to dashboard.
-  // This covers cases where Clerk's afterSignInUrl isn't triggered (e.g., returning to root).
-  useEffect(() => {
-    if (isSignedIn && location.pathname === "/") {
-      navigate("/dashboard", { replace: true });
-    }
-  }, [isSignedIn, location.pathname, navigate]);
+  // Removed automatic redirect - let users choose their destination
+  // Users can stay on homepage or navigate to dashboard manually
 
   return (
     <div className="min-h-screen flex flex-col">
