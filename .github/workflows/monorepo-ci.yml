@@ -124,7 +124,7 @@ jobs:
       PROD_URL: ${{ secrets.PROD_URL }}
       VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
       VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
-      VERCEL_TEAM_ID: ${{ secrets.VERCEL_TEAM_ID }} # optional
+
       HEALTH_PATH: "/api/consolidated?action=health"
       # Poll settings
       WAIT_TIMEOUT_SEC: "600"    # 10 min max
@@ -153,7 +153,7 @@ jobs:
           echo "PROD_URL set? $([[ -n "${PROD_URL:-}" ]] && echo yes || echo no)"
           echo "VERCEL_TOKEN set? $([[ -n "${VERCEL_TOKEN:-}" ]] && echo yes || echo no)"
           echo "VERCEL_PROJECT_ID set? $([[ -n "${VERCEL_PROJECT_ID:-}" ]] && echo yes || echo no)"
-          echo "VERCEL_TEAM_ID set? $([[ -n "${VERCEL_TEAM_ID:-}" ]] && echo yes || echo no)"
+
 
       - name: Show lockfiles
         run: |
@@ -179,7 +179,7 @@ jobs:
           PROD_URL: ${{ env.PROD_URL }}
           VERCEL_TOKEN: ${{ env.VERCEL_TOKEN }}
           VERCEL_PROJECT_ID: ${{ env.VERCEL_PROJECT_ID }}
-          VERCEL_TEAM_ID: ${{ env.VERCEL_TEAM_ID }}
+
           WAIT_TIMEOUT_SEC: ${{ env.WAIT_TIMEOUT_SEC }}
           WAIT_INTERVAL_SEC: ${{ env.WAIT_INTERVAL_SEC }}
         run: |
@@ -194,11 +194,8 @@ jobs:
             # Poll the latest production deployment until state READY
             # See: https://vercel.com/docs/rest-api#endpoints/deployments
             while [ "$(date +%s)" -lt "$deadline" ]; do
-              # Query last 1 deployment for project; optionally include teamId
+              # Query last 1 deployment for project
               TEAM_ARG=""
-              if [ -n "${VERCEL_TEAM_ID:-}" ]; then
-                TEAM_ARG="&teamId=${VERCEL_TEAM_ID}"
-              fi
 
               resp="$(curl -fsS "https://api.vercel.com/v6/deployments?projectId=${VERCEL_PROJECT_ID}&limit=1${TEAM_ARG}" \
                 -H "Authorization: Bearer ${VERCEL_TOKEN}")" || true

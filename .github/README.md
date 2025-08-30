@@ -54,7 +54,7 @@ This repository uses a unified CI/CD system built with GitHub Actions composite 
 | `PROD_URL` | ✅ | Production URL for health/smoke tests |
 | `VERCEL_TOKEN` | ⚙️ | Vercel API token for deployment polling |
 | `VERCEL_PROJECT_ID` | ⚙️ | Vercel project ID for deployment polling |
-| `VERCEL_TEAM_ID` | ❌ | Vercel team ID (if project is under a team) |
+
 
 ## Usage
 
