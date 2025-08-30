@@ -16,7 +16,7 @@ if [[ -z "${VERCEL_TOKEN:-}" ]]; then
 fi
 
 # Use same simple root deploy approach as main workflow
-echo "🚀 Deploying from root directory (no project linking)..."
-vercel --prod --token "$VERCEL_TOKEN" --yes
+echo "🚀 Deploying from root directory with explicit project..."
+vercel --prod --token "$VERCEL_TOKEN" --project "$VERCEL_PROJECT_ID" --yes
 
 echo "✅ Rollback complete!" 

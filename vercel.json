@@ -4,8 +4,8 @@
     { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
   ],
   "routes": [
-    { "src": "/api/(.*)", "dest": "adminer/apps/api/$1" },
-    { "src": "/assets/(.*)", "dest": "adminer/apps/api/public/assets/$1" },
-    { "src": "/(.*)", "dest": "adminer/apps/api/public/index.html" }
+    { "src": "/api/(.*)", "dest": "/api/$1" },
+    { "src": "/assets/(.*)", "dest": "/assets/$1" },
+    { "src": "/(.*)", "dest": "/index.html" }
   ]
 } 
