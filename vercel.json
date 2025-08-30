@@ -1,7 +1,7 @@
 {
   "version": 2,
   "buildCommand": "npm run build",
-  "outputDirectory": ".next",
+  "outputDirectory": "public",
   "framework": null,
   "routes": [
     { "src": "/dashboard", "dest": "/index.html" },
