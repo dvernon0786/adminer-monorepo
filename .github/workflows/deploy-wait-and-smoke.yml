@@ -83,11 +83,8 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy the API app with proper project linking
-          cd adminer/apps/api
-          
-          # Deploy using simple approach (no complex project linking)
-          echo "🚀 Deploying with simple deployment..."
+          # Deploy from root directory to avoid project linking issues
+          echo "🚀 Deploying from root directory (no project linking)..."
           vercel --prod --token "$VERCEL_TOKEN" --yes
           
           # Get the deployment URL from the simple deployment
