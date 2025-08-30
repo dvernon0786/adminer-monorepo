@@ -27,9 +27,13 @@ if grep -Eq '\$[0-9]' "$KEEP"; then
   echo 'INFO: Using Vercel $1-style captures for legacy routes'
 fi
 
-# Require SPA fallback rule (Vercel routes use "index.html")
-if ! grep -q 'index\.html' "$KEEP"; then
-  echo 'ERROR: Missing SPA fallback route to index.html.'
+# Require SPA fallback rule (Next.js uses rewrites, Vercel uses routes)
+if grep -q '"rewrites"' "$KEEP"; then
+  echo 'INFO: Using Next.js rewrites for SPA fallback'
+elif grep -q 'index\.html' "$KEEP"; then
+  echo 'INFO: Using Vercel routes for SPA fallback'
+else
+  echo 'ERROR: Missing SPA fallback configuration (rewrites or index.html)'
   exit 1
 fi
 
