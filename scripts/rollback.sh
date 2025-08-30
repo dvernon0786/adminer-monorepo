@@ -16,13 +16,37 @@ fi
 echo "🗑️  Removing current alias..."
 echo "y" | vercel alias rm $ALIAS --token=$VERCEL_TOKEN || true
 
-# Get deployments (no --limit flag, use head instead)  
-echo "🔍 Finding previous deployment..."
-DEPLOYMENTS=$(vercel ls --token=$VERCEL_TOKEN)
-PREVIOUS_URL=$(echo "$DEPLOYMENTS" | sed -n '3p' | awk '{print $2}')
+# Try to get project context from current directory or environment
+if [ -n "${VERCEL_PROJECT_ID:-}" ]; then
+    echo "🔍 Using VERCEL_PROJECT_ID: $VERCEL_PROJECT_ID"
+    # Use project-specific deployment listing
+    DEPLOYMENTS=$(vercel deployments ls --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID 2>/dev/null || echo "")
+elif [ -n "${VERCEL_ORG_ID:-}" ]; then
+    echo "🔍 Using VERCEL_ORG_ID: $VERCEL_ORG_ID"
+    # Try to list deployments with org context
+    DEPLOYMENTS=$(vercel deployments ls --token=$VERCEL_TOKEN --scope=$VERCEL_ORG_ID 2>/dev/null || echo "")
+else
+    echo "🔍 No project context, trying generic listing..."
+    # Fallback to generic listing
+    DEPLOYMENTS=$(vercel ls --token=$VERCEL_TOKEN 2>/dev/null || echo "")
+fi
+
+if [ -z "$DEPLOYMENTS" ]; then
+    echo "❌ ERROR: Could not list deployments. Project context may be missing."
+    echo "   Try setting VERCEL_PROJECT_ID and VERCEL_ORG_ID environment variables."
+    exit 1
+fi
+
+echo "📋 Found deployments:"
+echo "$DEPLOYMENTS"
+
+# Find the previous successful deployment (skip the latest which may have failed)
+# Look for the second deployment in the list (index 1)
+PREVIOUS_URL=$(echo "$DEPLOYMENTS" | awk 'NR==3 {print $2}')
 
 if [ -z "$PREVIOUS_URL" ]; then
-    echo "❌ ERROR: No previous deployment found"
+    echo "❌ ERROR: No previous deployment found to roll back to."
+    echo "   This usually means there's only one deployment or the latest failed."
     exit 1
 fi
 
