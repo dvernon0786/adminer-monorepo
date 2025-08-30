@@ -6,7 +6,7 @@ set -euo pipefail
 # - cleanUrls is NOT enabled
 # - Prints the path used for clarity
 
-ROOT="adminer/apps/api/vercel.json"
+ROOT="vercel.json"
 
 if [[ ! -f "$ROOT" ]]; then
   echo "❌ vercel.json not found (expected at ${ROOT})"
