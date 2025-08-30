@@ -65,7 +65,7 @@ jobs:
           echo "🚀 Deploying to Vercel..."
           
           # Check required environment variables
-                    if [[ -z "${VERCEL_ORG_ID:-}" ]]; then
+          if [[ -z "${VERCEL_ORG_ID:-}" ]]; then
             echo "❌ VERCEL_ORG_ID is not set. Please add it to GitHub Secrets."
             echo "   You can find it by running 'vercel teams ls' locally or checking vercel.com/account"
             exit 1
@@ -80,18 +80,16 @@ jobs:
           echo "   VERCEL_ORG_ID: ${VERCEL_ORG_ID:0:8}..."
           echo "   VERCEL_PROJECT_ID: ${VERCEL_PROJECT_ID:0:8}..."
 
-
-          
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy from apps/api directory with Vercel CLI 46.1.1 compatible method
-          echo "🚀 Deploying from apps/api directory with Vercel CLI 46.1.1 compatible method..."
-          cd adminer/apps/api
+          # Deploy using --cwd flag for proper project context (Vercel CLI 46.1.1 compatible)
+          echo "🚀 Deploying with --cwd flag for proper project context..."
           vercel --prod \
             --token "$VERCEL_TOKEN" \
             --scope "$VERCEL_ORG_ID" \
-            --yes
+            --yes \
+            --cwd adminer/apps/api
           
           # Get the deployment URL from the simple deployment
           DEPLOY_URL=$(vercel ls --token "$VERCEL_TOKEN" --prod | grep -o 'https://[^[:space:]]*' | head -n1)
