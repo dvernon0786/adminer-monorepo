@@ -2,30 +2,18 @@
 set -euo pipefail
 
 # Ensures:
-# - Exactly one vercel.json is present (root or apps/api)
+# - vercel.json is present at root (single source of truth)
 # - cleanUrls is NOT enabled
 # - Prints the path used for clarity
 
 ROOT="vercel.json"
-API="adminer/apps/api/vercel.json"
 
-found=()
-[[ -f "$ROOT" ]] && found+=("$ROOT")
-[[ -f "$API"  ]] && found+=("$API")
-
-if [[ ${#found[@]} -eq 0 ]]; then
-  echo "❌ vercel.json not found (expected at ./vercel.json or ./apps/api/vercel.json)"
+if [[ ! -f "$ROOT" ]]; then
+  echo "❌ vercel.json not found (expected at ./vercel.json)"
   exit 1
 fi
 
-if [[ ${#found[@]} -gt 1 ]]; then
-  echo "❌ Multiple vercel.json files detected:"
-  printf ' - %s\n' "${found[@]}"
-  echo "Please keep only one."
-  exit 1
-fi
-
-VCONF="${found[0]}"
+VCONF="$ROOT"
 echo "ℹ️ Using ${VCONF}"
 
 # Block cleanUrls=true (causes 308 /index.html redirect; breaks SPA fallback tests)

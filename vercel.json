@@ -1,0 +1,9 @@
+{
+  "version": 2,
+  "builds": [
+    { "src": "adminer/apps/api/package.json", "use": "@vercel/next" }
+  ],
+  "routes": [
+    { "src": "/(.*)", "dest": "adminer/apps/api/$1" }
+  ]
+} 

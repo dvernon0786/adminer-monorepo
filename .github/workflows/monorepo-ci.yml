@@ -69,7 +69,7 @@ jobs:
           set -euo pipefail
           # Accept either monorepo layout or submodule path
           FILES=(
-            "apps/api/vercel.json"
+            "vercel.json"
             "adminer/vercel.json"
             "scripts/smoke.sh"
             "scripts/smoke-local.env.example"
