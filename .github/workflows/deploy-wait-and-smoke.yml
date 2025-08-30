@@ -61,6 +61,7 @@ jobs:
 
       - name: Deploy to Vercel
         id: deploy
+        timeout-minutes: 10
         run: |
           echo "🚀 Deploying to Vercel..."
           
@@ -83,8 +84,8 @@ jobs:
           # Install Vercel CLI
           npm install -g vercel@latest
           
-          # Deploy to specific project to avoid hanging
-          echo "🚀 Deploying to project ${VERCEL_PROJECT_ID:0:8}..."
+          # Deploy from root directory with explicit project to prevent hanging
+          echo "🚀 Deploying from root directory with explicit project..."
           vercel --prod --token "$VERCEL_TOKEN" --project "$VERCEL_PROJECT_ID" --yes
           
           # Get the deployment URL from the simple deployment
