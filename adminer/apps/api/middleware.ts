@@ -10,28 +10,35 @@ const PROTECTED_PATHS = [
 
 export function middleware(req: NextRequest) {
   const { pathname } = new URL(req.url);
-
+  
+  console.log(`[MIDDLEWARE] ${req.method} ${pathname}`);
+  
   // Allow API routes and Next.js internals
   if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+    console.log(`[MIDDLEWARE] Passing through: ${pathname}`);
     // For protected paths, check authentication
     if (PROTECTED_PATHS.some((re) => re.test(pathname))) {
       const authHeader = req.headers.get("authorization");
       if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        console.log(`[MIDDLEWARE] Unauthorized access to protected path: ${pathname}`);
         return NextResponse.json(
           { error: "Unauthorized" },
           { status: 401 }
         );
       }
+      console.log(`[MIDDLEWARE] Authorized access to protected path: ${pathname}`);
     }
     return NextResponse.next();
   }
 
   // Allow static files
   if (pathname.includes('.') || pathname === '/favicon.ico') {
+    console.log(`[MIDDLEWARE] Static file: ${pathname}`);
     return NextResponse.next();
   }
 
   // Serve SPA for all other routes (dashboard, homepage, etc.)
+  console.log(`[MIDDLEWARE] Rewriting to SPA: ${pathname} -> /index.html`);
   return NextResponse.rewrite(new URL('/index.html', req.url));
 }
 
