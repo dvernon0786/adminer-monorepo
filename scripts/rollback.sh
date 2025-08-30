@@ -1,25 +1,39 @@
-#!/usr/bin/env bash
+#!/bin/bash
 set -euo pipefail
 
-echo "♻️ Rolling back to previous deployment..."
+ALIAS="adminer.online"
 
-# Check if Vercel CLI is available
-if ! command -v vercel >/dev/null 2>&1; then
-  echo "ℹ️ Vercel CLI not found; skipping rollback (informational only)."
-  exit 0
+echo "♻️ Rolling back alias $ALIAS..."
+
+# Check if VERCEL_TOKEN is set
+if [ -z "${VERCEL_TOKEN:-}" ]; then
+    echo "❌ ERROR: VERCEL_TOKEN environment variable is required"
+    echo "   Set it with: export VERCEL_TOKEN=your_token_here"
+    exit 1
 fi
 
-# Check if VERCEL_TOKEN is available
-if [[ -z "${VERCEL_TOKEN:-}" ]]; then
-  echo "ℹ️ VERCEL_TOKEN not set; skipping rollback (informational only)."
-  exit 1
+# Remove current alias (if exists) - ignore errors
+echo "🗑️  Removing current alias..."
+vercel alias rm $ALIAS --token=$VERCEL_TOKEN || true
+
+# Find the previous successful deployment (skip the latest which may have failed)
+echo "🔍 Finding previous deployment..."
+PREVIOUS_DEPLOY=$(vercel ls --token=$VERCEL_TOKEN --limit=2 --json | jq -r '.[1].url')
+
+if [ -z "$PREVIOUS_DEPLOY" ] || [ "$PREVIOUS_DEPLOY" = "null" ]; then
+    echo "❌ ERROR: No previous deployment found to roll back to."
+    echo "   This usually means there's only one deployment or the latest failed."
+    exit 1
 fi
 
-# Use Vercel CLI 46.1.1 compatible method (no --project flag)
-echo "🚀 Rolling back to previous deployment..."
-vercel rollback \
-  --token "$VERCEL_TOKEN" \
-  --scope "$VERCEL_ORG_ID" \
-  --yes
+echo "📋 Found previous deployment: $PREVIOUS_DEPLOY"
 
-echo "✅ Rollback complete!" 
+# Set alias to the previous deployment
+echo "🔗 Setting alias to previous deployment..."
+vercel alias set https://$PREVIOUS_DEPLOY $ALIAS --token=$VERCEL_TOKEN
+
+echo "✅ Successfully rolled back to $PREVIOUS_DEPLOY"
+echo "🌐 $ALIAS now points to: https://$PREVIOUS_DEPLOY"
+echo ""
+echo "💡 Rollback complete! The site should be accessible again."
+echo "   Next deployment will automatically update the alias." 
