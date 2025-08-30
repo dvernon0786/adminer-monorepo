@@ -1,12 +1,17 @@
-HTTP/1.1 200 OK
-Accept-Ranges: bytes
-Cache-Control: public, max-age=0
-Last-Modified: Fri, 29 Aug 2025 22:27:34 GMT
-ETag: W/"bfa11-198f7f17b21"
-Content-Type: application/javascript; charset=UTF-8
-Content-Length: 784913
-Vary: Accept-Encoding
-Date: Fri, 29 Aug 2025 22:28:20 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
+HTTP/2 200 
+accept-ranges: bytes
+access-control-allow-origin: *
+age: 0
+cache-control: public,max-age=31536000,immutable
+content-disposition: inline; filename="polyfills-78c92fac7aa8fdd8.js"
+content-type: application/javascript; charset=utf-8
+date: Sat, 30 Aug 2025 06:28:26 GMT
+etag: "f2256035460efaa24290e9da2ba98a1d"
+last-modified: Sat, 30 Aug 2025 06:28:25 GMT
+server: Vercel
+strict-transport-security: max-age=63072000
+x-matched-path: /_next/static/chunks/polyfills-78c92fac7aa8fdd8.js
+x-vercel-cache: HIT
+x-vercel-id: bom1::7q4ql-1756535306041-2eb50107c346
+content-length: 91381
 

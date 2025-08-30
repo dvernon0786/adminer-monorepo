@@ -1,14 +1,17 @@
-HTTP/1.1 200 OK
-cache-control: no-store
-x-mw: spa-direct
-x-middleware-rewrite: /index.html
-Accept-Ranges: bytes
-Last-Modified: Fri, 29 Aug 2025 22:27:34 GMT
-ETag: W/"da4-198f7f17b21"
-Content-Type: text/html; charset=UTF-8
-Content-Length: 3492
-Vary: Accept-Encoding
-Date: Fri, 29 Aug 2025 22:28:20 GMT
-Connection: keep-alive
-Keep-Alive: timeout=5
+HTTP/2 200 
+accept-ranges: bytes
+access-control-allow-origin: *
+age: 1248
+cache-control: public, max-age=0, must-revalidate
+content-disposition: inline
+content-type: text/html; charset=utf-8
+date: Sat, 30 Aug 2025 06:28:25 GMT
+etag: "258a6e174c78e7546a4401387ddab0bb"
+last-modified: Sat, 30 Aug 2025 06:07:36 GMT
+server: Vercel
+strict-transport-security: max-age=63072000
+x-matched-path: /
+x-vercel-cache: HIT
+x-vercel-id: bom1::qh24w-1756535305461-9b59ff3b0357
+content-length: 1289
 

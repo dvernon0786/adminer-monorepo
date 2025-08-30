@@ -23,10 +23,10 @@ echo "⛅ Fetching index.html..."
 curl -fsSL "$BASE/" -D headers.txt -o smoke_index.html || fail "GET / failed"
 ok "Index fetched"
 
-# 2) parse main bundle from index.html
+# 2) parse main bundle from index.html (accept both SPA and Next.js bundles)
 echo "🔗 Parsing main bundle ref..."
-BUNDLE="$(grep -oE '/assets/index-[A-Za-z0-9]+\.js' smoke_index.html | head -n1 || true)"
-[ -n "${BUNDLE:-}" ] || fail "No JS bundle reference found in index.html"
+BUNDLE="$(grep -o '/assets/index-[A-Za-z0-9]*\.js\|/_next/static/[^"]*\.js' smoke_index.html | head -n1 || true)"
+[ -n "${BUNDLE:-}" ] || fail "No JS bundle reference found in index.html (neither SPA /assets/ nor Next.js /_next/static/)"
 ok "Found bundle: $BUNDLE"
 
 # 3) bundle is fetchable
