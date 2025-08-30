@@ -11,29 +11,40 @@ const PROTECTED_PATHS = [
 export function middleware(req: NextRequest) {
   const { pathname } = new URL(req.url);
 
-  // Only apply middleware to protected API paths
-  if (!PROTECTED_PATHS.some((re) => re.test(pathname))) {
+  // Allow API routes and Next.js internals
+  if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
+    // For protected paths, check authentication
+    if (PROTECTED_PATHS.some((re) => re.test(pathname))) {
+      const authHeader = req.headers.get("authorization");
+      if (!authHeader || !authHeader.startsWith("Bearer ")) {
+        return NextResponse.json(
+          { error: "Unauthorized" },
+          { status: 401 }
+        );
+      }
+    }
     return NextResponse.next();
   }
 
-  // For protected paths, check authentication
-  const authHeader = req.headers.get("authorization");
-  if (!authHeader || !authHeader.startsWith("Bearer ")) {
-    return NextResponse.json(
-      { error: "Unauthorized" },
-      { status: 401 }
-    );
+  // Allow static files
+  if (pathname.includes('.') || pathname === '/favicon.ico') {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  // Serve SPA for all other routes (dashboard, homepage, etc.)
+  return NextResponse.rewrite(new URL('/index.html', req.url));
 }
 
-// Only run middleware on specific API paths, not everything
+// Run middleware on all routes to handle SPA routing
 export const config = {
   matcher: [
-    "/api/admin/:path*",
-    "/api/billing/:path*", 
-    "/api/jobs/:path*",
-    "/api/webhooks/:path*"
+    /*
+     * Match all request paths except for the ones starting with:
+     * - api (API routes)
+     * - _next/static (static files)
+     * - _next/image (image optimization files)
+     * - favicon.ico (favicon file)
+     */
+    '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],
 };
