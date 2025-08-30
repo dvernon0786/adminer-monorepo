@@ -1,9 +1,9 @@
 {
   "compilerOptions": {
-    "target": "ES2022",
-    "lib": ["ES2022", "DOM"],
-    "module": "ESNext",
-    "moduleResolution": "Bundler",
+    "target": "ES2020",
+    "lib": ["dom", "dom.iterable", "es6"],
+    "module": "esnext",
+    "moduleResolution": "bundler",
     "jsx": "preserve",
     "strict": true,
     "resolveJsonModule": true,
@@ -16,23 +16,27 @@
     "types": ["node"],
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"],
-      "@/db": ["src/db"],
-      "@/db/*": ["src/db/*"]
+      "@/*": ["./src/*"],
+      "@/lib/*": ["./lib/*"]
     },
-    "plugins": [{ "name": "next" }],
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
     "allowJs": true,
     "incremental": true
   },
-  "include": ["next-env.d.ts", ".next/types/**/*.ts", "src/**/*", "lib/**/*", "pages/**/*", "app/**/*"],
+  "include": [
+    "next-env.d.ts", 
+    ".next/types/**/*.ts", 
+    "src/**/*", 
+    "lib/**/*"
+  ],
   "exclude": [
     "node_modules",
+    "pages/**/*",
     ".next",
-    "tests/**/*",
-    "vitest.config.ts",
-    "**/*.test.ts",
-    "**/*.spec.ts",
-    "drizzle/**",
-    "scripts/**"
+    "dist"
   ]
 }
