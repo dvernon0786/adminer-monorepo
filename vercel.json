@@ -1,9 +1,14 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "cd adminer/apps/api && npm install && npm run build",
+  "buildCommand": "cd adminer/apps/api && npm ci && npm run build",
   "outputDirectory": "adminer/apps/api/.next",
-  "installCommand": "cd adminer/apps/api && npm install",
+  "installCommand": "cd adminer/apps/api && npm ci",
   "framework": "nextjs",
+  "functions": {
+    "adminer/apps/api/pages/api/**/*.ts": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/:path*",
