@@ -13,9 +13,9 @@ export function middleware(req: NextRequest) {
   
   console.log(`[MIDDLEWARE] ${req.method} ${pathname}`);
   
-  // Allow API routes and Next.js internals
-  if (pathname.startsWith('/api') || pathname.startsWith('/_next')) {
-    console.log(`[MIDDLEWARE] Passing through: ${pathname}`);
+  // API routes must pass through without any redirects or interference
+  if (pathname.startsWith('/api')) {
+    console.log(`[MIDDLEWARE] API route - passing through: ${pathname}`);
     // For protected paths, check authentication
     if (PROTECTED_PATHS.some((re) => re.test(pathname))) {
       const authHeader = req.headers.get("authorization");
@@ -31,9 +31,15 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
 
+  // Allow Next.js internals
+  if (pathname.startsWith('/_next')) {
+    console.log(`[MIDDLEWARE] Next.js internal - passing through: ${pathname}`);
+    return NextResponse.next();
+  }
+
   // Allow static files
   if (pathname.includes('.') || pathname === '/favicon.ico') {
-    console.log(`[MIDDLEWARE] Static file: ${pathname}`);
+    console.log(`[MIDDLEWARE] Static file - passing through: ${pathname}`);
     return NextResponse.next();
   }
 
