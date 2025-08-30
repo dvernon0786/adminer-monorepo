@@ -3,5 +3,8 @@
   "buildCommand": "cd adminer/apps/api && npm run build",
   "outputDirectory": "adminer/apps/api/.next",
   "installCommand": "cd adminer/apps/api && npm ci",
-  "framework": "nextjs"
+  "framework": "nextjs",
+  "rewrites": [
+    { "source": "/((?!api).*)", "destination": "/" }
+  ]
 } 
