@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "echo 'Static site with API routes - no dev server needed'",
     "build": "npm run build:atomic",
-    "build:atomic": "chmod +x scripts/atomic-build.sh && ./scripts/atomic-build.sh",
+    "build:atomic": "../../scripts/local-atomic-build.sh",
     "build:spa": "cd ../web && echo \"DEBUG: VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY\" && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "build:vercel": "npm ci && npm run build:atomic",
     "build:vercel-fixed": "npm ci && npm run build:atomic",

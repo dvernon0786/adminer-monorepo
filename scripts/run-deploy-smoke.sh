@@ -1,23 +1,29 @@
 #!/bin/bash
+set -e
 
-# Run Deploy Wait & Smoke Workflow Locally
-export PATH="$HOME/.local/bin:$PATH"
+echo "🚀 Running Deploy and Smoke with Atomic Builds"
 
-echo "🔄 Running Deploy Wait & Smoke Workflow Locally"
-echo "=============================================="
-
-# Check if Act is installed
+# Check if act is available
 if ! command -v act &> /dev/null; then
-    echo "❌ Act not found. Please run: ./scripts/run-local-workflows.sh first"
+    echo "❌ Error: 'act' is not installed. Please install it first:"
+    echo "   curl https://raw.githubusercontent.com/nektos/act/master/install.sh | sudo bash"
     exit 1
 fi
 
-# Run the deploy-wait-and-smoke workflow
-echo "📁 Workflow: .github/workflows/deploy-wait-and-smoke.yml"
-echo "🎯 Event: push"
-echo ""
+# Set environment variables
+export ACTIONS_RUNNER_DEBUG=1
+export ACTIONS_STEP_DEBUG=1
 
-act workflow -W .github/workflows/deploy-wait-and-smoke.yml --eventpath <(echo '{"push": {}}') --list
+echo "🔒 Running deploy workflow with atomic builds..."
 
-echo ""
-echo "✅ Deploy Wait & Smoke workflow completed!" 
+# Run the deploy workflow
+act workflow_dispatch \
+    --input deploy=true \
+    --input environment=production \
+    --secret-file .env.local.act \
+    --artifact-server-path /tmp/artifacts \
+    --container-architecture linux/amd64 \
+    --reuse \
+    --workflows .github/workflows/deploy-wait-and-smoke.yml
+
+echo "✅ Deploy and smoke completed with atomic builds!" 
