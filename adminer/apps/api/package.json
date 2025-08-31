@@ -8,7 +8,7 @@
     "build": "npm run build:spa",
     "build:spa": "cd ../web && echo \"DEBUG: VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY\" && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "build:vercel": "npm ci && npm run build:spa",
-    "build:vercel-fixed": "cd ../web && npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -r public && cp -r ../web/dist/* public/",
+    "build:vercel-fixed": "cd ../web && npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "postbuild": "echo 'Static site build completed'",
     "prestart": "echo 'Static site with API routes ready'",
     "start": "echo 'Static site with API routes - no start server needed'",
