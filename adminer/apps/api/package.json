@@ -2,16 +2,16 @@
   "name": "@adminer/api",
   "private": true,
   "version": "0.2.2",
-  "type": "module",
+  "type": "commonjs",
   "scripts": {
-    "dev": "echo 'Static site - no dev server needed'",
+    "dev": "node api-server.js",
     "build": "npm run build:spa",
     "build:spa": "cd ../web && echo \"DEBUG: VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY\" && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "build:vercel": "npm ci && npm run build:spa",
     "build:vercel-fixed": "cd ../web && npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "postbuild": "echo 'Static site build completed'",
-    "prestart": "node ./src/env-check.cjs",
-    "start": "echo 'Static site - no start server needed'",
+    "prestart": "echo 'API server ready'",
+    "start": "node api-server.js",
     "prevercel": "node ./scripts/guard-spa.mjs",
     "db:check": "node scripts/check-neon-db.cjs",
     "db:migrate": "node scripts/check-neon-db.cjs",
@@ -20,7 +20,6 @@
   },
   "dependencies": {
     "@clerk/clerk-js": "5.88.0",
-
     "@google/generative-ai": "0.24.1",
     "@neondatabase/serverless": "1.0.1",
     "@swc/helpers": "0.5.17",
@@ -30,9 +29,9 @@
     "dotenv": "17.2.1",
     "drizzle-kit": "0.20.9",
     "drizzle-orm": "0.29.3",
+    "express": "^4.21.2",
     "inngest": "3.40.1",
     "jose": "6.0.13",
-
     "openai": "4.0.0",
     "pg": "8.16.3",
     "postgres": "3.4.3",
@@ -40,7 +39,6 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "standardwebhooks": "^1.0.0",
-
     "uuid": "9.0.0",
     "zod": "3.22.5"
   },

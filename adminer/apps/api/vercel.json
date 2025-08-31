@@ -22,10 +22,15 @@
       ]
     }
   ],
+  "functions": {
+    "api-server.js": {
+      "runtime": "nodejs20.x"
+    }
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
-      "destination": "/api/$1"
+      "destination": "/api-server.js"
     },
     {
       "source": "/((?!api|assets|_next|favicon.ico).*)",
