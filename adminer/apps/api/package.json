@@ -1,7 +1,6 @@
 {
   "name": "adminer-api",
   "version": "1.0.0",
-  "type": "module",
   "scripts": {
     "dev": "echo 'Using pre-built files'",
     "build": "echo 'Using pre-built files'",
