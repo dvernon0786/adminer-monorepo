@@ -2,6 +2,16 @@
   "version": 2,
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
+  "routes": [
+    {
+      "src": "/api/consolidated",
+      "dest": "/api/consolidated.js"
+    },
+    {
+      "src": "/api/health",
+      "dest": "/api/health.js"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*).html",
