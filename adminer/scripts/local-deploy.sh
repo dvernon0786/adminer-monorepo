@@ -18,17 +18,17 @@ if [[ ! -f "scripts/verify-vercel-project.sh" ]]; then
     exit 1
 fi
 
-# Run project validation
-./scripts/verify-vercel-project.sh
-
 # Step 2: Run atomic build
 echo "🔒 Running atomic build..."
 cd apps/api
 npm run build:atomic
 
-# Step 3: Deploy to Vercel
+# Step 3: Verify project configuration
+echo "🔒 Validating project configuration..."
+./../../scripts/verify-vercel-project.sh
+
+# Step 4: Deploy to Vercel
 echo "🚀 Deploying to Vercel..."
-cd ../..
 vercel --prod
 
 echo ""

@@ -9,14 +9,14 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 NC='\033[0m' # No Color
 
-# Step 1: Check working directory
+# Step 1: Check working directory (should be adminer/apps/api)
 echo "📍 Checking working directory..."
-if [[ ! -f "vercel.json" ]] || [[ ! -d "apps" ]]; then
-    echo -e "${RED}❌ ERROR: Must run from adminer root directory${NC}"
+if [[ ! -f "vercel.json" ]] || [[ ! -d "public" ]]; then
+    echo -e "${RED}❌ ERROR: Must run from adminer/apps/api directory${NC}"
     echo "Current directory: $(pwd)"
-    echo "Expected: /path/to/ADminerFinal/adminer"
+    echo "Expected: /path/to/ADminerFinal/adminer/apps/api"
     echo ""
-    echo "Solution: cd to the adminer directory first"
+    echo "Solution: cd to the adminer/apps/api directory first"
     exit 1
 fi
 echo -e "${GREEN}✅ Working directory: $(pwd)${NC}"
@@ -26,7 +26,7 @@ echo "🔗 Checking Vercel project linking..."
 if [[ ! -f ".vercel/project.json" ]]; then
     echo -e "${RED}❌ ERROR: No Vercel project linked${NC}"
     echo ""
-    echo "Solution: Run from adminer root directory:"
+    echo "Solution: Run from adminer/apps/api directory:"
     echo "  vercel link --project adminer-monorepo-api"
     exit 1
 fi
@@ -34,7 +34,7 @@ echo -e "${GREEN}✅ Vercel project linked${NC}"
 
 # Step 3: Verify project ID
 echo "🆔 Verifying project ID..."
-LOCK_FILE=".vercel-lock.json"
+LOCK_FILE="../../.vercel-lock.json"
 if [[ ! -f "$LOCK_FILE" ]]; then
     echo -e "${YELLOW}⚠️  WARNING: No project lock file found${NC}"
     echo "Creating one now..."
@@ -43,8 +43,8 @@ if [[ ! -f "$LOCK_FILE" ]]; then
   "allowedProject": "adminer-monorepo-api",
   "allowedProjectId": "prj_RSTDkLR1HEMfLrbipoR9R5R2wkjf",
   "allowedDomain": "adminer.online",
-  "workingDirectory": "adminer",
-  "lastVerified": "2025-08-31T02:25:00Z"
+  "workingDirectory": "adminer/apps/api",
+  "lastVerified": "2025-08-31T02:35:00Z"
 }
 EOF
 fi

@@ -4,33 +4,33 @@
 
 **❌ WRONG - Never do this:**
 ```bash
-cd adminer/apps/api
-vercel link --project adminer-monorepo-api  # WRONG!
-vercel --prod                              # WRONG!
+cd adminer                    # ❌ Wrong directory
+vercel link --project adminer-monorepo-api  # ❌ Links wrong project
+vercel --prod                # ❌ Deploys to wrong domain
 ```
 
 **✅ CORRECT - Always do this:**
 ```bash
-cd adminer                                 # Start from root
-./scripts/verify-vercel-project.sh         # Validate first
-./scripts/local-deploy.sh                  # Deploy safely
+cd adminer/apps/api          # ✅ Start from deployment root
+./../../scripts/verify-vercel-project.sh  # ✅ Validate first
+./../../scripts/local-deploy.sh           # ✅ Deploy safely
 ```
 
 ## 🔒 Pre-Deployment Validation
 
 ### Step 1: Working Directory Check
-- [ ] **Current directory**: `/path/to/ADminerFinal/adminer`
-- [ ] **Files present**: `vercel.json`, `apps/` directory
-- [ ] **NOT in subdirectory**: Never run from `apps/api/` or `apps/web/`
+- [ ] **Current directory**: `/path/to/ADminerFinal/adminer/apps/api`
+- [ ] **Files present**: `vercel.json`, `public/` directory
+- [ ] **NOT in root**: Never run from `adminer/` directory
 
 ### Step 2: Project Linking Verification
 - [ ] **Project linked**: `adminer-monorepo-api`
 - [ ] **Project ID**: `prj_RSTDkLR1HEMfLrbipoR9R5R2wkjf`
 - [ ] **Domain target**: `adminer.online`
-- [ ] **Validation script**: `./scripts/verify-vercel-project.sh` passes
+- [ ] **Validation script**: `./../../scripts/verify-vercel-project.sh` passes
 
 ### Step 3: Build Preparation
-- [ ] **Frontend built**: `apps/web/dist/` contains latest build
+- [ ] **Frontend built**: `../web/dist/` contains latest build
 - [ ] **Bundle sync**: HTML and JS bundles match
 - [ ] **API routes**: Native Vercel API routes present
 
@@ -38,27 +38,25 @@ cd adminer                                 # Start from root
 
 ### Option A: Automated Deployment (Recommended)
 ```bash
-cd adminer
-./scripts/local-deploy.sh
+cd adminer/apps/api
+./../../scripts/local-deploy.sh
 ```
 
 ### Option B: Manual Step-by-Step
 ```bash
-cd adminer
+cd adminer/apps/api
 
 # 1. Validate project
-./scripts/verify-vercel-project.sh
+./../../scripts/verify-vercel-project.sh
 
 # 2. Build frontend
-cd apps/web
+cd ../web
 npm ci && npm run build
-cd ../..
+cd ../api
 
 # 3. Copy to API
-cd apps/api
 rm -rf public && mkdir -p public
 cp -r ../web/dist/* public/
-cd ../..
 
 # 4. Deploy
 vercel --prod
@@ -86,7 +84,7 @@ curl -s https://adminer.online/dashboard | grep -o 'index-[^"]*\.js'
 ## 🛡️ Safety Guards
 
 ### Project Lock File
-- **Location**: `.vercel-lock.json`
+- **Location**: `../../.vercel-lock.json` (relative to adminer/apps/api)
 - **Purpose**: Prevents linking to wrong projects
 - **Auto-creation**: Scripts will create if missing
 
@@ -96,8 +94,8 @@ curl -s https://adminer.online/dashboard | grep -o 'index-[^"]*\.js'
 - **`local-deploy.sh`**: Safe deployment with validation
 
 ### Directory Enforcement
-- **Root only**: Vercel commands only work from `adminer/` directory
-- **Subdirectory blocking**: Scripts prevent deployment from `apps/api/` or `apps/web/`
+- **Deployment root only**: Vercel commands only work from `adminer/apps/api/` directory
+- **Root blocking**: Scripts prevent deployment from `adminer/` directory
 
 ## 🚨 Troubleshooting
 
@@ -110,7 +108,7 @@ rm -rf .vercel
 vercel link --project adminer-monorepo-api
 
 # Verify
-./scripts/verify-vercel-project.sh
+./../../scripts/verify-vercel-project.sh
 ```
 
 ### Rate Limit Hit
@@ -120,21 +118,19 @@ vercel link --project adminer-monorepo-api
 vercel ls
 
 # Try deployment again
-./scripts/local-deploy.sh
+./../../scripts/local-deploy.sh
 ```
 
 ### Bundle Mismatch
 ```bash
 # Force rebuild
-cd apps/web
+cd ../web
 npm run build
-cd ../..
+cd ../api
 
 # Copy to API
-cd apps/api
 rm -rf public && mkdir -p public
 cp -r ../web/dist/* public/
-cd ../..
 
 # Deploy
 vercel --prod
@@ -142,9 +138,9 @@ vercel --prod
 
 ## 📚 Key Principles
 
-1. **Always start from root**: `cd adminer`
+1. **Always start from deployment root**: `cd adminer/apps/api`
 2. **Validate before deploy**: Run verification scripts
-3. **Use automation**: Prefer `./scripts/local-deploy.sh`
+3. **Use automation**: Prefer `./../../scripts/local-deploy.sh`
 4. **Check results**: Verify bundle updates and dashboard functionality
 5. **Document issues**: Update this checklist with new problems/solutions
 
