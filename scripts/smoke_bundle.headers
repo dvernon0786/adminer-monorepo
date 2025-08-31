@@ -1,0 +1,17 @@
+HTTP/2 200 
+accept-ranges: bytes
+access-control-allow-origin: *
+age: 0
+cache-control: public, max-age=0, must-revalidate
+content-disposition: inline; filename="index-4QovWEcm.js"
+content-type: application/javascript; charset=utf-8
+date: Sat, 30 Aug 2025 10:26:12 GMT
+etag: "b008b427283160e2f1b3503156cf67db"
+last-modified: Sat, 30 Aug 2025 10:26:11 GMT
+server: Vercel
+strict-transport-security: max-age=63072000
+x-matched-path: /assets/index-4QovWEcm.js
+x-vercel-cache: HIT
+x-vercel-id: bom1::2nbtq-1756549572311-523a45e7929c
+content-length: 528914
+

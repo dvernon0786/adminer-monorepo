@@ -1,5 +1,5 @@
 import React from "react";
-import { useUser } from "@clerk/clerk-react";
+import { useAuth } from "@clerk/clerk-react";
 import { SignOutButton } from "@clerk/clerk-react";
 import { Button } from "../ui/button";
 import { QuotaBadge } from "./QuotaBadge";
@@ -11,7 +11,7 @@ interface Props {
 }
 
 const DashboardHeader: React.FC<Props> = ({ className = "", backendStatus = "checking", onOpenPricing }) => {
-  const { user } = useUser();
+  const { user } = useAuth();
 
   const statusColor =
     backendStatus === "connected" ? "bg-green-400" :
