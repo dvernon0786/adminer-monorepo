@@ -1,10 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "pages/api/**/*.js": {
-      "runtime": "@vercel/node@18"
-    }
-  },
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
   "headers": [
