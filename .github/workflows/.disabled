@@ -1,0 +1,17 @@
+# GitHub Actions Disabled
+# 
+# All CI/CD workflows are now running locally using Act (GitHub Actions runner)
+# 
+# Local execution commands:
+# - ./scripts/run-local-workflows.sh          # Run all workflows
+# - ./scripts/run-monorepo-ci.sh             # Run monorepo CI
+# - ./scripts/run-deploy-smoke.sh            # Run deploy and smoke tests
+# - ./scripts/run-smoke-tests.sh             # Run smoke tests only
+# - ./scripts/run-promote-smoke.sh           # Run promotion workflow
+#
+# Benefits of local execution:
+# - No GitHub billing issues
+# - Faster execution
+# - Full control over environment
+# - No rate limiting
+# - Offline capability 
