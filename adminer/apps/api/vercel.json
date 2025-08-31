@@ -3,7 +3,7 @@
   "buildCommand": "npm run build:vercel-fixed",
   "outputDirectory": "public",
   "framework": null,
-  "functions": {},
+  "_comment": "Force rebuild timestamp: 1756604900",
   "rewrites": [
     {
       "source": "/api/(.*)",
