@@ -5,38 +5,19 @@
   "outputDirectory": "public",
   "headers": [
     {
-      "source": "/(.*)",
-      "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        }
-      ]
-    },
-    {
       "source": "/(.*).html",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
       ]
     },
     {
       "source": "/assets/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control", 
-          "value": "public, immutable, max-age=31536000"
-        }
+        { "key": "Cache-Control", "value": "public, immutable, max-age=31536000" }
       ]
     }
   ],
   "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/$1"
-    },
     {
       "source": "/(.*)",
       "destination": "/index.html"
