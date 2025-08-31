@@ -4,14 +4,14 @@
   "version": "0.2.2",
   "type": "module",
   "scripts": {
-    "dev": "next dev",
+    "dev": "echo 'Static site - no dev server needed'",
     "build": "npm run build:spa",
     "build:spa": "cd ../web && echo \"DEBUG: VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY\" && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
     "build:vercel": "npm ci && npm run build:spa",
     "build:vercel-fixed": "cd ../web && npm ci && VITE_CLERK_PUBLISHABLE_KEY=\"$VITE_CLERK_PUBLISHABLE_KEY\" npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
-    "postbuild": "echo 'Temporarily disabled: ./scripts/guard-static-export.sh' && echo '🚨 CRITICAL: Removing conflicting Next.js HTML files' && rm -f .next/server/pages/404.html .next/server/pages/500.html && echo '✅ Removed conflicting HTML files'",
+    "postbuild": "echo 'Static site build completed'",
     "prestart": "node ./src/env-check.cjs",
-    "start": "next start",
+    "start": "echo 'Static site - no start server needed'",
     "prevercel": "node ./scripts/guard-spa.mjs",
     "db:check": "node scripts/check-neon-db.cjs",
     "db:migrate": "node scripts/check-neon-db.cjs",
@@ -20,7 +20,7 @@
   },
   "dependencies": {
     "@clerk/clerk-js": "5.88.0",
-    "@clerk/nextjs": "6.9.4",
+
     "@google/generative-ai": "0.24.1",
     "@neondatabase/serverless": "1.0.1",
     "@swc/helpers": "0.5.17",
@@ -32,7 +32,7 @@
     "drizzle-orm": "0.29.3",
     "inngest": "3.40.1",
     "jose": "6.0.13",
-    "next": "14.2.10",
+
     "openai": "4.0.0",
     "pg": "8.16.3",
     "postgres": "3.4.3",
@@ -40,7 +40,7 @@
     "react": "18.3.1",
     "react-dom": "18.3.1",
     "standardwebhooks": "^1.0.0",
-    "styled-jsx": "5.1.7",
+
     "uuid": "9.0.0",
     "zod": "3.22.5"
   },
