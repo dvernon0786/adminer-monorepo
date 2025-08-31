@@ -1,0 +1,35 @@
+{
+  "version": 2,
+  "buildCommand": "npm run build:vercel-fixed",
+  "outputDirectory": "public",
+  "framework": null,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        },
+        {
+          "key": "Pragma",
+          "value": "no-cache"
+        },
+        {
+          "key": "Expires",
+          "value": "0"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api|assets|_next|favicon.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
