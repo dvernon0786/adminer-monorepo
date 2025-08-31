@@ -1,0 +1,13 @@
+{
+  "allowedProject": "adminer-monorepo-api",
+  "allowedProjectId": "prj_RSTDkLR1HEMfLrbipoR9R5R2wkjf",
+  "allowedDomain": "adminer.online",
+  "workingDirectory": "adminer",
+  "lastVerified": "2025-08-31T02:25:00Z",
+  "deploymentRules": [
+    "NEVER run Vercel commands from subdirectories",
+    "ALWAYS work from adminer root directory",
+    "Verify project linking before every deployment",
+    "Check domain target is adminer.online"
+  ]
+} 
