@@ -1,36 +1,42 @@
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
+import { defineConfig, loadEnv } from 'vite';
+import react from '@vitejs/plugin-react';
+import path from 'path';
 
-// https://vitejs.dev/config/
-export default defineConfig({
-  plugins: [react()],
-  build: {
-    // Ensure consistent bundle naming
-    rollupOptions: {
-      output: {
-        // Use content hash for cache busting
-        entryFileNames: 'assets/[name]-[hash].js',
-        chunkFileNames: 'assets/[name]-[hash].js',
-        assetFileNames: 'assets/[name]-[hash].[ext]',
-        // Ensure deterministic builds
-        manualChunks: undefined
-      }
+export default defineConfig(({ mode }) => {
+  // Load env file based on `mode` in the current working directory.
+  const env = loadEnv(mode, process.cwd(), '');
+  
+  return {
+    plugins: [react()],
+    base: '/', // ensure assets resolve to /assets/* when index.html lives at /
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, './src'),
+      },
     },
-    // Force source maps for debugging
-    sourcemap: false,
-    // Ensure clean builds
-    emptyOutDir: true,
-    // Optimize for production
-    minify: 'terser',
-    terserOptions: {
-      compress: {
-        drop_console: true,
-        drop_debugger: true
-      }
-    }
-  },
-  // Environment variable handling
-  define: {
-    __BUILD_TIMESTAMP__: JSON.stringify(Date.now())
-  }
-}) 
+    define: {
+      // Inject Clerk publishable key at build time
+      __VITE_CLERK_PUBLISHABLE_KEY__: JSON.stringify(env.VITE_CLERK_PUBLISHABLE_KEY),
+      // Add build timestamp for cache busting
+      __BUILD_TIMESTAMP__: JSON.stringify(Date.now())
+    },
+    build: {
+      outDir: 'dist',
+      assetsDir: 'assets',
+      rollupOptions: {
+        output: {
+          // Ensure asset paths are generated correctly for Vercel
+          assetFileNames: 'assets/[name]-[hash][extname]',
+          chunkFileNames: 'assets/[name]-[hash].js',
+          entryFileNames: 'assets/[name]-[hash].js',
+        },
+      },
+      // Force source maps for debugging
+      sourcemap: false,
+      // Ensure clean builds
+      emptyOutDir: true,
+      // Use esbuild minification (default, no extra dependencies)
+      minify: 'esbuild'
+    },
+  };
+}); 
