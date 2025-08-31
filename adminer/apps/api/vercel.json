@@ -3,7 +3,21 @@
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
+  "functions": {
+    "api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
   "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "X-Content-Type-Options",
+          "value": "nosniff"
+        }
+      ]
+    },
     {
       "source": "/(.*).html",
       "headers": [
@@ -29,7 +43,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api|assets|_next|favicon.ico).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
