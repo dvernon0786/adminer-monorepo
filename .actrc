@@ -1,0 +1,8 @@
+# Act Configuration for Local GitHub Actions
+--env-file .env.local.act
+--container-daemon-socket /var/run/docker.sock
+--reuse
+--bind
+--platform ubuntu-latest=catthehacker/ubuntu:act-latest
+--platform ubuntu-20.04=catthehacker/ubuntu:act-20.04
+--platform ubuntu-22.04=catthehacker/ubuntu:act-22.04 
