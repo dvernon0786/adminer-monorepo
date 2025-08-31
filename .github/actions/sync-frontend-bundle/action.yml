@@ -1,0 +1,51 @@
+name: 'Sync Frontend Bundle'
+description: 'Automatically rebuilds and syncs frontend bundle to prevent mismatches'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Clean and rebuild frontend'
+      shell: bash
+      run: |
+        echo "🧹 Cleaning old frontend files..."
+        cd adminer/apps/web
+        rm -rf dist/
+        
+        echo "🔨 Building fresh frontend..."
+        npm ci
+        npm run build
+        
+        echo "📦 Frontend build completed:"
+        ls -la dist/
+        echo "📄 HTML bundle reference:"
+        grep -E "index-.*\.js" dist/index.html || echo "No JS reference found"
+
+    - name: 'Sync to API public directory'
+      shell: bash
+      run: |
+        echo "🔄 Syncing frontend to API public directory..."
+        cd adminer/apps/api
+        
+        # Clean existing public directory
+        rm -rf public/*
+        
+        # Copy fresh build
+        cp -r ../web/dist/* public/
+        
+        echo "✅ Sync completed:"
+        ls -la public/assets/
+        echo "🔍 Final HTML bundle reference:"
+        grep -E "index-.*\.js" public/index.html || echo "No JS reference found"
+        
+        # Verify bundle match
+        HTML_REF=$(grep -E "index-.*\.js" public/index.html | sed 's/.*index-\([^"]*\)\.js.*/index-\1.js/')
+        ACTUAL_BUNDLE=$(ls public/assets/index-*.js | head -1 | xargs basename)
+        
+        if [ "$HTML_REF" = "$ACTUAL_BUNDLE" ]; then
+          echo "✅ Bundle match verified: HTML references $HTML_REF, actual bundle is $ACTUAL_BUNDLE"
+        else
+          echo "❌ Bundle mismatch detected:"
+          echo "   HTML references: $HTML_REF"
+          echo "   Actual bundle: $ACTUAL_BUNDLE"
+          exit 1
+        fi 

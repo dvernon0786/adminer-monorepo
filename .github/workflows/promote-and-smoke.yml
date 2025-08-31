@@ -23,17 +23,8 @@ jobs:
         with:
           node-version: 20
 
-      - name: Build SPA
-        run: |
-          cd adminer/apps/web
-          npm ci
-          npm run build
-
-      - name: Copy SPA into API public dir
-        run: |
-          mkdir -p adminer/apps/api/public
-          rm -rf adminer/apps/api/public/*
-          cp -r adminer/apps/web/dist/* adminer/apps/api/public/
+      - name: Sync Frontend Bundle
+        uses: ./.github/actions/sync-frontend-bundle
 
       - name: Test deployment health
         run: |
