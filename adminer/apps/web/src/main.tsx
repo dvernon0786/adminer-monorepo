@@ -31,7 +31,13 @@ console.log("MAIN.TSX: React root created successfully");
 console.log("MAIN.TSX: Rendering App with ClerkProvider...");
 root.render(
   <React.StrictMode>
-    <ClerkProvider publishableKey={PUBLISHABLE_KEY}>
+    <ClerkProvider 
+      publishableKey={PUBLISHABLE_KEY}
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
+      signInUrl="/sign-in"
+      signUpUrl="/sign-up"
+    >
       <App />
     </ClerkProvider>
   </React.StrictMode>,

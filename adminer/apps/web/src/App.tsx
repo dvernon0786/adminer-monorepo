@@ -1,5 +1,5 @@
-import React from 'react'
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import React, { useEffect } from 'react'
+import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from 'react-router-dom'
 import { useAuth } from '@clerk/clerk-react'
 import Homepage from './pages/Homepage'
 import Dashboard from './pages/dashboard'
@@ -8,6 +8,22 @@ console.log("APP.TSX: App component starting...");
 console.log("APP.TSX: Dashboard component imported:", Dashboard);
 console.log("APP.TSX: Dashboard component type:", typeof Dashboard);
 console.log("APP.TSX: Dashboard component name:", Dashboard?.name);
+
+// Fallback redirect component for post-authentication navigation
+function PostAuthRedirect() {
+  const { isSignedIn, isLoaded } = useAuth();
+  const location = useLocation();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (isLoaded && isSignedIn && location.pathname === '/') {
+      console.log("APP.TSX: User authenticated on homepage, redirecting to dashboard...");
+      navigate('/dashboard', { replace: true });
+    }
+  }, [isSignedIn, isLoaded, location.pathname, navigate]);
+
+  return null;
+}
 
 function App() {
   console.log("APP.TSX: App function executing...");
@@ -31,6 +47,7 @@ function App() {
   
   return (
     <Router>
+      <PostAuthRedirect />
       <Routes>
         <Route path="/" element={<Homepage />} />
         <Route path="/dashboard" element={<Dashboard />} />
