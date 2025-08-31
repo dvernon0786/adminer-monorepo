@@ -5,6 +5,6 @@
     "build": "echo 'Using pre-built files'"
   },
   "engines": {
-    "node": "18.x"
+    "node": "22.x"
   }
 }
