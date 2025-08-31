@@ -3,11 +3,6 @@
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
-  "functions": {
-    "api/**/*.js": {
-      "runtime": "nodejs18"
-    }
-  },
   "headers": [
     {
       "source": "/(.*)",
