@@ -322,23 +322,15 @@ jobs:
         run: |
           vercel pull --yes --environment=production --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
 
-      - name: Sync Frontend Bundle
+      - name: 'Build and Deploy'
         if: ${{ inputs.deploy == true }}
-        uses: ./.github/actions/sync-frontend-bundle
-
-      - name: Vercel build (prebuilt)
-        if: ${{ inputs.deploy == true }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
         run: |
-          vercel build --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
-
-      - name: Vercel deploy
+          echo "🚀 Building and deploying..."
+          cd adminer/apps/api
+          npm run build:vercel-fixed
+      - name: 'Atomic Build Verification'
         if: ${{ inputs.deploy == true }}
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-        run: |
-          vercel deploy --prebuilt --prod --token "$VERCEL_TOKEN" --scope "$VERCEL_ORG_ID" --cwd adminer/apps/api
+        uses: ./.github/actions/atomic-build
 
       - name: Install curl+jq
         run: sudo apt-get update && sudo apt-get install -y curl jq

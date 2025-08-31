@@ -1,0 +1,41 @@
+name: 'Atomic Build'
+description: 'Ensures HTML and JavaScript bundles are always in sync with atomic operations'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: 'Setup atomic build script'
+      shell: bash
+      run: |
+        echo "🔒 Setting up atomic build..."
+        cd adminer/apps/api
+        chmod +x scripts/atomic-build.sh
+
+    - name: 'Run atomic build'
+      shell: bash
+      run: |
+        echo "🚀 Running atomic build..."
+        cd adminer/apps/api
+        ./scripts/atomic-build.sh
+
+    - name: 'Verify bundle sync'
+      shell: bash
+      run: |
+        echo "✅ Verifying bundle sync..."
+        cd adminer/apps/api
+        
+        # Get HTML bundle reference
+        HTML_BUNDLE=$(grep -E 'index-.*\.js' public/index.html | sed 's/.*index-\([^"]*\)\.js.*/index-\1.js/')
+        echo "📄 HTML references: $HTML_BUNDLE"
+        
+        # Verify bundle exists
+        if [ -f "public/assets/$HTML_BUNDLE" ]; then
+          echo "✅ Bundle sync verified: $HTML_BUNDLE exists"
+        else
+          echo "❌ Bundle sync failed: $HTML_BUNDLE missing"
+          exit 1
+        fi
+        
+        # Show final file structure
+        echo "📁 Final public directory:"
+        ls -la public/assets/ 

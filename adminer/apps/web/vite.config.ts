@@ -1,43 +1,36 @@
-import { defineConfig, loadEnv } from 'vite';
-import react from '@vitejs/plugin-react';
-import path from 'path';
+import { defineConfig } from 'vite'
+import react from '@vitejs/plugin-react'
 
-export default defineConfig(({ mode }) => {
-  // Load env file based on `mode` in the current working directory.
-  const env = loadEnv(mode, process.cwd(), '');
-  
-  return {
-    plugins: [react()],
-    base: '/', // ensure assets resolve to /assets/* when index.html lives at /
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, './src'),
-      },
+// https://vitejs.dev/config/
+export default defineConfig({
+  plugins: [react()],
+  build: {
+    // Ensure consistent bundle naming
+    rollupOptions: {
+      output: {
+        // Use content hash for cache busting
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+        // Ensure deterministic builds
+        manualChunks: undefined
+      }
     },
-    define: {
-      // Inject Clerk publishable key at build time
-      __VITE_CLERK_PUBLISHABLE_KEY__: JSON.stringify(env.VITE_CLERK_PUBLISHABLE_KEY),
-    },
-    server: {
-      proxy: {
-        // Let the web dev server fetch env.js and Clerk proxy from the API dev server
-        '^/(env\\.js|clerk)(/.*)?$': {
-          target: 'http://localhost:3000',
-          changeOrigin: true,
-        },
-      },
-    },
-    build: {
-      outDir: 'dist',
-      assetsDir: 'assets',
-      rollupOptions: {
-        output: {
-          // Ensure asset paths are generated correctly for Vercel
-          assetFileNames: 'assets/[name]-[hash][extname]',
-          chunkFileNames: 'assets/[name]-[hash].js',
-          entryFileNames: 'assets/[name]-[hash].js',
-        },
-      },
-    },
-  };
-}); 
+    // Force source maps for debugging
+    sourcemap: false,
+    // Ensure clean builds
+    emptyOutDir: true,
+    // Optimize for production
+    minify: 'terser',
+    terserOptions: {
+      compress: {
+        drop_console: true,
+        drop_debugger: true
+      }
+    }
+  },
+  // Environment variable handling
+  define: {
+    __BUILD_TIMESTAMP__: JSON.stringify(Date.now())
+  }
+}) 
