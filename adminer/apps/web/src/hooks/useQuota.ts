@@ -15,7 +15,7 @@ export type QuotaStatus = {
 export function useQuota() {
   const { isSignedIn, getToken } = useAuth();
   const { pathname } = useLocation();
-  const [data, setData] = useState<null | { used: number; limit: number }>(null);
+  const [data, setData] = useState<null | { used: number; limit: number; percentage: number }>(null);
   const [error, setError] = useState<null | string>(null);
   const [loading, setLoading] = useState(false);
 
@@ -41,7 +41,14 @@ export function useQuota() {
         });
         if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
         const json = await res.json();
-        if (!cancelled) setData(json);
+        if (!cancelled) {
+          // Handle the actual API response structure: {success: true, data: {used, limit}}
+          if (json.success && json.data) {
+            setData(json.data);
+          } else {
+            setError("Invalid quota response format");
+          }
+        }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Failed to fetch quota");
       } finally {

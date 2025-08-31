@@ -1,45 +1,265 @@
-import { useAuth } from "@clerk/clerk-react";
-import { useNavigate } from "react-router-dom";
+import React, { useState } from 'react';
+import { useQuota } from '../../hooks/useQuota';
+import { QuotaBanner } from '../../components/QuotaBanner';
+import DashboardHeader from '../../components/dashboard/DashboardHeader';
+import JobsTable from '../../components/dashboard/JobsTable';
+import StartJobForm from '../../components/dashboard/StartJobForm';
+import ResultsTabs from '../../components/dashboard/ResultsTabs';
+import AnalysisGrid from '../../components/dashboard/AnalysisGrid';
+import StatisticsCards from '../../components/dashboard/StatisticsCards';
+import SearchAndFilter from '../../components/dashboard/SearchAndFilter';
+import { Card, CardContent, CardHeader, CardTitle } from '../../components/ui/card';
+import { Button } from '../../components/ui/button';
+import { Badge } from '../../components/ui/badge';
 
 export default function Dashboard() {
-  const { isLoaded, isSignedIn } = useAuth();
-  const navigate = useNavigate();
+  const { data: quota, loading, error } = useQuota();
 
+  // Mock data for dashboard components
+  const [searchTerm, setSearchTerm] = useState('');
+  const [activeTab, setActiveTab] = useState('all');
 
+  // Mock dashboard stats
+  const mockStats = {
+    total: 12,
+    images: 5,
+    videos: 3,
+    text: 4,
+    errors: 0
+  };
 
-  // Show loading state while Clerk is initializing
-  if (!isLoaded) {
+  // Mock analyses data
+  const mockAnalyses = [
+    {
+      id: '1',
+      adArchiveId: 'ad1',
+      contentType: 'image' as const,
+      analysisStatus: 'completed' as const,
+      createdAt: new Date().toISOString(),
+      summary: 'Sample image analysis'
+    },
+    {
+      id: '2',
+      adArchiveId: 'ad2',
+      contentType: 'video' as const,
+      analysisStatus: 'pending' as const,
+      createdAt: new Date().toISOString(),
+      summary: 'Sample video analysis'
+    }
+  ];
+
+  console.log("DESIGN-SYSTEM-DASHBOARD: Component executing...");
+  console.log("DESIGN-SYSTEM-DASHBOARD: Quota data:", quota);
+
+  if (loading) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] text-neutral-200 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-white mx-auto"></div>
-          <p className="text-neutral-400">Loading dashboard...</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-96 bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="p-8 text-center">
+              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-400 mx-auto mb-4"></div>
+              <h3 className="text-xl font-semibold text-white mb-2">Loading Dashboard</h3>
+              <p className="text-slate-300">Initializing your workspace...</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
 
-  // TEMPORARY: Simplified dashboard to isolate the issue
-  if (!isSignedIn) {
+  if (error) {
     return (
-      <div className="min-h-screen bg-[#0B0B0F] text-neutral-200 flex items-center justify-center">
-        <div className="text-center space-y-4">
-          <h1 className="text-2xl font-semibold">Please sign in</h1>
-          <p className="text-neutral-400">You need to be signed in to access the dashboard.</p>
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-96 bg-red-500/10 backdrop-blur-md border-red-500/20">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-red-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">⚠️</span>
+              </div>
+              <h3 className="text-xl font-semibold text-red-400 mb-2">Error Loading Dashboard</h3>
+              <p className="text-red-300 text-sm">{error}</p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     );
   }
+
+  if (!quota) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+        <div className="flex items-center justify-center min-h-screen">
+          <Card className="w-96 bg-blue-500/10 backdrop-blur-md border-blue-500/20">
+            <CardContent className="p-8 text-center">
+              <div className="w-16 h-16 bg-blue-500/20 rounded-full flex items-center justify-center mx-auto mb-4">
+                <span className="text-2xl">🔐</span>
+              </div>
+              <h3 className="text-xl font-semibold text-blue-400 mb-2">Sign In Required</h3>
+              <p className="text-blue-300 text-sm">Please sign in to view your dashboard and quota information.</p>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
+  }
+
+  console.log("DESIGN-SYSTEM-DASHBOARD: Rendering premium dashboard with quota:", quota);
 
   return (
-    <div className="min-h-screen bg-[#0B0B0F] text-neutral-200">
-      <main className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8 py-8 space-y-8">
-        <section className="rounded-2xl border border-white/10 bg-white/5 backdrop-blur-md p-8 text-center space-y-3">
-          <h1 className="text-2xl font-semibold">Dashboard</h1>
-          <p className="text-neutral-400">Welcome to your dashboard!</p>
-          <p className="text-sm text-neutral-500">This is a simplified version to test functionality.</p>
-        </section>
-      </main>
+    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Dashboard Header */}
+      <DashboardHeader
+        backendStatus="connected"
+        onOpenPricing={() => console.log("Pricing modal requested")}
+        quota={quota}
+      />
+
+      {/* Main Dashboard Content */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Quota Banner */}
+        <div className="mb-8">
+          <QuotaBanner quota={quota} />
+        </div>
+
+        {/* Statistics Cards */}
+        <div className="mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm font-medium">Total Analyses</p>
+                    <p className="text-3xl font-bold text-white">{mockStats.total}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">📊</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm font-medium">Images</p>
+                    <p className="text-3xl font-bold text-white">{mockStats.images}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">🖼️</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm font-medium">Videos</p>
+                    <p className="text-3xl font-bold text-white">{mockStats.videos}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">🎥</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="bg-white/10 backdrop-blur-md border-white/20 hover:bg-white/15 transition-all duration-300 hover:scale-105">
+              <CardContent className="p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-slate-400 text-sm font-medium">Text</p>
+                    <p className="text-3xl font-bold text-white">{mockStats.text}</p>
+                  </div>
+                  <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
+                    <span className="text-2xl">📝</span>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+
+        {/* Search and Filter */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="p-6">
+              <SearchAndFilter
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Start Job Form */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">🚀</span>
+                Start New Analysis
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <StartJobForm />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Jobs Table */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">📋</span>
+                Recent Jobs
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <JobsTable />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Analysis Grid */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardHeader>
+              <CardTitle className="text-white flex items-center gap-2">
+                <span className="text-2xl">🔍</span>
+                Analysis Results
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <AnalysisGrid
+                analyses={mockAnalyses}
+                onAnalysisClick={(id) => console.log("Analysis clicked:", id)}
+              />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Results Tabs */}
+        <div className="mb-8">
+          <Card className="bg-white/10 backdrop-blur-md border-white/20">
+            <CardContent className="p-6">
+              <ResultsTabs
+                activeTab={activeTab}
+                onTabChange={setActiveTab}
+                analyses={mockAnalyses}
+                filteredAnalyses={mockAnalyses}
+                stats={mockStats}
+                searchTerm={searchTerm}
+                onSearchChange={setSearchTerm}
+                onAnalysisClick={(analysis) => console.log("Analysis clicked:", analysis.id)}
+              />
+            </CardContent>
+          </Card>
+        </div>
+      </div>
     </div>
   );
-} 
+}
