@@ -3,7 +3,17 @@
   "buildCommand": "npm run build:vercel-fixed",
   "outputDirectory": "public",
   "framework": null,
-  "_comment": "Force rebuild timestamp: 1756604900",
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    }
+  ],
   "rewrites": [
     {
       "source": "/api/(.*)",
