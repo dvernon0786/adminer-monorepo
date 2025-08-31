@@ -1,11 +1,40 @@
 {
   "version": 2,
-  "buildCommand": "npm run build",
+  "functions": {
+    "pages/api/**/*.js": {
+      "runtime": "nodejs18.x"
+    }
+  },
+  "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
-  "framework": null,
-  "routes": [
-    { "src": "/dashboard", "dest": "/index.html" },
-    { "src": "/dashboard/(.*)", "dest": "/index.html" },
-    { "src": "/((?!api|_next|favicon.ico).*)", "dest": "/index.html" }
+  "headers": [
+    {
+      "source": "/(.*).html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control", 
+          "value": "public, immutable, max-age=31536000"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api|assets|_next|favicon.ico).*)",
+      "destination": "/index.html"
+    }
   ]
 } 
