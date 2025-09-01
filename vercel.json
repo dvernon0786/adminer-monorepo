@@ -2,7 +2,8 @@
   "version": 2,
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
-  "outputDirectory": "public",
+  "outputDirectory": "adminer/apps/api/public",
+  "_deployment_timestamp": "2025-09-01_10:42:00_AEST",
   "headers": [
     {
       "source": "/(.*).html",
