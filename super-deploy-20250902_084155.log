@@ -1,0 +1,9 @@
+[0;35m🚀 PHASE 1: Complete Fix - Resolving all known issues[0m
+================================================================
+[0;34m[2025-09-02 08:41:55][0m Starting complete fix phase...
+[0;34m[2025-09-02 08:41:55][0m Creating backup at: /home/dghost/Desktop/ADminerFinal/backups/20250902_084155
+[0;32m✅ Backup created successfully[0m
+[0;34m[2025-09-02 08:41:55][0m Executing complete_fix_script.sh...
+[0;31m❌ Pipeline failed at line 149[0m
+[0;31m❌ 🚨 ROLLBACK INITIATED - Rolling back completed phases...[0m
+[0;31m❌ Rollback complete. Check logs at: /home/dghost/Desktop/ADminerFinal/super-deploy-20250902_084155.log[0m

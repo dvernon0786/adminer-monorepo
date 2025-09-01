@@ -1,1 +1,78 @@
-<!DOCTYPE html><html><head><meta charSet="utf-8"/><meta name="viewport" content="width=device-width"/><meta name="next-head-count" content="2"/><noscript data-n-css=""></noscript><script defer="" nomodule="" src="/_next/static/chunks/polyfills-78c92fac7aa8fdd8.js"></script><script src="/_next/static/chunks/webpack-4e7214a60fad8e88.js" defer=""></script><script src="/_next/static/chunks/framework-64ad27b21261a9ce.js" defer=""></script><script src="/_next/static/chunks/main-ba5da813b573b2e9.js" defer=""></script><script src="/_next/static/chunks/pages/_app-753213cf38d40131.js" defer=""></script><script src="/_next/static/chunks/pages/index-498176bd321a2020.js" defer=""></script><script src="/_next/static/95zXWX0dVhC-64ViA1qYJ/_buildManifest.js" defer=""></script><script src="/_next/static/95zXWX0dVhC-64ViA1qYJ/_ssgManifest.js" defer=""></script></head><body><div id="__next"><div><h1>Adminer SPA</h1><p>This is the SPA entry point for all client-side routes.</p><p>In production, this should serve the built SPA from public/index.html</p></div></div><script id="__NEXT_DATA__" type="application/json">{"props":{"pageProps":{}},"page":"/","query":{},"buildId":"95zXWX0dVhC-64ViA1qYJ","nextExport":true,"autoExport":true,"isFallback":false,"scriptLoader":[]}</script></body></html>
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+
+    <title>Adminer – Competitive Intelligence for Ads</title>
+    <meta name="description" content="Adminer analyzes competitor ads, creatives, and messaging to deliver actionable insights fast. Try the MVP and ship smarter campaigns." />
+    <meta name="robots" content="index,follow,max-image-preview:large" />
+    <link rel="canonical" href="https://www.adminer.online/" />
+
+    <!-- PWA / Theming -->
+    <meta name="theme-color" content="#0B1021" />
+    <meta name="color-scheme" content="dark light" />
+
+    <!-- Open Graph -->
+    <meta property="og:title" content="Adminer – Competitive Intelligence for Ads" />
+    <meta property="og:description" content="Analyze competitor ads, creatives, and messaging. Actionable insights in minutes." />
+    <meta property="og:url" content="https://www.adminer.online/" />
+    <meta property="og:type" content="website" />
+    <meta property="og:image" content="/og-image.png" />
+
+    <!-- Twitter -->
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content="Adminer – Competitive Intelligence for Ads" />
+    <meta name="twitter:description" content="Analyze competitor ads, creatives, and messaging. Actionable insights in minutes." />
+    <meta name="twitter:image" content="/og-image.png" />
+
+    <!-- Icons -->
+    <link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-B_SY1GJM.png" />
+    <link rel="apple-touch-icon" href="/assets/favicon-B_SY1GJM.png" />
+
+    <!-- Performance hints - removed clerk.adminer.online proxy references -->
+    <!-- Clerk will use its direct CDN -->
+
+    <!-- Minimal runtime error overlay (hidden unless an error occurs) -->
+    <style>
+      #__err_overlay__ {
+        position: fixed; inset: 0; background: rgba(0,0,0,0.85); color: #fff;
+        font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+        padding: 16px; overflow: auto; z-index: 999999; display: none;
+      }
+      #__err_overlay__ .title { font-weight: 700; margin-bottom: 8px; }
+      #__err_overlay__ pre { white-space: pre-wrap; word-break: break-word; }
+    </style>
+    <div id="__err_overlay__" role="alert" aria-live="assertive">
+      <div class="title">💥 A runtime error occurred</div>
+      <pre id="__err_overlay_msg__"></pre>
+    </div>
+    <script>
+      (function () {
+        const show = (msg) => {
+          try {
+            const el = document.getElementById('__err_overlay__');
+            const pre = document.getElementById('__err_overlay_msg__');
+            pre.textContent = (msg && (msg.stack || msg.message || String(msg))) || 'Unknown error';
+            el.style.display = 'block';
+          } catch (_) {}
+        };
+        window.addEventListener('error', (e) => show(e.error || e.message || e));
+        window.addEventListener('unhandledrejection', (e) => show(e.reason || e));
+      })();
+    </script>
+
+    <!-- Vite will inject the script tag here -->
+    <script type="module" crossorigin src="/assets/index-Bpstk4FJ.js"></script>
+    <link rel="stylesheet" crossorigin href="/assets/index-DmgTqLu-.css">
+  </head>
+  <body>
+    <noscript>
+      Adminer requires JavaScript to run. Please enable it in your browser settings.
+    </noscript>
+    <div id="root"></div>
+  </body>
+</html>

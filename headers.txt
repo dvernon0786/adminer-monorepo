@@ -1,17 +1,16 @@
 HTTP/2 200 
 accept-ranges: bytes
 access-control-allow-origin: *
-age: 1248
+age: 1742
 cache-control: public, max-age=0, must-revalidate
 content-disposition: inline
 content-type: text/html; charset=utf-8
-date: Sat, 30 Aug 2025 06:28:25 GMT
-etag: "258a6e174c78e7546a4401387ddab0bb"
-last-modified: Sat, 30 Aug 2025 06:07:36 GMT
+date: Mon, 01 Sep 2025 22:17:13 GMT
+etag: "209754b2062f9d036c0ad40af67df457"
+last-modified: Mon, 01 Sep 2025 21:48:11 GMT
 server: Vercel
 strict-transport-security: max-age=63072000
-x-matched-path: /
 x-vercel-cache: HIT
-x-vercel-id: bom1::qh24w-1756535305461-9b59ff3b0357
-content-length: 1289
+x-vercel-id: bom1::7vwnr-1756765033115-49c97be8a499
+content-length: 3492
 

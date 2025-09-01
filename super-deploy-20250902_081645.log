@@ -1,0 +1,18 @@
+[0;35m🚀 PHASE 1: Complete Fix - Resolving all known issues[0m
+================================================================
+[0;34m[2025-09-02 08:16:45][0m Starting complete fix phase...
+[0;34m[2025-09-02 08:16:45][0m Creating backup at: /home/dghost/Desktop/ADminerFinal/backups/20250902_081645
+[0;32m✅ Backup created successfully[0m
+[0;34m[2025-09-02 08:16:45][0m Executing complete_fix_script.sh...
+[0;32m✅ Complete fix script executed successfully[0m
+[0;32m✅ Phase 1 (Complete Fix) completed successfully[0m
+[0;35m🚀 PHASE 2: Atomic Build - Ensuring clean build[0m
+================================================================
+[0;34m[2025-09-02 08:17:07][0m Starting atomic build phase...
+[0;34m[2025-09-02 08:17:07][0m Cleaning previous build artifacts...
+[0;32m✅ Previous build cleaned[0m
+[0;34m[2025-09-02 08:17:07][0m Installing dependencies...
+[0;31m❌ Pipeline failed at line 177[0m
+[0;31m❌ 🚨 ROLLBACK INITIATED - Rolling back completed phases...[0m
+[1;33m⚠️  Rolling back fixes...[0m
+[0;31m❌ Rollback complete. Check logs at: /home/dghost/Desktop/ADminerFinal/super-deploy-20250902_081645.log[0m
