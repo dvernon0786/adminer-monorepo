@@ -1,7 +1,7 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "cd ../web && cp ../api/.env.web.copy .env.local && npm install && npm run build && cd ../api && mkdir -p public && cp -r ../web/dist/* public/",
+  "buildCommand": "cd ../web && echo 'VITE_CLERK_PUBLISHABLE_KEY=pk_test_cGxlYXNlZC1maXNoLTI4LmNsZXJrLmFjY291bnRzLmRldiQ' > .env.local && npm install && npm run build && cd ../api && mkdir -p public && cp -r ../web/dist/* public/",
   "outputDirectory": "public",
   "rewrites": [
     {
