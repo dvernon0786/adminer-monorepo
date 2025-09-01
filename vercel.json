@@ -3,7 +3,6 @@
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
-  "_deployment_timestamp": "2025-09-01_10:45:00_AEST",
   "headers": [
     {
       "source": "/(.*).html",
