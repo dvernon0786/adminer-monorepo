@@ -183,21 +183,79 @@ Your current setup has a **fundamental architectural conflict**:
 
 ---
 
-# 🚨 **CURRENT CRITICAL ISSUE: VERCEL DEPLOYMENT FAILURE**
+# 🚨 **CURRENT CRITICAL ISSUE: VERCEL ROUTING FAILURE**
 
-## 📊 **DEPLOYMENT STATUS: INVESTIGATION IN PROGRESS**
+## 📊 **DEPLOYMENT STATUS: DIAGNOSIS COMPLETE - SOLUTION IDENTIFIED**
 
 **Date**: September 1, 2025  
-**Status**: 🔍 **INVESTIGATING - MULTIPLE APPROACHES TESTED**  
-**Result**: Site architecture converted to pure static, but deployment still failing with 404 errors
+**Status**: 🔍 **DIAGNOSIS COMPLETE - VERCEL DASHBOARD OVERRIDE ISSUE**  
+**Result**: Local routing works perfectly, Vercel deployment has configuration conflicts
 
 ---
 
-## 🎯 **EXECUTOR MODE: CURRENT DEPLOYMENT TROUBLESHOOTING STATUS**
+## 🎯 **EXECUTOR MODE: ROUTING ISSUE DIAGNOSIS COMPLETE**
 
 ### **✅ What Has Been Accomplished**
 1. **Architecture Conversion**: Successfully converted from hybrid to pure static site
 2. **API Function Removal**: Eliminated conflicting serverless functions
+3. **Fresh Build Deployment**: Deployed consistent build files with proper asset references
+4. **Local Testing**: Confirmed routing works perfectly locally (both / and /dashboard return 200 OK)
+
+### **🔍 Root Cause Identified**
+- **Local Routing**: ✅ Works perfectly (homepage and dashboard both return 200 OK)
+- **Vercel Deployment**: ❌ Dashboard returns 404 NOT_FOUND despite correct vercel.json
+- **Issue**: Vercel dashboard overrides are conflicting with vercel.json configuration
+- **Evidence**: vercel.json has correct rewrites, but deployment ignores them
+
+### **🎯 Immediate Solution Required**
+**VERCEL DASHBOARD OVERRIDE CHECK NEEDED**
+
+#### **🔧 Solution Steps**
+1. **Check Vercel Dashboard Settings**:
+   - Go to Vercel Dashboard → Project Settings → General
+   - Look for "Override" toggles in Build & Development Settings
+   - **CRITICAL**: Disable ALL overrides for:
+     - Build Command
+     - Output Directory  
+     - Install Command
+     - Development Command
+
+2. **Verify Project Root**:
+   - Ensure Project Root is set to: `adminer/apps/api`
+   - This should match our vercel.json location
+
+3. **Test After Changes**:
+   - Wait 2-3 minutes for settings to propagate
+   - Test: `curl -I https://adminer.online/dashboard`
+   - Should return 200 OK instead of 404 NOT_FOUND
+
+#### **🎯 Expected Result**
+- Homepage: ✅ Already working (200 OK)
+- Dashboard: ✅ Should work after override fix (200 OK)
+- All routes: ✅ Should work with SPA routing
+
+#### **📋 Current Status**
+- **Build Process**: ✅ Working (fresh files deployed)
+- **Local Routing**: ✅ Working (tested and confirmed)
+- **Vercel Configuration**: ✅ Dashboard overrides correctly disabled
+- **Environment Variable**: ❌ **MISSING VITE_CLERK_PUBLISHABLE_KEY in Vercel**
+- **Next Action**: Add missing environment variable to Vercel dashboard
+
+#### **🔑 CRITICAL: MISSING ENVIRONMENT VARIABLE**
+**Root Cause Found**: The `VITE_CLERK_PUBLISHABLE_KEY` environment variable is missing from Vercel dashboard, causing the runtime error "Missing Publishable Key".
+
+**Available Keys Found**:
+- **Test Key**: `pk_test_dG9waWNhbC1tZWVya2F0LTE3LmNsZXJrLmFjY291bnRzLmRldiQ`
+- **Live Key**: `pk_live_Y2xlcmsuYWRtaW5lci5vbmxpbmUk`
+
+**Solution**: Add the environment variable to Vercel dashboard:
+1. Go to Vercel Dashboard → Project Settings → Environment Variables
+2. Click "Create new"
+3. Key: `VITE_CLERK_PUBLISHABLE_KEY`
+4. Value: `pk_live_Y2xlcmsuYWRtaW5lci5vbmxpbmUk` (for production)
+5. Environment: All Environments
+6. Click "Save"
+7. Trigger new deployment
 3. **Frontend Mock Data**: Implemented mock API responses for static deployment
 4. **Domain Configuration**: Fixed redirect loops in Vercel dashboard
 5. **Dashboard Overrides**: Disabled Vercel dashboard overrides for build settings
