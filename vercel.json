@@ -3,7 +3,7 @@
   "version": 2,
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
-  "outputDirectory": "public",
+  "outputDirectory": "adminer/apps/api/public",
   // Fresh deployment after disabling dashboard overrides
   "headers": [
     {
