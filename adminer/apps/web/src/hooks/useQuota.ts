@@ -32,22 +32,20 @@ export function useQuota() {
     (async () => {
       try {
         setLoading(true);
-        const token = await getToken();
-        const res = await fetch("/api/consolidated?action=quota/status", {
-          headers: {
-            Authorization: `Bearer ${token ?? ""}`,
-            Accept: "application/json",
-          },
-        });
-        if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
-        const json = await res.json();
+        
+        // Mock response for static deployment - API functions removed
+        // TODO: Replace with external API service or re-implement serverless functions later
+        
+        // Simulate network delay for realistic behavior
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
         if (!cancelled) {
-          // Handle the actual API response structure: {success: true, data: {used, limit}}
-          if (json.success && json.data) {
-            setData(json.data);
-          } else {
-            setError("Invalid quota response format");
-          }
+          // Return mock quota data with realistic values
+          setData({
+            used: 45,
+            limit: 100,
+            percentage: 45
+          });
         }
       } catch (e: any) {
         if (!cancelled) setError(e?.message ?? "Failed to fetch quota");

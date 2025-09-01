@@ -1,9 +1,18 @@
 export async function getQuota() {
-  const res = await fetch('/api/consolidated?action=quota/status', { credentials: 'include' });
-  if (res.status === 402) {
-    const j = await res.json();
-    return { ok: false, quotaExceeded: true, upgradeUrl: j.upgradeUrl ?? '/billing' };
-  }
-  if (!res.ok) throw new Error('quota fetch failed');
-  return res.json();
+  // Mock response for static deployment - API functions removed
+  // TODO: Replace with external API service or re-implement serverless functions later
+  
+  // Simulate network delay for realistic behavior
+  await new Promise(resolve => setTimeout(resolve, 100));
+  
+  // Return mock quota data
+  return {
+    success: true,
+    data: {
+      used: 45,
+      limit: 100,
+      percentage: 45,
+      plan: 'free'
+    }
+  };
 } 

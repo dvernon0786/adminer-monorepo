@@ -1,23 +1,19 @@
 export const useConsolidatedApi = () => {
   const quotaStatus = async () => {
     try {
-      const response = await fetch('/api/consolidated?action=quota/status', {
-        method: 'GET',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        if (response.status === 402) {
-          // Quota exceeded - return upgrade information
-          const errorData = await response.json();
-          throw new Error(`Quota exceeded. Upgrade to continue.`);
-        }
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      // Mock response for static deployment - API functions removed
+      // TODO: Replace with external API service or re-implement serverless functions later
+      
+      // Simulate network delay for realistic behavior
+      await new Promise(resolve => setTimeout(resolve, 120));
+      
+      // Return mock quota data with realistic values
+      const data = {
+        plan: 'free',
+        limit: 100,
+        used: 45,
+        month: '2025-09'
+      };
       
       // Transform our API response to match the expected frontend format
       return {

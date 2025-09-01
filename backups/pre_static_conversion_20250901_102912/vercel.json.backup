@@ -1,0 +1,26 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "echo 'Using pre-built files'",
+  "outputDirectory": "public",
+  "headers": [
+    {
+      "source": "/(.*).html",
+      "headers": [
+        { "key": "Cache-Control", "value": "no-cache, no-store, must-revalidate" }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        { "key": "Cache-Control", "value": "public, immutable, max-age=31536000" }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/(.*)",
+      "destination": "/index.html"
+    }
+  ]
+}

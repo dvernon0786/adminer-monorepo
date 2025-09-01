@@ -5,31 +5,19 @@ export type QuotaStatus =
   | { ok: false; code: number; reason: string };
 
 export async function getQuotaStatus(): Promise<QuotaStatus> {
-  const res = await fetch("/api/consolidated?action=quota/status", {
-    method: "GET",
-    // same-origin includes cookies for Clerk
-    credentials: "same-origin",
-    headers: { "accept": "application/json" },
-  }).catch(() => null);
-
-  if (!res) return { ok: false, code: 0, reason: "network_error" };
-
-  const ct = res.headers.get("content-type") || "";
-  const isJson = ct.includes("application/json");
-  const data = isJson ? await res.json().catch(() => ({})) : {};
-
-  if (res.status === 200) {
-    const { plan, used, limit } = data;
-    return { ok: true, plan, used, limit };
-  }
-  if (res.status === 401) {
-    return { ok: false, code: 401, reason: "unauthenticated" };
-  }
-  if (res.status === 402) {
-    const upgradeUrl = data?.upgradeUrl ?? "/pricing";
-    return { ok: false, code: 402, reason: "quota_exceeded", upgradeUrl };
-  }
-  return { ok: false, code: res.status, reason: data?.error ?? "unknown_error" };
+  // Mock response for static deployment - API functions removed
+  // TODO: Replace with external API service or re-implement serverless functions later
+  
+  // Simulate network delay for realistic behavior
+  await new Promise(resolve => setTimeout(resolve, 150));
+  
+  // Return mock quota data with realistic values
+  return {
+    ok: true,
+    plan: "free",
+    used: 45,
+    limit: 100
+  };
 }
 
 // Legacy compatibility - returns the old format for existing components
