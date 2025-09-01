@@ -1,7 +1,7 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "mkdir -p public && echo 'Public directory created'",
+  "buildCommand": "cd ../web && npm run build && cd ../api && cp -r ../web/dist/* public/",
   "outputDirectory": "public",
   "rewrites": [
     {
