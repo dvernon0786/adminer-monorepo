@@ -4,6 +4,7 @@
   "framework": null,
   "buildCommand": "echo 'Using pre-built files'",
   "outputDirectory": "public",
+  // Fresh deployment after disabling dashboard overrides
   "headers": [
     {
       "source": "/(.*).html",
