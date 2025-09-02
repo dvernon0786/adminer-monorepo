@@ -2,11 +2,6 @@
   "version": 2,
   "buildCommand": "cd ../web && npm install && npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
   "outputDirectory": "public",
-  "functions": {
-    "pages/api/*.js": {
-      "runtime": "nodejs18.x@1.0.0"
-    }
-  },
   "rewrites": [
     {
       "source": "/api/(.*)",
