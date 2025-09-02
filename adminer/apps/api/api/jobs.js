@@ -39,8 +39,8 @@ export default async function handler(req, res) {
       
     } else if (req.method === 'GET') {
       // Get jobs for organization
-      const orgId = req.headers['x-org-id'] || 'test-org';
-      const { type, status, limit = 50 } = req.query;
+      const _orgId = req.headers['x-org-id'] || 'test-org';
+      const { type: _type, status: _status, limit = 50 } = req.query;
       
       // In a real implementation, this would query the database
       // For now, return mock data

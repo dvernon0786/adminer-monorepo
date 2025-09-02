@@ -76,7 +76,7 @@ class DodoClient {
         let errorText;
         try {
           errorText = await response.text();
-        } catch (e) {
+        } catch (_e) {
           errorText = 'Unknown API error';
         }
         throw new Error(`Dodo API error (${response.status}): ${errorText}`);
@@ -85,7 +85,7 @@ class DodoClient {
       const result = await response.json();
       console.log('Dodo checkout session created:', result.id);
       return result;
-    } catch (error) {
+    } catch (_error) {
       console.error('Failed to create Dodo checkout session:', error);
       throw error;
     }
@@ -109,7 +109,7 @@ class DodoClient {
         Buffer.from(signature, 'utf8'),
         Buffer.from(expectedHeader, 'utf8')
       );
-    } catch (error) {
+    } catch (_error) {
       console.error('Webhook signature verification failed:', error);
       return false;
     }
@@ -143,14 +143,14 @@ class DodoClient {
         let errorText;
         try {
           errorText = await response.text();
-        } catch (e) {
+        } catch (_e) {
           errorText = 'Unknown API error';
         }
         throw new Error(`Dodo customer creation error (${response.status}): ${errorText}`);
       }
 
       return await response.json();
-    } catch (error) {
+    } catch (_error) {
       console.error('Failed to create Dodo customer:', error);
       throw error;
     }

@@ -150,7 +150,7 @@ async function handleSubscriptionUpdate(data) {
   }
 
   const plan = data.plan?.id || 'free';
-  const status = data.status || 'active';
+  const subscriptionStatus = data.status || 'active';
 
   // Update organization
   await orgDb.update(orgId, { plan });
@@ -160,10 +160,10 @@ async function handleSubscriptionUpdate(data) {
     orgId,
     dodoSubscriptionId: data.id,
     plan,
-    status
+    status: subscriptionStatus
   });
 
-  return { status: 'subscription_updated', plan, status };
+  return { status: 'subscription_updated', plan, subscriptionStatus };
 }
 
 async function handleSubscriptionCancelled(data) {
@@ -204,7 +204,7 @@ async function handlePaymentSucceeded(data) {
   return { status: 'payment_processed' };
 }
 
-async function handleInvoicePayment(data) {
+async function handleInvoicePayment(_data) {
   // Invoice payment succeeded
   return { status: 'invoice_payment_processed' };
 }
