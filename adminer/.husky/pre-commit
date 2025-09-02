@@ -1,12 +1,4 @@
 #!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
 
-echo "🔎 Running hardcoded value scan..."
-npm run scan:hardcoded
-
-if [ $? -ne 0 ]; then
-  echo "❌ Hardcoded values detected! Commit blocked."
-  echo "💡 Fix the issues above or add legitimate strings to whitelist."
-  exit 1
-fi
-
-echo "✅ Hardcoded scan passed. Proceeding with commit..."
+npx secretlint

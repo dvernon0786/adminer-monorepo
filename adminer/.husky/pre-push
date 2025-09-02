@@ -1,0 +1,21 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+echo "🔍 Running Dockerized secret scan before push..."
+echo "🛡️ Checking for hardcoded tokens and secrets..."
+
+# Run Docker security scan
+docker compose run --rm security
+
+if [ $? -ne 0 ]; then
+  echo ""
+  echo "❌ SECURITY SCAN FAILED - Push blocked!"
+  echo "🚨 Remove hardcoded tokens before pushing"
+  echo "📖 See SECURITY.md for guidelines"
+  echo "🔧 Run 'make security' to test locally"
+  exit 1
+fi
+
+echo ""
+echo "✅ Security scan passed - proceeding with push"
+echo "🛡️ Repository is secure"

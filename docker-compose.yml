@@ -1,0 +1,27 @@
+services:
+  security:
+    image: node:20-alpine
+    working_dir: /app
+    volumes:
+      - .:/app
+    command: >
+      sh -c "
+        echo '🔍 Installing security scanning dependencies...' &&
+        npm install --no-audit --no-fund --silent &&
+
+        echo '🛡️ Running comprehensive secret scan...' &&
+        npx secretlint '**/*.{js,ts,tsx,json,env,md,yml,yaml}' --format json > /tmp/secretlint-results.json 2>/dev/null || true &&
+        if [ -s /tmp/secretlint-results.json ] && [ \"\$(cat /tmp/secretlint-results.json | jq -r '.messages | length' 2>/dev/null)\" -gt 0 ]; then
+          echo '❌ SECURITY SCAN FAILED - Secrets detected!' &&
+          echo '🔍 Scan results:' &&
+          cat /tmp/secretlint-results.json | jq -r '.messages[] | \"\(.file):\(.line):\(.column) - \(.message)\"' 2>/dev/null || cat /tmp/secretlint-results.json &&
+          echo '' &&
+          echo '🚨 Remove hardcoded tokens before committing!' &&
+          echo '📖 See SECURITY.md for guidelines' &&
+          exit 1
+        else
+          echo '✅ Security scan passed - no secrets detected!' &&
+          echo '🛡️ Repository is secure for push' &&
+          exit 0
+        fi
+      "

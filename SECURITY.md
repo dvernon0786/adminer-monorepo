@@ -23,15 +23,23 @@ const apiKey = process.env.APIFY_TOKEN;
 - **Documentation**: Use `xxx` or `your_token_here` examples
 - **Environment files**: Keep `.env*` in `.gitignore`
 
-## 🔧 Pre-Commit Protection
+## 🔧 Pre-Commit & Pre-Push Protection
 
-Your local setup includes automatic protection:
+Your local setup includes multiple layers of automatic protection:
+
+### **Pre-Commit Hook (Local)**
 ```bash
 # This runs automatically before each commit
 npx secretlint
 ```
 
-If secretlint detects tokens, your commit will be blocked. Fix the issue before committing.
+### **Pre-Push Hook (Docker)**
+```bash
+# This runs automatically before each push
+docker compose run --rm security
+```
+
+If secretlint detects tokens, your commit/push will be blocked. Fix the issue before proceeding.
 
 ## 📁 File Organization
 
@@ -62,6 +70,9 @@ grep -r "Bearer " --include="*.js" --include="*.ts" .
 
 # Verify .env files are ignored
 git status --ignored | grep -E "\.env"
+
+# Run Docker security scan manually
+docker compose run --rm security
 ```
 
 ## 🔍 Environment Variable Patterns
@@ -94,9 +105,11 @@ Security is everyone's responsibility. When in doubt, ask before committing.
 ## 🛠️ Security Tools in Use
 
 - **secretlint**: Pre-commit hook to detect secrets
+- **Docker Security Scanning**: Pre-push hook with isolated environment
 - **git-filter-repo**: Used to clean git history
 - **Comprehensive .gitignore**: Blocks all sensitive file patterns
 - **Environment templates**: Safe placeholder values for all services
+- **Husky Git Hooks**: Automated security validation
 
 ## 📋 Security Checklist for New Contributors
 
