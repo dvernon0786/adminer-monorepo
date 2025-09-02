@@ -1,24 +1,14 @@
-// Mock functions for now - will be replaced with real implementation
-async function createJob(orgId, type, input) {
-  return {
-    id: `job-${Date.now()}`,
-    type,
-    status: 'created',
-    createdAt: new Date().toISOString()
-  };
-}
-
-async function checkQuota(orgId, amount) {
-  // Mock quota check - always passes for now
-  return true;
-}
-
 export default async function handler(req, res) {
+  // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
-  if (req.method === 'OPTIONS') return res.status(200).end();
+  // Handle preflight requests
+  if (req.method === 'OPTIONS') {
+    res.status(200).end();
+    return;
+  }
 
   try {
     if (req.method === 'POST') {
@@ -33,30 +23,25 @@ export default async function handler(req, res) {
         });
       }
       
-      // Check quota before creating job
-      const quotaAmount = getQuotaAmount(type, input);
-      await checkQuota(orgId, quotaAmount);
-      
-      // Create job
-      const job = await createJob(orgId, type, input);
+      // Mock job creation for now
+      const jobId = `job-${Date.now()}`;
       
       res.status(201).json({
         success: true,
         data: {
-          jobId: job.id,
-          type: job.type,
-          status: job.status,
-          createdAt: job.createdAt
+          jobId,
+          type,
+          status: 'created',
+          createdAt: new Date().toISOString()
         }
       });
       
     } else if (req.method === 'GET') {
       // Get jobs for organization
-      const _orgId = req.headers['x-org-id'] || 'test-org';
-      const { type: _type, status: _status, limit = 50 } = req.query;
+      const orgId = req.headers['x-org-id'] || 'test-org';
+      const { type, status, limit = 50 } = req.query;
       
-      // In a real implementation, this would query the database
-      // For now, return mock data
+      // Return mock data
       res.status(200).json({
         success: true,
         data: {
@@ -90,32 +75,10 @@ export default async function handler(req, res) {
   } catch (error) {
     console.error('Jobs API Error:', error);
     
-    if (error.message === 'Quota limit exceeded') {
-      res.status(402).json({
-        success: false,
-        error: 'Quota limit exceeded',
-        upgradeUrl: 'https://adminer.online/upgrade'
-      });
-    } else {
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-        message: error.message
-      });
-    }
-  }
-}
-
-// Helper function to determine quota consumption
-function getQuotaAmount(type, input) {
-  switch (type) {
-    case 'scrape':
-      return Math.ceil((input.pages || 1) / 10); // 1 quota per 10 pages
-    case 'analyze':
-      return Math.ceil((input.dataSize || 1000) / 1000); // 1 quota per 1KB
-    case 'export':
-      return Math.ceil((input.recordCount || 1000) / 1000); // 1 quota per 1K records
-    default:
-      return 1;
+    res.status(500).json({
+      success: false,
+      error: 'Internal server error',
+      message: error.message
+    });
   }
 }
