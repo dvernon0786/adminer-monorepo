@@ -1,4 +1,17 @@
-import { createJob, checkQuota } from '../src/lib/inngest.js';
+// Mock functions for now - will be replaced with real implementation
+async function createJob(orgId, type, input) {
+  return {
+    id: `job-${Date.now()}`,
+    type,
+    status: 'created',
+    createdAt: new Date().toISOString()
+  };
+}
+
+async function checkQuota(orgId, amount) {
+  // Mock quota check - always passes for now
+  return true;
+}
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
