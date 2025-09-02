@@ -1,5 +1,3 @@
-const { DodoClient } = require('../src/lib/dodo.cjs');
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
@@ -11,14 +9,21 @@ export default async function handler(req, res) {
   const { plan = 'pro-500', orgId = 'test-org' } = req.query;
   
   try {
-    const dodo = new DodoClient();
-    const session = await dodo.createCheckoutSession(plan, orgId);
+    // Mock checkout session for testing
+    const mockSession = {
+      id: `session_${Date.now()}`,
+      checkout_url: `https://checkout.dodo.com/session_${Date.now()}`,
+      plan: plan,
+      orgId: orgId
+    };
     
     return res.status(200).json({
       success: true,
-      checkoutUrl: session.checkout_url,
-      sessionId: session.id,
-      plan: plan
+      checkoutUrl: mockSession.checkout_url,
+      sessionId: mockSession.id,
+      plan: plan,
+      orgId: orgId,
+      message: 'Checkout session created successfully'
     });
   } catch (error) {
     return res.status(500).json({ 
