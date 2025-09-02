@@ -10,7 +10,11 @@
     "build-test": "cd ../web && npm install && npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/ && echo '✅ Build test successful'"
   },
   "dependencies": {
-    "apify-client": "^2.16.0"
+    "@neondatabase/serverless": "^1.0.1",
+    "apify-client": "^2.16.0",
+    "dotenv": "^17.2.2",
+    "drizzle-orm": "^0.44.5",
+    "inngest": "^3.40.2"
   },
   "engines": {
     "node": ">=18.0.0"
