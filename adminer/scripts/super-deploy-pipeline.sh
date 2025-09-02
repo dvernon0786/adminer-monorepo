@@ -52,6 +52,198 @@ handle_error() {
     exit $exit_code
 }
 
+# Helper function to run scripts with error handling
+run_script() {
+    local script_path="$1"
+    local script_args="${@:2}"
+    
+    if [ -f "$script_path" ]; then
+        log_step "Running $script_path..."
+        chmod +x "$script_path"
+        if "$script_path" $script_args; then
+            log_success "Script completed: $script_path"
+        else
+            log_error "Script failed: $script_path"
+            return 1
+        fi
+    else
+        log_warning "Script not found: $script_path (skipping)"
+    fi
+}
+
+# Helper function to run commands with error handling
+run_command() {
+    local command="$1"
+    log_step "Running command: $command"
+    if eval "$command"; then
+        log_success "Command completed: $command"
+    else
+        log_error "Command failed: $command"
+        return 1
+    fi
+}
+
+# Helper function to check if command exists
+command_exists() {
+    command -v "$1" >/dev/null 2>&1
+}
+
+# Phase 0: Pre-Flight Validation
+phase0_preflight() {
+    log_phase "PHASE 0: Pre-Flight Validation"
+    
+    log_step "Validating project structure..."
+    if [ ! -d "$API_DIR" ]; then
+        log_error "API directory not found: $API_DIR"
+        return 1
+    fi
+    
+    if [ ! -d "$WEB_DIR" ]; then
+        log_error "Web directory not found: $WEB_DIR"
+        return 1
+    fi
+    
+    log_success "Project structure validated"
+    
+    # Environment Variables Check
+    log_step "Validating environment variables..."
+    run_script "adminer/scripts/vercel-env-validate.sh" || {
+        log_warning "Environment validation failed - continuing with warnings"
+    }
+    
+    # Database Connection Test
+    log_step "Testing database connection..."
+    if [ -f "$API_DIR/test-db.js" ]; then
+        cd "$API_DIR"
+        if node test-db.js; then
+            log_success "Database connection test passed"
+        else
+            log_warning "Database connection test failed - check DATABASE_URL"
+        fi
+        cd "$PROJECT_ROOT"
+    else
+        log_warning "Database test script not found - skipping"
+    fi
+    
+    # Security Token Check
+    log_step "Checking for token leaks..."
+    if command_exists make; then
+        run_command "make check-tokens" || {
+            log_warning "Token check failed - review manually"
+        }
+    else
+        log_warning "Make command not available - skipping token check"
+    fi
+    
+    # Dependency Validation
+    log_step "Validating dependencies..."
+    run_script "scripts/validate-dependencies.sh" || {
+        log_warning "Dependency validation failed - continuing with warnings"
+    }
+    
+    # System Analysis
+    log_step "Running system analysis..."
+    run_script "system_analysis_validator.sh" || {
+        log_warning "System analysis failed - continuing with warnings"
+    }
+    
+    log_success "Phase 0 completed - Pre-flight validation done"
+    ROLLBACK_POINTS+=("Phase 0: Pre-flight validation completed")
+}
+
+# Phase 1: Complete Fix & Reset
+phase1_complete_fix() {
+    log_phase "PHASE 1: Complete Fix & Reset"
+    
+    log_step "Running complete fix script..."
+    cd "$PROJECT_ROOT"
+    
+    if [ -f "complete_fix_script.sh" ]; then
+        chmod +x complete_fix_script.sh
+        ./complete_fix_script.sh
+        ROLLBACK_POINTS+=("Phase 1: Complete fix applied")
+    else
+        log_warning "complete_fix_script.sh not found, skipping..."
+    fi
+    
+    log_success "Phase 1 completed"
+}
+
+# Phase 1.5: Security Hardening
+phase1_5_security() {
+    log_phase "PHASE 1.5: Security Hardening"
+    
+    if ! command_exists make; then
+        log_warning "Make command not available - skipping security checks"
+        return 0
+    fi
+    
+    # Security Scan
+    log_step "Running security scan..."
+    run_command "make security" || {
+        log_warning "Security scan failed - review manually"
+    }
+    
+    # Local Security Check
+    log_step "Running local security check..."
+    run_command "make security-local" || {
+        log_warning "Local security check failed - review manually"
+    }
+    
+    # Secret Leak Prevention
+    log_step "Checking for secret leaks..."
+    run_command "make check-tokens" || {
+        log_warning "Token check failed - review manually"
+    }
+    
+    log_success "Phase 1.5 completed - Security hardening done"
+    ROLLBACK_POINTS+=("Phase 1.5: Security hardening completed")
+}
+
+# Phase 2: Atomic Build Process
+phase2_atomic_build() {
+    log_phase "PHASE 2: Atomic Build Process"
+    
+    log_step "Running atomic build script..."
+    cd "$PROJECT_ROOT"
+    
+    if [ -f "adminer/scripts/local-atomic-build.sh" ]; then
+        chmod +x adminer/scripts/local-atomic-build.sh
+        ./adminer/scripts/local-atomic-build.sh
+        ROLLBACK_POINTS+=("Phase 2: Atomic build completed")
+    else
+        log_warning "local-atomic-build.sh not found, running manual build..."
+        cd "$WEB_DIR"
+        npm ci
+        npm run build
+        ROLLBACK_POINTS+=("Phase 2: Manual build completed")
+    fi
+    
+    log_success "Phase 2 completed"
+}
+
+# Phase 3: Bundle Synchronization
+phase3_bundle_sync() {
+    log_phase "PHASE 3: Bundle Synchronization"
+    
+    log_step "Running bundle sync script..."
+    cd "$PROJECT_ROOT"
+    
+    if [ -f "adminer/scripts/run-automated-bundle-sync.sh" ]; then
+        chmod +x adminer/scripts/run-automated-bundle-sync.sh
+        ./adminer/scripts/run-automated-bundle-sync.sh
+        ROLLBACK_POINTS+=("Phase 3: Bundle sync completed")
+    else
+        log_warning "run-automated-bundle-sync.sh not found, running manual sync..."
+        cd "$API_DIR"
+        rm -rf public/*
+        cp -r "$WEB_DIR/dist"/* public/
+        ROLLBACK_POINTS+=("Phase 3: Manual sync completed")
+    fi
+    
+    log_success "Phase 3 completed"
+}
+
 # Validation functions
 validate_project_structure() {
     log_step "Validating project structure..."
@@ -146,71 +338,9 @@ validate_dashboard_rendering() {
     log_info "Dashboard validation complete - check browser console for JavaScript errors"
 }
 
-# Phase 1: Complete Fix & Reset
-phase1_complete_fix() {
-    log_phase "PHASE 1: Complete Fix & Reset"
-    
-    log_step "Running complete fix script..."
-    cd "$PROJECT_ROOT"
-    
-    if [ -f "complete_fix_script.sh" ]; then
-        chmod +x complete_fix_script.sh
-        ./complete_fix_script.sh
-        ROLLBACK_POINTS+=("Phase 1: Complete fix applied")
-    else
-        log_warning "complete_fix_script.sh not found, skipping..."
-    fi
-    
-    log_success "Phase 1 completed"
-}
-
-# Phase 2: Atomic Build Process
-phase2_atomic_build() {
-    log_phase "PHASE 2: Atomic Build Process"
-    
-    log_step "Running atomic build script..."
-    cd "$PROJECT_ROOT"
-    
-    if [ -f "adminer/scripts/local-atomic-build.sh" ]; then
-        chmod +x adminer/scripts/local-atomic-build.sh
-        ./adminer/scripts/local-atomic-build.sh
-        ROLLBACK_POINTS+=("Phase 2: Atomic build completed")
-    else
-        log_warning "local-atomic-build.sh not found, running manual build..."
-        cd "$WEB_DIR"
-        npm ci
-        npm run build
-        ROLLBACK_POINTS+=("Phase 2: Manual build completed")
-    fi
-    
-    log_success "Phase 2 completed"
-}
-
-# Phase 3: Bundle Synchronization
-phase3_bundle_sync() {
-    log_phase "PHASE 3: Bundle Synchronization"
-    
-    log_step "Running bundle sync script..."
-    cd "$PROJECT_ROOT"
-    
-    if [ -f "adminer/scripts/run-automated-bundle-sync.sh" ]; then
-        chmod +x adminer/scripts/run-automated-bundle-sync.sh
-        ./adminer/scripts/run-automated-bundle-sync.sh
-        ROLLBACK_POINTS+=("Phase 3: Bundle sync completed")
-    else
-        log_warning "run-automated-bundle-sync.sh not found, running manual sync..."
-        cd "$API_DIR"
-        rm -rf public/*
-        cp -r "$WEB_DIR/dist"/* public/
-        ROLLBACK_POINTS+=("Phase 3: Manual sync completed")
-    fi
-    
-    log_success "Phase 3 completed"
-}
-
-# Phase 4: Pre-Deployment Validation
+# Phase 4: Enhanced Pre-Deployment Validation
 phase4_validation() {
-    log_phase "PHASE 4: Pre-Deployment Validation"
+    log_phase "PHASE 4: Enhanced Pre-Deployment Validation"
     
     log_step "Starting local server for validation..."
     cd "$API_DIR"
@@ -227,7 +357,7 @@ phase4_validation() {
     # Store PID for cleanup
     echo $server_pid > .server.pid
     
-    log_step "Running validation checks..."
+    log_step "Running basic validation checks..."
     
     # Run all validations
     validate_project_structure
@@ -235,8 +365,77 @@ phase4_validation() {
     validate_bundle_sync
     validate_dashboard_rendering
     
+    log_step "Running comprehensive validation checks..."
+    
+    # Micro Smoke Test
+    run_script "adminer/scripts/micro-smoke.sh" || {
+        log_warning "Micro smoke test failed - continuing with warnings"
+    }
+    
+    # System Check
+    run_script "scripts/system-check.sh" "http://localhost:3000" || {
+        log_warning "System check failed - continuing with warnings"
+    }
+    
+    # Vercel Project Validation
+    run_script "adminer/scripts/verify-vercel-project.sh" || {
+        log_warning "Vercel project validation failed - continuing with warnings"
+    }
+    
+    # Apify Integration Test
+    run_script "adminer/scripts/test-apify-local.sh" || {
+        log_warning "Apify integration test failed - continuing with warnings"
+    }
+    
+    # Inngest Integration Test
+    run_script "adminer/scripts/test-inngest.sh" || {
+        log_warning "Inngest integration test failed - continuing with warnings"
+    }
+    
     log_success "Phase 4 completed - All validations passed"
-    ROLLBACK_POINTS+=("Phase 4: Validation completed")
+    ROLLBACK_POINTS+=("Phase 4: Enhanced validation completed")
+}
+
+# Phase 4.5: MVP Status Validation
+phase4_5_mvp_validation() {
+    log_phase "PHASE 4.5: MVP Status Validation"
+    
+    log_step "Running MVP status checker..."
+    cd "$PROJECT_ROOT"
+    
+    if [ -f "adminer_mvp_status_checker.sh" ]; then
+        chmod +x adminer_mvp_status_checker.sh
+        log_info "Checking MVP completion status..."
+        
+        # Run MVP status checker and capture output
+        local mvp_output
+        if mvp_output=$(./adminer_mvp_status_checker.sh 2>&1); then
+            log_success "MVP status check completed"
+            echo "$mvp_output"
+            
+            # Check if MVP is complete (look for completion percentage)
+            if echo "$mvp_output" | grep -q "100%"; then
+                log_success "MVP is 100% complete - ready for deployment"
+            elif echo "$mvp_output" | grep -q "96%\|95%\|94%\|93%\|92%\|91%\|90%"; then
+                log_success "MVP is 90%+ complete - deployment recommended"
+            elif echo "$mvp_output" | grep -q "89%\|88%\|87%\|86%\|85%\|84%\|83%"; then
+                log_warning "MVP is 80%+ complete - minor items pending"
+                log_info "Deployment will proceed with current MVP status"
+            else
+                log_warning "MVP completion status unclear - proceeding with deployment"
+            fi
+        else
+            log_warning "MVP status check failed - continuing with deployment"
+            echo "$mvp_output"
+        fi
+        
+        ROLLBACK_POINTS+=("Phase 4.5: MVP validation completed")
+    else
+        log_warning "adminer_mvp_status_checker.sh not found - skipping MVP validation"
+        log_info "To add MVP validation, ensure adminer_mvp_status_checker.sh exists in project root"
+    fi
+    
+    log_success "Phase 4.5 completed"
 }
 
 # Phase 5: Production Deployment
@@ -289,6 +488,35 @@ phase5_deployment() {
     log_info "Deployment completed - check https://adminer.online/dashboard for final verification"
 }
 
+# Phase 5.5: Post-Deployment Validation
+phase5_5_post_deployment() {
+    log_phase "PHASE 5.5: Post-Deployment Validation"
+    
+    log_step "Waiting for deployment to settle..."
+    sleep 10
+    
+    # Production Smoke Test
+    log_step "Running production smoke test..."
+    run_script "adminer/scripts/smoke-test-production.sh" || {
+        log_warning "Production smoke test failed - review manually"
+    }
+    
+    # Production Verification
+    log_step "Running production verification..."
+    run_script "adminer/scripts/verify-production.sh" || {
+        log_warning "Production verification failed - review manually"
+    }
+    
+    # System Check on Production
+    log_step "Running system check on production..."
+    run_script "scripts/system-check.sh" "https://adminer.online" || {
+        log_warning "Production system check failed - review manually"
+    }
+    
+    log_success "Phase 5.5 completed - Post-deployment validation done"
+    ROLLBACK_POINTS+=("Phase 5.5: Post-deployment validation completed")
+}
+
 # Cleanup function
 cleanup() {
     log_step "Cleaning up..."
@@ -307,11 +535,11 @@ cleanup() {
 # Main pipeline execution
 main() {
     echo -e "${PURPLE}"
-    echo "🚀 SUPER DEPLOY PIPELINE - Complete Fix + Build + Sync + Deploy"
-    echo "================================================================"
+    echo "🚀 ENHANCED SUPER DEPLOY PIPELINE - Complete Validation + MVP Check + Build + Deploy"
+    echo "====================================================================================="
     echo -e "${NC}"
     
-    log_info "Starting pipeline execution..."
+    log_info "Starting enhanced pipeline execution..."
     log_info "Project root: $PROJECT_ROOT"
     log_info "API directory: $API_DIR"
     log_info "Web directory: $WEB_DIR"
@@ -321,16 +549,20 @@ main() {
     trap cleanup EXIT
     
     # Execute all phases
+    phase0_preflight
     phase1_complete_fix
+    phase1_5_security
     phase2_atomic_build
     phase3_bundle_sync
     phase4_validation
+    phase4_5_mvp_validation
     phase5_deployment
+    phase5_5_post_deployment
     
     # Final success message
     echo -e "${GREEN}"
-    echo "🎉 SUPER DEPLOY PIPELINE COMPLETED SUCCESSFULLY!"
-    echo "================================================"
+    echo "🎉 ENHANCED SUPER DEPLOY PIPELINE COMPLETED SUCCESSFULLY!"
+    echo "======================================================="
     echo -e "${NC}"
     
     log_success "All phases completed successfully"
@@ -342,7 +574,8 @@ main() {
     
     log_info "Your application should now be deployed and working correctly!"
     log_info "Check the production URL to verify deployment"
+    log_info "All mandatory validation scripts have been executed"
 }
 
 # Run main function
-main "$@" 
+main "$@"

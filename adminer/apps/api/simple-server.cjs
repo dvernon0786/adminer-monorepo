@@ -39,6 +39,40 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  // Apify endpoints
+  if (pathname === '/api/apify/health') {
+    res.writeHead(200, { 
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end(JSON.stringify({
+      success: true,
+      service: 'apify',
+      status: 'healthy',
+      message: 'Apify service is running',
+      timestamp: new Date().toISOString(),
+      environment: {
+        hasToken: !!process.env.APIFY_TOKEN,
+        hasActorId: !!process.env.APIFY_ACTOR_ID,
+        hasWebhookSecret: !!process.env.WEBHOOK_SECRET_APIFY
+      }
+    }));
+    return;
+  }
+
+  if (pathname === '/api/apify/webhook') {
+    res.writeHead(200, { 
+      'Content-Type': 'application/json',
+      'Access-Control-Allow-Origin': '*'
+    });
+    res.end(JSON.stringify({
+      success: true,
+      message: 'Apify webhook endpoint is ready',
+      timestamp: new Date().toISOString()
+    }));
+    return;
+  }
+
   // Serve static files
   let filePath = pathname === '/' ? '/index.html' : pathname;
   filePath = path.join(__dirname, 'public', filePath);

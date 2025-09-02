@@ -1,16 +1,16 @@
 HTTP/2 200 
 accept-ranges: bytes
 access-control-allow-origin: *
-age: 1742
-cache-control: public, max-age=0, must-revalidate
+age: 0
+cache-control: public, immutable, max-age=31536000
 content-disposition: inline; filename="index-Bpstk4FJ.js"
 content-type: application/javascript; charset=utf-8
-date: Mon, 01 Sep 2025 22:17:13 GMT
+date: Tue, 02 Sep 2025 22:34:04 GMT
 etag: "679a2160a5090410616295e0fe4a5f4d"
-last-modified: Mon, 01 Sep 2025 21:48:11 GMT
+last-modified: Tue, 02 Sep 2025 22:34:03 GMT
 server: Vercel
 strict-transport-security: max-age=63072000
 x-vercel-cache: HIT
-x-vercel-id: bom1::snnj9-1756765033695-24cdbdd13abe
+x-vercel-id: bom1::8hhh6-1756852444206-78b62b4d17c2
 content-length: 1078831
 

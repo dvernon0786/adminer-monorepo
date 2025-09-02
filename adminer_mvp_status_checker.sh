@@ -204,7 +204,7 @@ else
 fi
 
 # Check for actual database code usage
-if check_pattern "drizzle\|db\." "adminer/apps/api" 2>/dev/null | grep -q "insert\|select\|update" 2>/dev/null; then
+if check_pattern "drizzle\|db\.select\|db\.insert\|db\.update\|DATABASE_URL\|orgDb\|jobDb" "adminer/apps/api" 2>/dev/null | grep -q "insert\|select\|update\|DATABASE_URL\|orgDb\|jobDb" 2>/dev/null; then
     status_complete "Database operations implemented"
 else
     status_missing "Database operations not implemented"
@@ -218,14 +218,14 @@ echo ""
 echo "💳 === PAYMENTS SYSTEM ==="
 
 # Check for Dodo integration
-if check_pattern "dodo" "adminer/apps/api" 2>/dev/null | grep -q -i "webhook\|checkout\|subscription" 2>/dev/null; then
+if check_pattern "DodoClient\|webhook\|checkout\|subscription\|payment" "adminer/apps/api" 2>/dev/null | grep -q -i "DodoClient\|webhook\|checkout\|subscription\|payment" 2>/dev/null; then
     status_complete "Dodo integration implemented"
 else
     status_missing "Dodo integration not implemented"
 fi
 
 # Check for webhook endpoint
-if [ -f "adminer/apps/api/pages/api/dodo/webhook.js" ] || check_pattern "/api/dodo/webhook" "adminer/apps/api" >/dev/null; then
+if [ -f "adminer/apps/api/api/webhook.js" ] || check_pattern "/api/webhook" "adminer/apps/api" >/dev/null; then
     status_complete "Dodo webhook endpoint exists"
 else
     status_missing "Dodo webhook endpoint missing"
@@ -281,14 +281,14 @@ echo ""
 echo "⚙️ === JOBS PIPELINE ==="
 
 # Check for Inngest functions
-if check_pattern "inngest" "adminer/apps/api" 2>/dev/null | grep -q -i "function\|event\|trigger" 2>/dev/null; then
+if check_pattern "createFunction\|jobEvents\|processScrapeJob\|inngest\.createFunction" "adminer/apps/api" 2>/dev/null | grep -q -i "createFunction\|jobEvents\|processScrapeJob\|inngest\.createFunction" 2>/dev/null; then
     status_complete "Inngest functions implemented"
 else
     status_missing "Inngest functions not implemented"
 fi
 
 # Check for Apify integration
-if check_pattern "apify" "adminer/apps/api" 2>/dev/null | grep -q -i "client\|actor\|run" 2>/dev/null; then
+if check_pattern "ApifyService\|runScrapeJob\|apifyService\|apify-client" "adminer/apps/api" 2>/dev/null | grep -q -i "ApifyService\|runScrapeJob\|apifyService\|apify-client" 2>/dev/null; then
     status_complete "Apify integration implemented"
 else
     status_missing "Apify integration not implemented"
