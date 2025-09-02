@@ -30473,7 +30473,7 @@ function App() {
   ] });
 }
 console.log("MAIN.TSX: Starting React app initialization...");
-const PUBLISHABLE_KEY = "pk_live_Y2xlcmsuYWRtaW5lci5vbmxpbmUk";
+const PUBLISHABLE_KEY = "pk_live_YOUR_PRODUCTION_KEY_HERE";
 console.log("MAIN.TSX: Clerk key:", "Present");
 console.log("MAIN.TSX: Getting root element...");
 const rootElement = document.getElementById("root");

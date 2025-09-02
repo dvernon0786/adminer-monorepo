@@ -18,7 +18,7 @@ echo "// Build timestamp: $(date +%s)" >> src/main.tsx
 
 # Step 3: Build with proper environment
 echo "3️⃣ Building web app with environment variables..."
-VITE_CLERK_PUBLISHABLE_KEY="${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_Y2xlcmsuYWRtaW5lci5vbmxpbmUk}" npm run build
+VITE_CLERK_PUBLISHABLE_KEY="${VITE_CLERK_PUBLISHABLE_KEY:-pk_live_YOUR_PRODUCTION_KEY_HERE}" npm run build
 
 # Step 4: Verify build output
 echo "4️⃣ Verifying build output..."

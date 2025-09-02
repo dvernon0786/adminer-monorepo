@@ -1,0 +1,25 @@
+{
+  "name": "adminer-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Using pre-built files'",
+    "build": "echo 'Using pre-built files'",
+    "start": "echo 'Using pre-built files'",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "drizzle-kit migrate",
+    "db:studio": "drizzle-kit studio"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^0.10.4",
+    "dotenv": "^17.2.1",
+    "drizzle-orm": "^0.36.4",
+    "postgres": "^3.4.7"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "devDependencies": {
+    "drizzle-kit": "^0.30.6"
+  }
+}

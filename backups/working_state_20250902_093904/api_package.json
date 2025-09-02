@@ -1,0 +1,14 @@
+{
+  "name": "adminer-api",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "echo 'Using pre-built files'",
+    "build": "echo 'Using pre-built files'",
+    "start": "echo 'Using pre-built files'"
+  },
+  "dependencies": {},
+  "engines": {
+    "node": ">=18.0.0"
+  }
+}

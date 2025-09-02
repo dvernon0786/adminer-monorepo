@@ -1,0 +1,63 @@
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/clerk-react";
+import { useLocation } from "react-router-dom";
+import { isProtectedPath } from "@/lib/isProtectedPath";
+
+export type Plan = "free" | "pro" | "enterprise";
+export type QuotaStatus = {
+  plan: Plan;
+  used: number;
+  limit: number;
+  remaining: number;
+  upgradeUrl?: string;
+};
+
+export function useQuota() {
+  const { isSignedIn, getToken } = useAuth();
+  const { pathname } = useLocation();
+  const [data, setData] = useState<null | { used: number; limit: number; percentage: number }>(null);
+  const [error, setError] = useState<null | string>(null);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    // Gate by auth + protected route
+    if (!isSignedIn || !isProtectedPath(pathname)) {
+      setData(null);
+      setError(null);
+      setLoading(false);
+      return;
+    }
+
+    let cancelled = false;
+    (async () => {
+      try {
+        setLoading(true);
+        
+        // Mock response for static deployment - API functions removed
+        // TODO: Replace with external API service or re-implement serverless functions later
+        
+        // Simulate network delay for realistic behavior
+        await new Promise(resolve => setTimeout(resolve, 200));
+        
+        if (!cancelled) {
+          // Return mock quota data with realistic values
+          setData({
+            used: 45,
+            limit: 100,
+            percentage: 45
+          });
+        }
+      } catch (e: any) {
+        if (!cancelled) setError(e?.message ?? "Failed to fetch quota");
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+
+    return () => {
+      cancelled = false;
+    };
+  }, [isSignedIn, pathname, getToken]);
+
+  return { data, error, loading };
+} 
