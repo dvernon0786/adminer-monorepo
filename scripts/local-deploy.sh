@@ -6,7 +6,7 @@ echo "🚀 LOCAL DEPLOYMENT WITH ATOMIC BUILD"
 # Step 1: Run atomic build
 echo "🔒 Running atomic build..."
 cd adminer/apps/api
-npm run build:atomic
+npm run build
 
 # Step 2: Deploy to Vercel
 echo "🚀 Deploying to Vercel..."
