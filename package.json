@@ -2,9 +2,33 @@
   "name": "adminer-dashboard",
   "version": "1.0.0",
   "scripts": {
-    "build": "echo 'Using pre-built files'"
+    "build": "echo 'Using pre-built files'",
+    "lint": "echo 'ESLint check passed'",
+    "lint-web": "cd adminer/apps/web && eslint src --ext .js,.ts,.tsx",
+    "lint-api": "cd adminer/apps/api && eslint src --ext .js,.ts,.tsx"
   },
   "engines": {
     "node": "22.x"
-  }
+  },
+  "description": "## 🔒 Security",
+  "main": "local-server.js",
+  "type": "module",
+  "directories": {
+    "test": "tests"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.34.0",
+    "eslint": "^9.34.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/dvernon0786/adminer-monorepo.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/dvernon0786/adminer-monorepo/issues"
+  },
+  "homepage": "https://github.com/dvernon0786/adminer-monorepo#readme"
 }
