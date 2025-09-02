@@ -10,7 +10,7 @@ export function useStartJob() {
     setError(null);
     
     try {
-      const response = await fetch("/api/jobs/start", {
+      const response = await fetch("/api/jobs", {
         method: "POST",
         headers: { "content-type": "application/json" },
         credentials: "include",

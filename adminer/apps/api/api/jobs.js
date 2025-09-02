@@ -13,13 +13,17 @@ export default async function handler(req, res) {
   try {
     if (req.method === 'POST') {
       // Create new job
-      const { type, input } = req.body;
+      const { type, input, keyword, ...additionalParams } = req.body;
       const orgId = req.headers['x-org-id'] || 'test-org';
       
-      if (!type || !input) {
+      // Handle both old format (type, input) and new format (keyword, additionalParams)
+      const jobType = type || 'scrape';
+      const jobInput = input || { keyword, ...additionalParams };
+      
+      if (!jobInput || (!jobInput.keyword && !jobInput.url)) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: type, input'
+          error: 'Missing required fields: keyword or url'
         });
       }
       
@@ -30,7 +34,7 @@ export default async function handler(req, res) {
         success: true,
         data: {
           jobId,
-          type,
+          type: jobType,
           status: 'created',
           createdAt: new Date().toISOString()
         }

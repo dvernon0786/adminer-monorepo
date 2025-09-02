@@ -14,14 +14,26 @@ export default function StartJobForm() {
     if (typeof limit !== "number" || limit < 1) return;
 
     try {
-      const additionalParams = input.trim() ? JSON.parse(input) : {};
+      // Parse additional parameters with better error handling
+      let additionalParams = {};
+      if (input.trim()) {
+        try {
+          additionalParams = JSON.parse(input);
+        } catch (parseError) {
+          console.error("Invalid JSON input:", parseError);
+          // Show user-friendly error for JSON parse issues
+          alert("Invalid JSON format in Additional Parameters. Please check your input and try again.");
+          return;
+        }
+      }
+      
       await start(keyword.trim(), { ...additionalParams, limit });
       setKeyword("");
       setInput("");
       setLimit("");
-    } catch (parseError) {
-      console.error("Invalid JSON input:", parseError);
-      // Don't clear form on JSON parse error
+    } catch (error) {
+      console.error("Job creation error:", error);
+      // Error handling is already done in the useStartJob hook
     }
   };
 
