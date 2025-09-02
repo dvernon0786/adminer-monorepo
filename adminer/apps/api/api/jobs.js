@@ -20,10 +20,10 @@ export default async function handler(req, res) {
       const jobType = type || 'scrape';
       const jobInput = input || { keyword, ...additionalParams };
       
-      if (!jobInput || (!jobInput.keyword && !jobInput.url)) {
+      if (!jobInput || (!jobInput.keyword && !jobInput.url && !type)) {
         return res.status(400).json({
           success: false,
-          error: 'Missing required fields: keyword or url'
+          error: 'Missing required fields: keyword, url, or type'
         });
       }
       
