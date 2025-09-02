@@ -5,17 +5,14 @@
   "scripts": {
     "dev": "echo 'Using pre-built files'",
     "build": "echo 'Using pre-built files'",
-    "start": "echo 'Using pre-built files'",
-    "test:payments": "node test-payment-system.js",
-    "test:payments:full": "node test-payment-system-comprehensive.cjs"
-  },
-  "engines": {
-    "node": ">=18.0.0"
+    "start": "echo 'Using pre-built files'"
   },
   "dependencies": {
     "@neondatabase/serverless": "^1.0.1",
     "dotenv": "^17.2.1",
     "drizzle-orm": "^0.44.5"
   },
-  "devDependencies": {}
+  "engines": {
+    "node": ">=18.0.0"
+  }
 }
