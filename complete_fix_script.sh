@@ -13,7 +13,7 @@ rm -rf dist node_modules/.cache 2>/dev/null || true
 
 # Step 2: Fix Web App Dependencies and Build
 echo "2️⃣ Fixing web app dependencies..."
-npm ci
+npm install
 echo "// Build timestamp: $(date +%s)" >> src/main.tsx
 
 # Step 3: Build with proper environment
