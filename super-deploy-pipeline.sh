@@ -169,7 +169,7 @@ cd "$WEB_DIR"
 
 # Clean previous build
 log "Cleaning previous build artifacts..."
-rm -rf dist node_modules package-lock.json
+rm -rf dist node_modules
 success "Previous build cleaned"
 
 # Fresh install and build
