@@ -1,6 +1,6 @@
 {
   "version": 2,
-  "buildCommand": "npm run build || echo 'No build script found'",
+  "buildCommand": "cd ../web && npm install && npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
   "outputDirectory": "public",
   "functions": {
     "pages/api/*.js": {
@@ -13,7 +13,7 @@
       "destination": "/api/$1"
     },
     {
-      "source": "/(.*)",
+      "source": "/((?!api|assets|_next|favicon.ico).*)",
       "destination": "/index.html"
     }
   ]
