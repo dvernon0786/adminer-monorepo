@@ -1,35 +1,19 @@
 {
   "version": 2,
-  "framework": null,
-  "buildCommand": "cd ../web && npm install && npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/",
+  "buildCommand": "npm run build || echo 'No build script found'",
   "outputDirectory": "public",
-  "headers": [
-    {
-      "source": "/(.*).html",
-      "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "no-cache, no-store, must-revalidate"
-        }
-      ]
-    },
-    {
-      "source": "/assets/(.*)",
-      "headers": [
-        {
-          "key": "Cache-Control", 
-          "value": "public, immutable, max-age=31536000"
-        }
-      ]
+  "functions": {
+    "pages/api/*.js": {
+      "runtime": "nodejs18.x"
     }
-  ],
+  },
   "rewrites": [
     {
       "source": "/api/(.*)",
       "destination": "/api/$1"
     },
     {
-      "source": "/((?!api|assets|_next|favicon.ico).*)",
+      "source": "/(.*)",
       "destination": "/index.html"
     }
   ]
