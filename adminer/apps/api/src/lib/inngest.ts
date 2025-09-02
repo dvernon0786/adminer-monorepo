@@ -1,5 +1,6 @@
 import { Inngest } from 'inngest';
 import { jobDb, orgDb } from './db.js';
+import { apifyService, ScrapeInput } from './apify.js';
 
 // Initialize Inngest client
 export const inngest = new Inngest({ 
@@ -113,29 +114,124 @@ export const jobEvents = {
       
       return { success: true, orgId, plan, quotaLimit };
     }
+  ),
+
+  // New Apify webhook event handlers
+  apifyRunCompleted: inngest.createFunction(
+    { id: 'apify-run-completed' },
+    { event: 'apify/run.completed' },
+    async ({ event, step }) => {
+      const { runId, actorId, defaultDatasetId, stats } = event.data;
+      
+      console.log('Processing Apify run completion:', { runId, actorId, defaultDatasetId });
+      
+      // Get dataset items
+      const datasetItems = await step.run('get-dataset-items', async () => {
+        return await apifyService.getRunResults(runId, 100);
+      });
+      
+      // Update job status if we can find the associated job
+      await step.run('update-job-status', async () => {
+        const jobs = await jobDb.findByStatus('running');
+        for (const job of jobs) {
+          if (job.input?.runId === runId) {
+            return await jobDb.updateStatus(job.id, 'completed', {
+              runId,
+              defaultDatasetId,
+              stats,
+              data: datasetItems,
+              completedAt: new Date().toISOString()
+            });
+          }
+        }
+        return { jobUpdated: false };
+      });
+      
+      return { success: true, runId, dataCount: datasetItems.length };
+    }
+  ),
+
+  apifyRunFailed: inngest.createFunction(
+    { id: 'apify-run-failed' },
+    { event: 'apify/run.failed' },
+    async ({ event, step }) => {
+      const { runId, actorId, errorMessage, stats } = event.data;
+      
+      console.log('Processing Apify run failure:', { runId, actorId, errorMessage });
+      
+      // Update job status
+      await step.run('update-job-status', async () => {
+        const jobs = await jobDb.findByStatus('running');
+        for (const job of jobs) {
+          if (job.input?.runId === runId) {
+            return await jobDb.updateStatus(job.id, 'failed', {
+              runId,
+              error: errorMessage,
+              stats,
+              failedAt: new Date().toISOString()
+            });
+          }
+        }
+        return { jobUpdated: false };
+      });
+      
+      return { success: true, runId, error: errorMessage };
+    }
   )
 };
 
 // Job processing functions
 async function processScrapeJob(input: any) {
-  console.log('Processing scrape job:', input);
+  console.log('Processing scrape job with real Apify integration:', input);
   
-  // Simulate scraping work
-  await new Promise(resolve => setTimeout(resolve, 2000));
-  
-  // In a real implementation, this would:
-  // 1. Use Apify to scrape the target URL
-  // 2. Process and clean the data
-  // 3. Store results
-  
-  return {
-    type: 'scrape',
-    url: input.url,
-    pagesScraped: Math.floor(Math.random() * 100) + 1,
-    dataExtracted: Math.floor(Math.random() * 1000) + 100,
-    processingTime: 2000,
-    status: 'completed'
-  };
+  try {
+    // Validate input
+    if (!input.keyword || !input.limit) {
+      throw new Error('Missing required fields: keyword, limit');
+    }
+
+    // Prepare Apify input
+    const scrapeInput: ScrapeInput = {
+      keyword: input.keyword,
+      limit: Math.min(input.limit, 100), // Cap at 100 results
+      country: input.country || 'US',
+      language: input.language || 'en'
+    };
+
+    console.log('Starting Apify scrape with input:', scrapeInput);
+
+    // Run Apify scraping job
+    const result = await apifyService.runScrapeJob(scrapeInput);
+
+    console.log('Apify scrape completed:', {
+      status: result.status,
+      dataExtracted: result.dataExtracted,
+      processingTime: result.processingTime
+    });
+
+    // Store raw data in database if successful
+    if (result.status === 'completed' && result.data.length > 0) {
+      console.log('Storing scraped data:', result.data.length, 'items');
+      // The data is already in the result, ready for analysis
+    }
+
+    return result;
+
+  } catch (error) {
+    console.error('Scrape job failed:', error);
+    
+    return {
+      type: 'scrape',
+      keyword: input.keyword || 'unknown',
+      limit: input.limit || 0,
+      pagesScraped: 0,
+      dataExtracted: 0,
+      processingTime: 0,
+      status: 'failed',
+      data: [],
+      error: error instanceof Error ? error.message : 'Unknown error'
+    };
+  }
 }
 
 async function processAnalyzeJob(input: any) {

@@ -6,6 +6,8 @@ export default inngest.serve({
   functions: [
     jobEvents.jobCreated,
     jobEvents.quotaExceeded,
-    jobEvents.subscriptionUpdated
+    jobEvents.subscriptionUpdated,
+    jobEvents.apifyRunCompleted,
+    jobEvents.apifyRunFailed
   ]
 });
