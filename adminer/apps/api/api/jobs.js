@@ -43,7 +43,7 @@ export default async function handler(req, res) {
         let inngestTriggered = false;
         try {
           // Dynamic import for Inngest client - adjust path as needed based on your setup
-          const inngestModule = await import('../src/lib/inngest.js');
+          const inngestModule = await import('../src/lib/inngest');
           const inngest = inngestModule.inngest || inngestModule.default?.inngest;
           
           if (inngest && inngest.send) {
