@@ -1,46 +1,9 @@
 {
   "version": 2,
   "framework": null,
-  "buildCommand": "echo 'Using pre-built files'", 
-  "outputDirectory": "public",
   "functions": {
     "api/*.js": {
       "runtime": "@vercel/node@3.1.5"
     }
-  },
-  "routes": [
-    {
-      "src": "/api/(.*)",
-      "dest": "/api/$1"
-    },
-    {
-      "src": "/assets/index-DzNHsRAh\\.js",
-      "dest": "/assets/index-DzNHsRAh.js",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "/assets/(.*\\.js)",
-      "dest": "/assets/$1",
-      "headers": {
-        "Content-Type": "application/javascript; charset=utf-8"
-      }
-    },
-    {
-      "src": "/assets/(.*\\.css)",
-      "dest": "/assets/$1", 
-      "headers": {
-        "Content-Type": "text/css; charset=utf-8"
-      }
-    },
-    {
-      "src": "/assets/(.*)",
-      "dest": "/assets/$1"
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/index.html"
-    }
-  ]
+  }
 }
