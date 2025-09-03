@@ -1,5 +1,5 @@
 import { serve } from 'inngest/next';
-import { inngest, jobEvents } from '../src/lib/inngest.js';
+import { inngest, jobEvents } from '../src/lib/inngest.ts';
 
 // Create the proper Inngest serve endpoint
 export const { GET, POST, PUT } = serve({

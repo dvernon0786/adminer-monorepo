@@ -1,6 +1,6 @@
 import { Inngest } from 'inngest';
-import { jobDb, orgDb } from './db.js';
-import { apifyService, ScrapeInput } from './apify.js';
+import { jobDb, orgDb } from './db.ts';
+import { apifyService, ScrapeInput } from './apify.ts';
 
 // Initialize Inngest client
 export const inngest = new Inngest({ 
