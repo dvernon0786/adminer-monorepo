@@ -5,22 +5,10 @@
   "scripts": {
     "dev": "echo 'Using pre-built files'",
     "build": "echo 'Using pre-built files'",
-    "start": "echo 'Using pre-built files'",
-    "validate-quick": "test -d public && test -f public/index.html && test -d public/assets && echo '✅ Public directory exists' || (echo '❌ Public directory missing - running build' && npm run build-test)",
-    "build-test": "cd ../web && npm install && npm run build && cd ../api && rm -rf public && mkdir -p public && cp -r ../web/dist/* public/ && echo '✅ Build test successful'"
+    "start": "echo 'Using pre-built files'"
   },
-  "dependencies": {
-    "@neondatabase/serverless": "^1.0.1",
-    "apify-client": "^2.16.0",
-    "dotenv": "^17.2.2",
-    "drizzle-orm": "^0.44.5",
-    "inngest": "^3.40.2"
-  },
+  "dependencies": {},
   "engines": {
     "node": ">=18.0.0"
-  },
-  "devDependencies": {
-    "@eslint/js": "^9.34.0",
-    "eslint": "^9.34.0"
   }
 }

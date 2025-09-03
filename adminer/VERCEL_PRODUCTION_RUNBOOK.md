@@ -119,7 +119,7 @@ INTERNAL_ENDPOINTS_ENABLED=false  # Production security
 ### **Apify Webhook**
 - **URL**: `https://your-domain.com/api/apify/webhook`
 - **Method**: POST / JSON
-- **Events**: `run finished` → emit `apify/run.completed` to Inngest
+- **Events**: `run finished` → emit `                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           apify/run.completed` to Inngest
 - **Security**: Add shared secret header `X-APIFY-SECRET=<random>`, store as `APIFY_WEBHOOK_SECRET` and verify
 
 ### **Inngest Handler**
