@@ -1,5 +1,8 @@
 {
   "version": 2,
+  "framework": null,
+  "buildCommand": "echo 'Using pre-built files'",
+  "outputDirectory": "public",
   "functions": {
     "api/*.js": {
       "runtime": "@vercel/node@3.1.5"
