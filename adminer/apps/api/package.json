@@ -4,7 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "echo 'Using pre-built files'",
-    "build": "echo 'Using pre-built files'",
+    "build": "echo 'Using pre-built files' && test -d public && echo 'Public directory exists' || echo 'Public directory missing'",
     "start": "echo 'Using pre-built files'"
   },
   "dependencies": {},
