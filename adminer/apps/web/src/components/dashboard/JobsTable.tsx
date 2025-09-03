@@ -25,7 +25,7 @@ export default function JobsTable() {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    fetch("/api/jobs/list", { credentials: "include" })
+    fetch("/api/jobs", { credentials: "include" })
       .then(r => r.json())
       .then(d => {
         setRows(d.items || []);
