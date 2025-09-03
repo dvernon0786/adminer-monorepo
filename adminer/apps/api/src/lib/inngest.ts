@@ -1,6 +1,8 @@
 import { Inngest } from 'inngest';
-import { jobDb, orgDb } from './db.ts';
+import { jobDb, orgDb, db } from './db.ts';
 import { apifyService, ScrapeInput } from './apify.ts';
+import { jobs } from '../db/schema.ts';
+import { eq } from 'drizzle-orm';
 
 // Initialize Inngest client
 export const inngest = new Inngest({ 
@@ -212,7 +214,41 @@ async function processScrapeJob(input: any) {
     // Store raw data in database if successful
     if (result.status === 'completed' && result.data.length > 0) {
       console.log('Storing scraped data:', result.data.length, 'items');
-      // The data is already in the result, ready for analysis
+      
+      try {
+        // Store raw data in Neon database
+        await db.update(jobs)
+          .set({
+            status: 'completed',
+            output: {
+              runId: result.runId || 'unknown',
+              defaultDatasetId: result.defaultDatasetId || 'unknown',
+              stats: {
+                totalItems: result.data.length,
+                processingTime: result.processingTime || 0,
+                pagesScraped: result.pagesScraped || 1,
+                dataExtracted: result.dataExtracted || result.data.length
+              },
+              data: result.data, // Raw Apify dataset items stored here
+              completedAt: new Date().toISOString()
+            },
+            completed_at: new Date()
+          })
+          .where(eq(jobs.id, jobId));
+          
+        console.log('Raw Apify data stored in database for job:', jobId);
+      } catch (dbError) {
+        console.error('Database storage error:', dbError);
+        
+        // Fallback: mark job as completed with error
+        await db.update(jobs)
+          .set({
+            status: 'completed',
+            error: 'Data retrieved but storage failed: ' + dbError.message,
+            completed_at: new Date()
+          })
+          .where(eq(jobs.id, jobId));
+      }
     }
 
     return result;
