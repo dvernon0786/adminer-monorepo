@@ -1,11 +1,11 @@
-import { ApifyApi } from 'apify-client';
+import { ApifyClient } from 'apify-client';
 import dotenv from 'dotenv';
 
 // Load environment variables
 dotenv.config();
 
 // Initialize Apify client
-const apifyClient = new ApifyApi({
+const apifyClient = new ApifyClient({
   token: process.env.APIFY_TOKEN || process.env.APIFY_API_TOKEN,
 });
 
@@ -26,10 +26,12 @@ export interface ScrapeResult {
   status: 'completed' | 'failed';
   data: any[];
   error?: string;
+  runId?: string;
+  defaultDatasetId?: string;
 }
 
 export class ApifyService {
-  private client: ApifyApi;
+  private client: ApifyClient;
   private defaultActorId: string;
 
   constructor() {
@@ -83,7 +85,7 @@ export class ApifyService {
       // Get dataset items
       const datasetItems = await this.client.dataset(response.defaultDatasetId).listItems({
         limit: input.limit,
-        format: 'json'
+
       });
 
       const processingTime = Date.now() - startTime;
@@ -182,7 +184,7 @@ export class ApifyService {
       // Get dataset items
       const datasetItems = await this.client.dataset(run.defaultDatasetId).listItems({
         limit,
-        format: 'json'
+
       });
 
       return datasetItems.items;

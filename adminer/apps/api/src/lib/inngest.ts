@@ -1,7 +1,7 @@
 import { Inngest } from 'inngest';
-import { jobDb, orgDb, db } from './db.ts';
-import { apifyService, ScrapeInput } from './apify.ts';
-import { jobs } from '../db/schema.ts';
+import { jobDb, orgDb, db } from './db';
+import { apifyService, ScrapeInput } from './apify';
+import { jobs } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 // Initialize Inngest client
@@ -134,9 +134,9 @@ export const jobEvents = {
       
       // Update job status if we can find the associated job
       await step.run('update-job-status', async () => {
-        const jobs = await jobDb.findByStatus('running');
-        for (const job of jobs) {
-          if (job.input?.runId === runId) {
+        const runningJobs = await jobDb.findByStatus('running');
+        for (const job of runningJobs) {
+          if ((job.input as any)?.runId === runId) {
             return await jobDb.updateStatus(job.id, 'completed', {
               runId,
               defaultDatasetId,
@@ -163,9 +163,9 @@ export const jobEvents = {
       
       // Update job status
       await step.run('update-job-status', async () => {
-        const jobs = await jobDb.findByStatus('running');
-        for (const job of jobs) {
-          if (job.input?.runId === runId) {
+        const runningJobs = await jobDb.findByStatus('running');
+        for (const job of runningJobs) {
+          if ((job.input as any)?.runId === runId) {
             return await jobDb.updateStatus(job.id, 'failed', {
               runId,
               error: errorMessage,
@@ -185,6 +185,9 @@ export const jobEvents = {
 // Job processing functions
 async function processScrapeJob(input: any) {
   console.log('Processing scrape job with real Apify integration:', input);
+  
+  // Extract jobId from input
+  const { jobId } = input;
   
   try {
     // Validate input
@@ -232,7 +235,7 @@ async function processScrapeJob(input: any) {
               data: result.data, // Raw Apify dataset items stored here
               completedAt: new Date().toISOString()
             },
-            completed_at: new Date()
+            completedAt: new Date()
           })
           .where(eq(jobs.id, jobId));
           
@@ -245,7 +248,7 @@ async function processScrapeJob(input: any) {
           .set({
             status: 'completed',
             error: 'Data retrieved but storage failed: ' + dbError.message,
-            completed_at: new Date()
+            completedAt: new Date()
           })
           .where(eq(jobs.id, jobId));
       }

@@ -1,5 +1,6 @@
 import { neon } from '@neondatabase/serverless';
 import { drizzle } from 'drizzle-orm/neon-http';
+import { eq, desc } from 'drizzle-orm';
 import * as schema from '../db/schema.js';
 import dotenv from 'dotenv';
 
@@ -137,6 +138,16 @@ export const jobDb = {
       .limit(limit);
     return result;
   },
+
+  // Get jobs by status
+  async findByStatus(status: string) {
+    const result = await db
+      .select()
+      .from(schema.jobs)
+      .where(eq(schema.jobs.status, status))
+      .orderBy(desc(schema.jobs.createdAt));
+    return result;
+  },
 };
 
 // Database operations for subscriptions
@@ -203,6 +214,3 @@ export const webhookDb = {
     return result[0];
   },
 };
-
-// Import required Drizzle operators
-import { eq, desc } from 'drizzle-orm';
