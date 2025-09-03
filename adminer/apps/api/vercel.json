@@ -14,8 +14,16 @@
       "destination": "/api/$1"
     },
     {
+      "source": "/assets/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2|ttf|otf|eot))$",
+      "destination": "/public/assets/$1"
+    },
+    {
+      "source": "/(.*\\.(js|css|png|jpg|jpeg|gif|ico|svg|woff2|ttf|otf|eot))$",
+      "destination": "/public/$1"
+    },
+    {
       "source": "/(.*)",
-      "destination": "/index.html"
+      "destination": "/public/index.html"
     }
   ],
   "headers": [
