@@ -3,7 +3,7 @@ const isDevelopment = import.meta.env.MODE === 'development';
 
 export const API_BASE_URL = isDevelopment 
   ? 'http://localhost:3000'
-  : 'https://adminer-dksamra6j-damiens-projects-98ddf0e8.vercel.app';
+  : import.meta.env.VITE_API_URL || 'https://adminer-api.vercel.app';
 
 // API endpoints
 export const API_ENDPOINTS = {
