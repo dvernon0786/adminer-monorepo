@@ -46,6 +46,8 @@ export default defineConfig({
   // Environment variable handling
   define: {
     __BUILD_TIMESTAMP__: JSON.stringify(Date.now()),
-    __VITE_CLERK_PUBLISHABLE_KEY__: JSON.stringify(process.env.VITE_CLERK_PUBLISHABLE_KEY)
+    __VITE_CLERK_PUBLISHABLE_KEY__: JSON.stringify(
+      process.env.VITE_CLERK_PUBLISHABLE_KEY || process.env.CLERK_PUBLISHABLE_KEY
+    )
   }
 }) 
