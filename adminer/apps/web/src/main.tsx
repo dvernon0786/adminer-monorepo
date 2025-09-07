@@ -36,6 +36,14 @@ root.render(
       fallbackRedirectUrl="/dashboard"
       signInUrl="/sign-in"
       signUpUrl="/sign-up"
+      appearance={{
+        elements: {
+          loading: { display: "none" },
+          loadingText: { display: "none" },
+          loadingSpinner: { display: "none" },
+          loadingScreen: { display: "none" }
+        }
+      }}
     >
       <App />
     </ClerkProvider>

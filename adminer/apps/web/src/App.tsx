@@ -32,14 +32,11 @@ function App() {
   
   console.log("APP.TSX: Auth loaded:", isLoaded);
   
+  // Authentication happens silently in background
+  // No loading states shown to user
   if (!isLoaded) {
-    console.log("APP.TSX: Showing loading state...");
-    return (
-      <div style={{ padding: '20px', textAlign: 'center' }}>
-        <h1>Loading...</h1>
-        <p>Initializing application...</p>
-      </div>
-    );
+    console.log("APP.TSX: Auth loading in background...");
+    return null; // Show nothing while auth loads
   }
   
   console.log("APP.TSX: Rendering Router with routes...");
