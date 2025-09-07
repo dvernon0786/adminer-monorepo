@@ -16,8 +16,7 @@ export default function handler(req, res) {
       NODE_ENV: process.env.NODE_ENV,
       hasDatabaseUrl: !!process.env.DATABASE_URL,
       hasApifyToken: !!process.env.APIFY_TOKEN,
-      hasApifyActorId: !!process.env.APIFY_ACTOR_ID,
-      hasWebhookSecret: !!process.env.WEBHOOK_SECRET_APIFY
+      hasApifyActorId: !!process.env.APIFY_ACTOR_ID
     }
   });
 }

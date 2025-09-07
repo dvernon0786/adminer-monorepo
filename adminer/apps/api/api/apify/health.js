@@ -36,8 +36,7 @@ export default async function handler(req, res) {
       timestamp: new Date().toISOString(),
       environment: {
         hasToken: !!(process.env.APIFY_TOKEN || process.env.APIFY_API_TOKEN),
-        hasActorId: !!process.env.APIFY_ACTOR_ID,
-        hasWebhookSecret: !!(process.env.WEBHOOK_SECRET_APIFY || process.env.APIFY_WEBHOOK_SECRET)
+        hasActorId: !!process.env.APIFY_ACTOR_ID
       }
     });
 

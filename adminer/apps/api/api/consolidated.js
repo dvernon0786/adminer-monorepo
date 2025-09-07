@@ -60,13 +60,12 @@ export default function handler(req, res) {
     // Environment variables check
     res.status(200).json({
       success: true,
-      environment: {
-        hasDatabaseUrl: !!process.env.DATABASE_URL,
-        hasApifyToken: !!process.env.APIFY_TOKEN,
-        hasApifyActorId: !!process.env.APIFY_ACTOR_ID,
-        hasWebhookSecret: !!process.env.WEBHOOK_SECRET_APIFY,
-        nodeEnv: process.env.NODE_ENV
-      },
+        environment: {
+          hasDatabaseUrl: !!process.env.DATABASE_URL,
+          hasApifyToken: !!process.env.APIFY_TOKEN,
+          hasApifyActorId: !!process.env.APIFY_ACTOR_ID,
+          nodeEnv: process.env.NODE_ENV
+        },
       timestamp: new Date().toISOString()
     });
   } else {
