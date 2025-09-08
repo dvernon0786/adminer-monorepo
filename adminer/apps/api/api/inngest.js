@@ -32,3 +32,4 @@ export default async function handler(req, res) {
     appName: "Adminer Job Pipeline"
   });
 }
+// Manual deployment trigger - Mon Sep  8 05:57:04 PM AEST 2025
