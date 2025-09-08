@@ -33,3 +33,4 @@ export default async function handler(req, res) {
   });
 }
 // Manual deployment trigger - Mon Sep  8 05:57:04 PM AEST 2025
+// Root directory fix test - Mon Sep  8 06:03:07 PM AEST 2025
