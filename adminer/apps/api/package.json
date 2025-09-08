@@ -2,10 +2,12 @@
   "name": "@adminer/api",
   "version": "0.1.0",
   "type": "module",
+  "engines": {
+    "node": "18.x"
+  },
   "scripts": {
     "dev": "vercel dev",
-    "build": "echo 'Using pre-built files'",
-    "validate-quick": "node -c api/inngest.js"
+    "build": "echo 'Using pre-built files'"
   },
   "dependencies": {
     "inngest": "^3.22.12",
@@ -13,11 +15,5 @@
     "@neondatabase/serverless": "^0.9.5",
     "apify-client": "^2.9.3",
     "dotenv": "^16.4.5"
-  },
-  "devDependencies": {
-    "@types/node": "^22.5.4"
-  },
-  "engines": {
-    "node": "18.x"
   }
 }
