@@ -1,13 +1,13 @@
-import { Inngest } from 'inngest';
+const { Inngest } = require('inngest');
 
 // Create a client to send and receive events
-export const inngest = new Inngest({ 
+const inngest = new Inngest({ 
   id: 'adminer-jobs',
   name: 'Adminer Job Pipeline'
 });
 
 // Job Created Handler
-export const jobCreated = inngest.createFunction(
+const jobCreated = inngest.createFunction(
   { id: 'job-created' },
   { event: 'job/created' },
   async ({ event, step }) => {
@@ -36,7 +36,7 @@ export const jobCreated = inngest.createFunction(
 );
 
 // Quota Exceeded Handler
-export const quotaExceeded = inngest.createFunction(
+const quotaExceeded = inngest.createFunction(
   { id: 'quota-exceeded' },
   { event: 'quota/exceeded' },
   async ({ event, step }) => {
@@ -55,7 +55,7 @@ export const quotaExceeded = inngest.createFunction(
 );
 
 // Subscription Updated Handler
-export const subscriptionUpdated = inngest.createFunction(
+const subscriptionUpdated = inngest.createFunction(
   { id: 'subscription-updated' },
   { event: 'subscription/updated' },
   async ({ event, step }) => {
@@ -74,7 +74,7 @@ export const subscriptionUpdated = inngest.createFunction(
 );
 
 // Apify Run Completed Handler
-export const apifyRunCompleted = inngest.createFunction(
+const apifyRunCompleted = inngest.createFunction(
   { id: 'apify-run-completed' },
   { event: 'apify/run.completed' },
   async ({ event, step }) => {
@@ -93,7 +93,7 @@ export const apifyRunCompleted = inngest.createFunction(
 );
 
 // Apify Run Failed Handler
-export const apifyRunFailed = inngest.createFunction(
+const apifyRunFailed = inngest.createFunction(
   { id: 'apify-run-failed' },
   { event: 'apify/run.failed' },
   async ({ event, step }) => {
@@ -105,3 +105,12 @@ export const apifyRunFailed = inngest.createFunction(
     return { message: 'Apify run failure handled' };
   }
 );
+
+module.exports = {
+  inngest,
+  jobCreated,
+  quotaExceeded,
+  subscriptionUpdated,
+  apifyRunCompleted,
+  apifyRunFailed
+};

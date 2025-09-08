@@ -1,7 +1,7 @@
-import { serve } from 'inngest/next';
-import { inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed } from '../src/inngest/functions.js';
+const { serve } = require('inngest/next');
+const { inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed } = require('../src/inngest/functions.js');
 
-export const { GET, POST, PUT } = serve({
+const handlers = serve({
   client: inngest,
   functions: [
     jobCreated,
@@ -11,3 +11,5 @@ export const { GET, POST, PUT } = serve({
     apifyRunFailed,
   ],
 });
+
+module.exports = handlers;
