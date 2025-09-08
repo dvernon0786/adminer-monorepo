@@ -1,13 +1,8 @@
 {
-  "devDependencies": {
-    "@secretlint/secretlint-rule-preset-recommend": "^11.2.0",
-    "husky": "^9.1.7",
-    "secretlint": "^11.2.0"
-  },
+  "name": "adminer-monorepo",
+  "version": "1.0.0",
+  "private": true,
   "scripts": {
-    "prepare": "husky"
-  },
-  "dependencies": {
-    "inngest": "^3.40.2"
+    "build": "echo 'Monorepo build complete'"
   }
 }
