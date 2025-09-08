@@ -1,0 +1,14 @@
+{
+  "name": "@adminer/api",
+  "version": "0.1.0",
+  "type": "module",
+  "engines": {
+    "node": "20.x"
+  },
+  "scripts": {
+    "dev": "vercel dev"
+  },
+  "dependencies": {
+    "inngest": "^3.22.12"
+  }
+}
