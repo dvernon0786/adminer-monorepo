@@ -40,7 +40,7 @@ cat > package.json << 'EOF'
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": "22.x"
+    "node": "18.x"
   },
   "scripts": {
     "dev": "vercel dev",
