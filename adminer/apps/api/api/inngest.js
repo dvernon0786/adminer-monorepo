@@ -1,32 +1,34 @@
-import { Inngest } from "inngest";
-
-const inngest = new Inngest({ 
-  id: "adminer-jobs",
-  name: "Adminer Job Pipeline"
-});
+// Created at: Mon Sep  8 02:13:44 PM AEST 2025
+// Timestamp: 1757304824
 
 export default async function handler(req, res) {
-  const isDev = process.env.NODE_ENV === 'development';
-  const baseUrl = isDev 
-    ? 'http://localhost:3000' 
-    : 'https://adminer-api.vercel.app';
+  // Add timestamp to force cache busting
+  const deployedAt = "1757304824";
+  const createdAt = "Mon Sep  8 02:13:44 PM AEST 2025";
+  
+  if (req.method !== 'PUT') {
+    return res.status(405).json({
+      error: 'Method not allowed',
+      deployedAt,
+      createdAt
+    });
+  }
 
-  // Register functions with Inngest
-  const functions = [
-    {
-      id: "job/created",
-      name: "Process Job Creation"
-    },
-    {
-      id: "scrape/process",
-      name: "Process Scrape Job"
-    }
-  ];
-
-  // Return the format expected by Inngest Cloud
+  // Return ONLY the format expected by Inngest Cloud
   return res.status(200).json({
-    functions: functions,
-    appId: "adminer-jobs", 
+    functions: [
+      {
+        id: "job/created",
+        name: "Process Job Creation",
+        triggers: ["job/created"]
+      },
+      {
+        id: "scrape/process", 
+        name: "Process Scrape Job",
+        triggers: ["scrape/process"]
+      }
+    ],
+    appId: "adminer-jobs-1757304824",
     appName: "Adminer Job Pipeline"
   });
 }
