@@ -40,7 +40,7 @@ cat > package.json << 'EOF'
   "version": "0.1.0",
   "type": "module",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "scripts": {
     "dev": "vercel dev",
@@ -64,7 +64,8 @@ cat > vercel.json << 'EOF'
     "api/**/*.js": {
       "runtime": "@vercel/node@3.0.0"
     }
-  }
+  },
+  "buildCommand": "echo 'API build complete'"
 }
 EOF
 

@@ -3,16 +3,6 @@
   "framework": null,
   "buildCommand": "echo 'Using separate deployments'",
   "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "https://adminer-896euqekf-damiens-projects-98ddf0e8.vercel.app/api/$1"
-    },
-    {
-      "source": "/(.*)",
-      "destination": "https://adminer-6wbglfv39-damiens-projects-98ddf0e8.vercel.app/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
