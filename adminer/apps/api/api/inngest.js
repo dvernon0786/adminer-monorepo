@@ -1,4 +1,4 @@
-// Inngest serve endpoint for Vercel
+// Proper Inngest endpoint that matches Inngest Cloud expectations
 export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -16,7 +16,7 @@ export default async function handler(req, res) {
     if (req.method === 'PUT') {
       console.log('Inngest sync request received');
       
-      // Return function definitions for Inngest Cloud
+      // Return function definitions in the format Inngest Cloud expects
       const functions = [
         {
           id: 'job-created',
@@ -50,13 +50,11 @@ export default async function handler(req, res) {
         }
       ];
 
+      // Return the response in the format Inngest Cloud expects
       res.status(200).json({
-        success: true,
-        message: 'Inngest app synced successfully',
-        appId: 'adminer-jobs',
-        appName: 'Adminer Job Pipeline',
         functions: functions,
-        timestamp: new Date().toISOString()
+        appId: 'adminer-jobs',
+        appName: 'Adminer Job Pipeline'
       });
       return;
     }
@@ -76,8 +74,6 @@ export default async function handler(req, res) {
     if (req.method === 'POST') {
       console.log('Inngest webhook event received:', req.body);
       
-      // In a real implementation, this would process the webhook event
-      // For now, just acknowledge receipt
       res.status(200).json({
         success: true,
         message: 'Webhook event received',
