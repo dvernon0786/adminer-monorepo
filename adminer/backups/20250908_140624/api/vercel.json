@@ -1,0 +1,36 @@
+{
+  "version": 2,
+  "framework": null,
+  "buildCommand": "echo 'Building API serverless functions'",
+  "outputDirectory": ".",
+  "headers": [
+    {
+      "source": "/(.*).html",
+      "headers": [
+        {
+          "key": "Cache-Control",
+          "value": "no-cache, no-store, must-revalidate"
+        }
+      ]
+    },
+    {
+      "source": "/assets/(.*)",
+      "headers": [
+        {
+          "key": "Cache-Control", 
+          "value": "public, immutable, max-age=31536000"
+        }
+      ]
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    },
+    {
+      "source": "/((?!api|assets|_next|favicon.ico).*)",
+      "destination": "/index.html"
+    }
+  ]
+}
