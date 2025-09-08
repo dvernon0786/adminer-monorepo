@@ -6,14 +6,9 @@
     "node": "18.x"
   },
   "scripts": {
-    "dev": "vercel dev",
-    "build": "echo 'Using pre-built files'"
+    "dev": "vercel dev"
   },
   "dependencies": {
-    "inngest": "^3.22.12",
-    "drizzle-orm": "^0.33.0",
-    "@neondatabase/serverless": "^0.9.5",
-    "apify-client": "^2.9.3",
-    "dotenv": "^16.4.5"
+    "inngest": "^3.22.12"
   }
 }
