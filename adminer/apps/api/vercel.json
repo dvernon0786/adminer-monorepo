@@ -1,8 +1,8 @@
 {
   "version": 2,
-  "framework": "nextjs",
-  "buildCommand": "npm run build",
-  "outputDirectory": ".next",
+  "framework": null,
+  "buildCommand": "echo 'Building API serverless functions'",
+  "outputDirectory": ".",
   "headers": [
     {
       "source": "/(.*).html",

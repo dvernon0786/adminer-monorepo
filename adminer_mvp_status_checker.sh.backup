@@ -65,12 +65,7 @@ check_pattern() {
     fi
     
     # Use grep with proper error handling
-    # Support additional grep options if provided
-    local grep_opts=""
-    if [ "$3" != "" ]; then
-        grep_opts="$3"
-    fi
-    if grep -r $grep_opts "$pattern" "$location" 2>/dev/null | head -3; then
+    if grep -r "$pattern" "$location" 2>/dev/null | head -3; then
         debug_log "Pattern '$pattern' found in '$location'"
         return 0
     else
@@ -153,7 +148,7 @@ else
 fi
 
 # Database
-if check_pattern "DATABASE_URL" "adminer/apps" --include="*.env*" 2>/dev/null | grep -q "postgres" 2>/dev/null; then
+if check_pattern "DATABASE_URL" "adminer/apps" 2>/dev/null | grep -q "postgres" 2>/dev/null; then
     status_complete "Database URL configured"
 else
     status_missing "Database URL not configured"
