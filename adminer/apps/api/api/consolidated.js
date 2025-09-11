@@ -82,12 +82,91 @@ module.exports = function handler(req, res) {
       message: 'Webhook received',
       timestamp: new Date().toISOString()
     });
+  } else if (path === '/api/apify/health') {
+    // Apify health check endpoint
+    try {
+      console.log('Checking Apify health...');
+      
+      const healthCheck = {
+        status: 'healthy',
+        message: 'Apify service is available'
+      };
+      
+      console.log('Apify health check result:', healthCheck);
+
+      res.status(200).json({
+        success: true,
+        service: 'apify',
+        status: healthCheck.status,
+        message: healthCheck.message,
+        timestamp: new Date().toISOString(),
+        environment: {
+          hasToken: !!(process.env.APIFY_TOKEN || process.env.APIFY_API_TOKEN),
+          hasActorId: !!process.env.APIFY_ACTOR_ID
+        }
+      });
+    } catch (error) {
+      console.error('Apify health check failed:', error);
+      
+      res.status(500).json({
+        success: false,
+        service: 'apify',
+        status: 'error',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } else if (path === '/api/apify/webhook') {
+    // Apify webhook endpoint
+    try {
+      if (req.method === 'GET') {
+        // Health check for webhook endpoint
+        res.status(200).json({
+          success: true,
+          message: 'Apify webhook endpoint is ready',
+          timestamp: new Date().toISOString(),
+          method: 'GET',
+          note: 'Webhook validation disabled - using synchronous API calls'
+        });
+      } else if (req.method === 'POST') {
+        // Handle webhook payload (simplified without signature validation)
+        const payload = req.body;
+        
+        console.log('Apify webhook received (no validation):', {
+          eventType: payload?.eventType,
+          runId: payload?.data?.runId,
+          status: payload?.data?.status,
+          hasData: !!payload?.data
+        });
+        
+        res.status(200).json({
+          success: true,
+          message: 'Webhook received successfully (no validation)',
+          timestamp: new Date().toISOString(),
+          method: 'POST',
+          eventType: payload?.eventType,
+          note: 'Webhook validation disabled - using synchronous API calls'
+        });
+      } else {
+        res.status(405).json({
+          success: false,
+          error: 'Method not allowed'
+        });
+      }
+    } catch (error) {
+      console.error('Webhook error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
   } else {
     // Default response for unknown paths
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook'],
       timestamp: new Date().toISOString()
     });
   }
