@@ -1,16 +1,5 @@
 {
   "version": 2,
-  "functions": {
-    "adminer/apps/api/api/**/*.js": {
-      "runtime": "@vercel/node@3.2.0"
-    }
-  },
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/adminer/apps/api/api/$1"
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
