@@ -6,5 +6,12 @@
   },
   "scripts": {
     "build-test": "echo 'API build test passed'"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.1",
+    "apify-client": "^2.16.0",
+    "dotenv": "^17.2.2",
+    "drizzle-orm": "^0.44.5",
+    "inngest": "^3.40.2"
   }
 }

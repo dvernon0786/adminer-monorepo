@@ -1,3 +1,6 @@
+// Import required modules
+const { apifyService } = require('../src/lib/apify');
+
 module.exports = function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -155,6 +158,47 @@ module.exports = function handler(req, res) {
       }
     } catch (error) {
       console.error('Webhook error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Internal server error',
+        message: error.message
+      });
+    }
+  } else if (path === '/api/apify/health') {
+    // Apify health check endpoint
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const healthStatus = await apifyService.healthCheck();
+      res.status(200).json({
+        success: true,
+        service: 'apify',
+        ...healthStatus,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      res.status(500).json({
+        success: false,
+        service: 'apify',
+        status: 'error',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
+  } else if (path === '/api/apify/webhook') {
+    // Apify webhook endpoint
+    res.setHeader('Content-Type', 'application/json');
+    try {
+      const payload = req.body;
+      console.log('Apify webhook received:', payload);
+      
+      res.status(200).json({
+        success: true,
+        message: 'Apify webhook processed',
+        eventType: payload?.eventType,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error('Apify webhook error:', error);
       res.status(500).json({
         success: false,
         error: 'Internal server error',
