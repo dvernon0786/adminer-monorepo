@@ -1,8 +1,17 @@
 {
   "version": 2,
-  "framework": null,
-  "buildCommand": "echo 'Using separate deployments'",
-  "outputDirectory": ".",
+  "builds": [
+    {
+      "src": "adminer/apps/api/api/**/*.js",
+      "use": "@vercel/node@3.2.0"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/api/(.*)",
+      "dest": "/adminer/apps/api/api/$1"
+    }
+  ],
   "headers": [
     {
       "source": "/(.*)",

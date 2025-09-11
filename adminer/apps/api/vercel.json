@@ -6,5 +6,11 @@
     }
   },
   "buildCommand": "echo 'API build complete'",
-  "outputDirectory": "."
+  "outputDirectory": ".",
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/$1"
+    }
+  ]
 }
