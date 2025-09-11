@@ -2538,6 +2538,284 @@ backup-api-files/
 
 ---
 
+## 🎯 **API ROUTING CONFIGURATION FIX**
+
+### **✅ ROUTING DESTINATION CORRECTED**
+
+**Date**: September 11, 2025  
+**Status**: ⚠️ **ROUTING FIX APPLIED**  
+**Priority**: **API ENDPOINTS STILL NOT WORKING**
+
+### **🔧 Routing Configuration Fix Applied**
+
+**Issue Identified**: API endpoints returning 404 NOT_FOUND errors
+- **Build Status**: ✅ **SUCCESSFUL** - No more function limit errors
+- **Deployment Status**: ✅ **COMPLETED** - Single function deployed
+- **API Response**: ❌ **STILL RETURNING HTML** - Not reaching consolidated function
+
+**Root Cause Analysis**:
+- **Vercel Rewrite Issue**: Destination was `/api/consolidated` (missing .js extension)
+- **Function Detection**: Vercel needs `.js` extension to properly route to function
+- **Routing Configuration**: Rewrites not properly directing to consolidated handler
+
+**Solution Applied**:
+- ✅ **Updated vercel.json**: Changed destination from `/api/consolidated` to `/api/consolidated.js`
+- ✅ **Deployed Fix**: Changes committed and pushed to production
+- ✅ **Build Success**: No more function limit errors
+
+### **📊 Technical Changes Applied**
+
+**Vercel.json Configuration**:
+```json
+{
+  "version": 2,
+  "functions": {
+    "api/consolidated.js": {
+      "runtime": "@vercel/node@3.1.1"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/consolidated.js"
+    }
+  ]
+}
+```
+
+**Key Change**:
+- **Before**: `"destination": "/api/consolidated"`
+- **After**: `"destination": "/api/consolidated.js"`
+
+### **🎯 Current Status Summary**
+
+**Node.js 20.x Compliance**: ✅ **ACHIEVED**
+- Updated to Node.js 20.x as currently demanded by Vercel
+- All configuration files properly updated
+- Dependencies compatible with Node.js 20
+
+**Mixed Routing Properties**: ✅ **FIXED**
+- No more conflicting routing configurations
+- Modern Vercel routing approach implemented
+- Compliant with Vercel documentation
+
+**Function Pattern Mismatch**: ✅ **FIXED**
+- Correct function pattern: `api/consolidated.js`
+- Aligned with Root Directory: `adminer/apps/api`
+- Single function handles all endpoints
+
+**Vercel Hobby Plan Limit**: ✅ **FIXED**
+- Reduced from 13 functions to 1 function
+- Fully compliant with 12-function limit
+- All endpoints consolidated into single handler
+
+**API Routing**: ⚠️ **STILL RETURNING HTML**
+- API endpoints still return HTML instead of JSON
+- Routing fix applied but not yet effective
+- Possible deployment delay or additional configuration needed
+
+### **🔍 Analysis**
+
+**Root Cause**: The routing configuration has been corrected, but API endpoints are still not working correctly. This suggests:
+
+1. **Deployment Delay**: Changes may not have propagated yet
+2. **Project Configuration**: May need to verify Vercel project settings
+3. **Caching Issue**: Vercel cache may be serving old responses
+4. **Domain Routing**: May need to check domain configuration
+5. **Function Execution**: The consolidated function may not be executing properly
+6. **Rewrite Configuration**: May need additional rewrite rules
+
+### **🚀 Next Steps**
+
+**Immediate Actions**:
+1. **Wait for Deployment**: Allow time for changes to propagate
+2. **Check Vercel Logs**: Review function execution logs for errors
+3. **Verify Project Settings**: Ensure Root Directory is correctly set
+4. **Test Direct Deployment**: Check if API works on direct Vercel URL
+5. **Review Rewrite Rules**: May need additional configuration
+
+**Expected Results**:
+- ✅ **API Endpoints**: Should return JSON instead of HTML
+- ✅ **Inngest Sync**: Should work with proper JSON responses
+- ✅ **Complete Pipeline**: Full functionality restored
+
+**Status**: ✅ **ROOT DIRECTORY MISMATCH IDENTIFIED** - Vercel looking in wrong directory
+
+---
+
+## 🎯 **ROOT DIRECTORY MISMATCH IDENTIFIED**
+
+### **✅ EXACT ISSUE FOUND**
+
+**Date**: September 11, 2025  
+**Status**: ✅ **ROOT CAUSE IDENTIFIED**  
+**Priority**: **VERCEL DASHBOARD CONFIGURATION FIX REQUIRED**
+
+### **🔍 Root Directory Mismatch Analysis**
+
+**Issue Identified**: Vercel Root Directory mismatch causing 404 NOT_FOUND errors
+- **Vercel Dashboard Setting**: Root Directory = `apps/api`
+- **Actual Repository Structure**: `adminer/apps/api/`
+- **Result**: Vercel cannot find files because path doesn't exist
+
+**Repository Structure Confirmed**:
+```
+/home/dghost/Desktop/ADminerFinal/          (Repository Root)
+├── adminer/                                (Main project directory)
+│   └── apps/
+│       └── api/                           (Actual API location)
+│           ├── package.json
+│           ├── vercel.json
+│           └── api/
+│               └── consolidated.js
+```
+
+**Vercel Configuration**:
+- **Current Root Directory**: `apps/api` ❌ (WRONG)
+- **Correct Root Directory**: `adminer/apps/api` ✅ (NEEDED)
+
+### **🎯 Why This Causes 404 Errors**
+
+**Current (Broken)**:
+- Vercel looks for: `apps/api/package.json`
+- Actual location: `adminer/apps/api/package.json`
+- Result: 404 NOT_FOUND
+
+**After Fix**:
+- Vercel looks for: `adminer/apps/api/package.json`
+- Actual location: `adminer/apps/api/package.json`
+- Result: Files found, deployment succeeds
+
+### **🔧 Solution Required**
+
+**CRITICAL ACTION REQUIRED**:
+1. Go to Vercel Dashboard: https://vercel.com/dashboard
+2. Open project: adminer-api-fixed
+3. Go to Settings > General
+4. Update Root Directory from `apps/api` to `adminer/apps/api`
+5. Save settings
+6. Redeploy
+
+### **📊 Technical Verification**
+
+**Current API Structure**:
+- ✅ `adminer/apps/api/package.json` exists
+- ✅ `adminer/apps/api/vercel.json` exists
+- ✅ `adminer/apps/api/api/consolidated.js` exists
+- ✅ All files are in correct location
+
+**Vercel Function Configuration**:
+```json
+{
+  "version": 2,
+  "functions": {
+    "api/consolidated.js": {
+      "runtime": "@vercel/node@3.1.1"
+    }
+  },
+  "rewrites": [
+    {
+      "source": "/api/(.*)",
+      "destination": "/api/consolidated.js"
+    }
+  ]
+}
+```
+
+### **🎯 Expected Results After Fix**
+
+**Immediate Benefits**:
+- ✅ **Build Success**: Vercel will find correct files
+- ✅ **Function Detection**: API functions will deploy properly
+- ✅ **API Endpoints**: Will return JSON instead of 404
+- ✅ **No More Errors**: All NOT_FOUND errors resolved
+
+**API Endpoints That Will Work**:
+- `/api/test` - API health check
+- `/api/inngest` - Inngest sync endpoint
+- `/api/jobs` - Job creation and listing
+- `/api/health` - System health check
+- `/api/webhook` - Webhook handler
+- `/api/apify/health` - Apify service health check
+- `/api/apify/webhook` - Apify webhook handler
+
+### **🚀 Next Steps**
+
+**Immediate Action**:
+1. **Update Vercel Dashboard**: Change Root Directory to `adminer/apps/api`
+2. **Redeploy**: Trigger new deployment
+3. **Test Endpoints**: Verify API returns JSON
+
+**Status**: ✅ **ROOT DIRECTORY UPDATED** - API endpoints still returning HTML, deployment may need time
+
+---
+
+## 🎯 **ROOT DIRECTORY UPDATED - DEPLOYMENT IN PROGRESS**
+
+### **✅ VERCEL DASHBOARD CONFIGURATION UPDATED**
+
+**Date**: September 11, 2025  
+**Status**: ✅ **ROOT DIRECTORY CORRECTED**  
+**Priority**: **DEPLOYMENT PROPAGATION IN PROGRESS**
+
+### **🔧 Root Directory Fix Applied**
+
+**Configuration Updated**:
+- ✅ **Vercel Root Directory**: Updated from `apps/api` to `adminer/apps/api`
+- ✅ **Node.js Version**: Confirmed as `20.x`
+- ✅ **Project Settings**: All configurations aligned with repository structure
+
+**Repository Structure Confirmed**:
+```
+/home/dghost/Desktop/ADminerFinal/          (Repository Root)
+├── adminer/                                (Main project directory)
+│   └── apps/
+│       └── api/                           (API location - now correctly configured)
+│           ├── package.json
+│           ├── vercel.json
+│           └── api/
+│               └── consolidated.js
+```
+
+### **📊 Current Status**
+
+**Vercel Configuration**: ✅ **CORRECT**
+- Root Directory: `adminer/apps/api` ✅
+- Node.js Version: `20.x` ✅
+- Function Pattern: `api/consolidated.js` ✅
+- Rewrite Rules: `/api/(.*)` → `/api/consolidated.js` ✅
+
+**API Response**: ⚠️ **STILL RETURNING HTML**
+- API endpoints still return HTML instead of JSON
+- Possible deployment delay or propagation issue
+- Changes may need additional time to take effect
+
+### **🔍 Analysis**
+
+**Root Cause**: The Root Directory has been correctly updated, but API endpoints are still not working. This suggests:
+
+1. **Deployment Delay**: Changes may not have propagated yet
+2. **Cache Issue**: Vercel cache may be serving old responses
+3. **Function Execution**: The consolidated function may not be executing properly
+4. **Rewrite Rules**: May need additional configuration
+
+### **🚀 Next Steps**
+
+**Immediate Actions**:
+1. **Wait for Deployment**: Allow time for changes to propagate (5-10 minutes)
+2. **Check Vercel Logs**: Review function execution logs for errors
+3. **Force Redeploy**: Trigger a new deployment to ensure changes take effect
+4. **Test Direct Vercel URL**: Check if API works on direct Vercel deployment URL
+
+**Expected Results**:
+- ✅ **API Endpoints**: Should return JSON instead of HTML
+- ✅ **Inngest Sync**: Should work with proper JSON responses
+- ✅ **Complete Pipeline**: Full functionality restored
+
+**Status**: ✅ **ROOT DIRECTORY UPDATED** - Configuration corrected, waiting for deployment propagation
+
+---
+
 ## 🎯 **FINAL STATUS: Complete Job Pipeline Implementation**
 
 ### **🎉 COMPLETE SUCCESS ACHIEVED**

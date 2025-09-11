@@ -16,3 +16,4 @@ All sensitive configuration is managed through environment variables. See the se
 
 *Environment variable integration - Tue Sep  2 07:46:16 AM AEST 2025*
 test
+# Trigger deployment after Root Directory fix
