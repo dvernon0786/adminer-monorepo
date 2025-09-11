@@ -1,21 +1,10 @@
 {
-  "name": "@adminer/api",
-  "version": "0.1.0",
-  "type": "module",
+  "name": "api",
+  "version": "1.0.0",
   "engines": {
     "node": "20.x"
   },
   "scripts": {
-    "dev": "vercel dev",
-    "build-test": "echo 'API build test passed'",
-    "validate-quick": "echo 'API quick validation passed'"
-  },
-  "dependencies": {
-    "inngest": "^3.22.12"
-  },
-  "devDependencies": {
-    "@types/node": "^20.19.13",
-    "@vercel/node": "^3.1.1",
-    "typescript": "^5.0.0"
+    "build-test": "echo 'API build test passed'"
   }
 }
