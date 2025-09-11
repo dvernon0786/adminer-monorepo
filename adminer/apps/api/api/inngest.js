@@ -1,29 +1,29 @@
-module.exports = (req, res) => {
-  // Set CORS headers
+export default function handler(req, res) {
+  // CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+  res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
+  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
   
   if (req.method === 'OPTIONS') {
     res.status(200).end();
     return;
   }
   
-  // Handle different HTTP methods
   if (req.method === 'GET') {
     res.status(200).json({
-      message: 'Inngest endpoint active',
-      method: 'GET',
+      message: 'Inngest endpoint ready',
       timestamp: new Date().toISOString(),
-      status: 'ready'
+      status: 'active',
+      endpoint: '/api/inngest'
     });
   } else if (req.method === 'POST' || req.method === 'PUT') {
     res.status(200).json({
       message: 'Inngest webhook received',
       method: req.method,
-      body: req.body,
       timestamp: new Date().toISOString(),
-      status: 'processed'
+      body: req.body || {},
+      status: 'processed',
+      endpoint: '/api/inngest'
     });
   } else {
     res.status(405).json({
@@ -32,4 +32,4 @@ module.exports = (req, res) => {
       received: req.method
     });
   }
-};
+}
