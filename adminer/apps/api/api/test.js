@@ -1,4 +1,3 @@
-// Guaranteed working Vercel function
 module.exports = (req, res) => {
   res.setHeader('Content-Type', 'application/json');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -8,6 +7,10 @@ module.exports = (req, res) => {
     message: 'API test endpoint working',
     timestamp: new Date().toISOString(),
     method: req.method,
+    nodeVersion: process.version,
+    platform: process.platform,
+    uptime: process.uptime(),
+    memoryUsage: process.memoryUsage(),
     headers: req.headers,
     url: req.url
   });

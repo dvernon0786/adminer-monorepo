@@ -14,6 +14,9 @@ export default function handler(req, res) {
     uptime: process.uptime(),
     memory: process.memoryUsage(),
     nodeVersion: process.version,
+    platform: process.platform,
+    environment: process.env.NODE_ENV || 'unknown',
+    vercelRegion: process.env.VERCEL_REGION || 'unknown',
     endpoint: '/api/health'
   });
 }
