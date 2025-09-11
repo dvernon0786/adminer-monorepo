@@ -1,16 +1,8 @@
 {
   "version": 2,
   "functions": {
-    "api/consolidated.js": {
+    "api/*.js": {
       "runtime": "@vercel/node@3.1.1"
     }
-  },
-  "buildCommand": "echo 'API build complete'",
-  "outputDirectory": ".",
-  "rewrites": [
-    {
-      "source": "/api/(.*)",
-      "destination": "/api/consolidated.js"
-    }
-  ]
+  }
 }
