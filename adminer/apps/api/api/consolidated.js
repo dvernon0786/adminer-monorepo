@@ -50,10 +50,13 @@ async function initializeDatabase() {
 // Real quota function
 async function getRealQuotaStatus(orgId = 'default-org') {
   try {
+    console.log('🔍 Starting quota query for orgId:', orgId);
     const database = await initializeDatabase();
     if (!database) {
       throw new Error('Database not available');
     }
+    
+    console.log('✅ Database initialized, executing query...');
     
     // Query real organization data using raw SQL to avoid schema import issues
     const orgResult = await database.execute(sql`
@@ -63,7 +66,14 @@ async function getRealQuotaStatus(orgId = 'default-org') {
       LIMIT 1
     `);
     
+    console.log('📊 Query result:', { 
+      rowCount: orgResult.length, 
+      result: orgResult,
+      orgId 
+    });
+    
     if (orgResult.length === 0) {
+      console.log('🆕 No organization found, creating default...');
       // Create default organization if it doesn't exist
       await database.execute(sql`
         INSERT INTO organizations (clerk_org_id, name, plan, quota_limit, quota_used)
@@ -71,6 +81,7 @@ async function getRealQuotaStatus(orgId = 'default-org') {
         ON CONFLICT (clerk_org_id) DO NOTHING
       `);
       
+      console.log('✅ Default organization created');
       return {
         used: 0,
         limit: 100,
@@ -80,6 +91,7 @@ async function getRealQuotaStatus(orgId = 'default-org') {
     }
     
     const org = orgResult[0];
+    console.log('✅ Organization found:', org);
     return {
       used: org.quota_used,
       limit: org.quota_limit,
@@ -88,14 +100,19 @@ async function getRealQuotaStatus(orgId = 'default-org') {
     };
     
   } catch (error) {
-    console.error('❌ Database query failed:', error);
+    console.error('❌ Database query failed:', {
+      error: error.message,
+      stack: error.stack,
+      orgId,
+      errorType: error.constructor.name
+    });
     // Fallback to default values (not mock data)
     return {
       used: 0,
       limit: 100,
       percentage: 0,
       plan: 'free',
-      error: 'Database connection failed'
+      error: `Database query failed: ${error.message}`
     };
   }
 }
@@ -103,17 +120,27 @@ async function getRealQuotaStatus(orgId = 'default-org') {
 // Real analysis stats function
 async function getRealAnalysisStats(orgId = 'default-org') {
   try {
+    console.log('🔍 Starting analysis stats query for orgId:', orgId);
     const database = await initializeDatabase();
     if (!database) {
       throw new Error('Database not available');
     }
+    
+    console.log('✅ Database initialized for stats, getting organization ID...');
     
     // Get organization ID first
     const orgResult = await database.execute(sql`
       SELECT id FROM organizations WHERE clerk_org_id = ${orgId} LIMIT 1
     `);
     
+    console.log('📊 Organization query result:', { 
+      rowCount: orgResult.length, 
+      result: orgResult,
+      orgId 
+    });
+    
     if (orgResult.length === 0) {
+      console.log('⚠️ No organization found for stats, returning empty stats');
       return {
         total: 0,
         images: 0,
@@ -124,8 +151,10 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     }
     
     const orgDbId = orgResult[0].id;
+    console.log('✅ Organization ID found:', orgDbId);
     
     // Query real job counts by type
+    console.log('📊 Querying job stats...');
     const stats = await database.execute(sql`
       SELECT 
         type,
@@ -134,6 +163,11 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       WHERE org_id = ${orgDbId}
       GROUP BY type
     `);
+    
+    console.log('📊 Job stats result:', { 
+      rowCount: stats.length, 
+      result: stats 
+    });
     
     // Process results
     const result = {
@@ -152,20 +186,32 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     });
     
     // Count failed jobs as errors
+    console.log('📊 Querying error count...');
     const errorCount = await database.execute(sql`
       SELECT COUNT(*) as count
       FROM jobs 
       WHERE org_id = ${orgDbId} AND status = 'failed'
     `);
+    
+    console.log('📊 Error count result:', { 
+      rowCount: errorCount.length, 
+      result: errorCount 
+    });
       
     if (errorCount.length > 0) {
       result.errors = parseInt(errorCount[0].count);
     }
     
+    console.log('✅ Final stats result:', result);
     return result;
     
   } catch (error) {
-    console.error('❌ Analysis stats query failed:', error);
+    console.error('❌ Analysis stats query failed:', {
+      error: error.message,
+      stack: error.stack,
+      orgId,
+      errorType: error.constructor.name
+    });
     // Return empty stats (not mock data)
     return {
       total: 0,
@@ -173,7 +219,7 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       videos: 0,
       text: 0,
       errors: 0,
-      error: 'Database connection failed'
+      error: `Database query failed: ${error.message}`
     };
   }
 }
