@@ -478,14 +478,74 @@ module.exports = async function handler(req, res) {
         },
         timestamp: new Date().toISOString()
       });
-      
     } catch (error) {
-      console.error('❌ Debug query failed:', error);
+      console.error('Debug endpoint error:', error);
       res.status(500).json({
         success: false,
         error: 'Debug query failed',
-        message: error.message,
+        message: error.message
+      });
+    }
+  } else if (path === '/api/jobs/list') {
+    // List all jobs from database
+    try {
+      console.log('📋 Jobs list endpoint hit');
+      const database = await initializeDatabase();
+      if (!database) {
+        throw new Error('Database not available');
+      }
+      
+      const orgId = req.headers['x-org-id'] || 'default-org';
+      
+      // Get organization ID from clerk_org_id
+      const orgResult = await database.execute(sql`
+        SELECT id FROM organizations 
+        WHERE clerk_org_id = ${orgId} 
+        LIMIT 1
+      `);
+      
+      if (!orgResult.rows || orgResult.rows.length === 0) {
+        return res.status(200).json({
+          success: true,
+          data: { jobs: [], total: 0, message: 'No organization found' }
+        });
+      }
+      
+      const dbOrgId = orgResult.rows[0].id;
+      
+      // Get all jobs for this organization
+      const jobsResult = await database.execute(sql`
+        SELECT id, job_id, org_id, keyword, status, type, results_count, 
+               apify_run_id, created_at, completed_at, metadata
+        FROM jobs 
+        WHERE org_id = ${dbOrgId}
+        ORDER BY created_at DESC 
+        LIMIT 50
+      `);
+      
+      console.log('📋 Jobs query result:', {
+        rowCount: jobsResult.rows?.length || 0,
+        result: jobsResult
+      });
+      
+      res.status(200).json({
+        success: true,
+        data: {
+          jobs: jobsResult.rows || [],
+          total: jobsResult.rows?.length || 0,
+          orgId: orgId,
+          dbOrgId: dbOrgId
+        },
+        source: 'real_database',
         timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('Jobs list error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch jobs',
+        message: error.message
       });
     }
   } else if (path === '/api/setup-db') {
