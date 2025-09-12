@@ -58,7 +58,24 @@ module.exports = async function handler(req, res) {
         
         console.log('Job creation request:', { jobId, body, method: req.method });
         
-        // TODO: Trigger Inngest event when Inngest is working
+        // Trigger Inngest event
+        try {
+          const { inngest } = require('../src/inngest/client');
+          await inngest.send({
+            name: 'job.created',
+            data: {
+              jobId,
+              orgId: 'default-org',
+              type: 'scrape',
+              input: body,
+              createdAt: new Date().toISOString()
+            }
+          });
+          console.log('Inngest event triggered for job:', jobId);
+        } catch (inngestError) {
+          console.error('Inngest event failed:', inngestError);
+          // Continue with job creation even if Inngest fails
+        }
         
         res.status(201).json({
           success: true,

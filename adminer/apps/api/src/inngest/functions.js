@@ -1,17 +1,11 @@
-const { Inngest } = require('inngest');
+const { inngest } = require('./client');
 const { jobDb, orgDb, webhookDb } = require('../lib/db');
 const { ApifyService } = require('../lib/apify');
-
-// Create a client to send and receive events
-const inngest = new Inngest({ 
-  id: 'adminer-jobs',
-  name: 'Adminer Job Pipeline'
-});
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
   { id: 'job-created' },
-  { event: 'job/created' },
+  { event: 'job.created' },
   async ({ event, step }) => {
     const { jobId, orgId, input, type } = event.data;
     
@@ -43,7 +37,7 @@ const jobCreated = inngest.createFunction(
         console.error('Quota exceeded:', error);
         // Quota exceeded - trigger quota exceeded event
         await inngest.send({
-          name: 'quota/exceeded',
+          name: 'quota.exceeded',
           data: { orgId, jobId, error: error.message }
         });
         throw error;
@@ -53,7 +47,7 @@ const jobCreated = inngest.createFunction(
     // Trigger Apify scraping
     await step.run('start-apify-job', async () => {
       await inngest.send({
-        name: 'apify/run.start',
+        name: 'apify.run.start',
         data: { jobId, input, orgId }
       });
       console.log('Apify job triggered for:', jobId);
@@ -67,7 +61,7 @@ const jobCreated = inngest.createFunction(
 // Quota Exceeded Handler
 const quotaExceeded = inngest.createFunction(
   { id: 'quota-exceeded' },
-  { event: 'quota/exceeded' },
+  { event: 'quota.exceeded' },
   async ({ event, step }) => {
     await step.run('send-quota-notification', async () => {
       console.log('Sending quota notification for:', event.data);
@@ -86,7 +80,7 @@ const quotaExceeded = inngest.createFunction(
 // Subscription Updated Handler
 const subscriptionUpdated = inngest.createFunction(
   { id: 'subscription-updated' },
-  { event: 'subscription/updated' },
+  { event: 'subscription.updated' },
   async ({ event, step }) => {
     await step.run('update-org-quota', async () => {
       console.log('Updating org quota for:', event.data);
@@ -105,7 +99,7 @@ const subscriptionUpdated = inngest.createFunction(
 // Apify Run Completed Handler
 const apifyRunCompleted = inngest.createFunction(
   { id: 'apify-run-completed' },
-  { event: 'apify/run.completed' },
+  { event: 'apify.run.completed' },
   async ({ event, step }) => {
     await step.run('get-dataset-items', async () => {
       console.log('Getting dataset items for:', event.data);
@@ -124,7 +118,7 @@ const apifyRunCompleted = inngest.createFunction(
 // Apify Run Failed Handler
 const apifyRunFailed = inngest.createFunction(
   { id: 'apify-run-failed' },
-  { event: 'apify/run.failed' },
+  { event: 'apify.run.failed' },
   async ({ event, step }) => {
     await step.run('update-job-status', async () => {
       console.log('Updating job status for failed run:', event.data);
@@ -140,7 +134,7 @@ const apifyService = new ApifyService();
 
 const apifyRunStart = inngest.createFunction(
   { id: 'apify-run-start' },
-  { event: 'apify/run.start' },
+  { event: 'apify.run.start' },
   async ({ event, step }) => {
     const { jobId, input, orgId } = event.data;
     
@@ -159,7 +153,7 @@ const apifyRunStart = inngest.createFunction(
         
         // Trigger AI analysis
         await inngest.send({
-          name: 'ai/analyze.start',
+          name: 'ai.analyze.start',
           data: { jobId, scraped_data: result, orgId }
         });
         
@@ -168,7 +162,7 @@ const apifyRunStart = inngest.createFunction(
         console.error('Apify scrape failed:', error);
         await jobDb.updateStatus(jobId, 'failed', null, error.message);
         await inngest.send({
-          name: 'apify/run.failed',
+          name: 'apify.run.failed',
           data: { jobId, error: error.message, orgId }
         });
         throw error;
