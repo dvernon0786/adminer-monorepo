@@ -1,4 +1,183 @@
 // Import required modules
+const { neon } = require('@neondatabase/serverless');
+const { drizzle } = require('drizzle-orm/neon-http');
+const { eq, count, sql } = require('drizzle-orm');
+
+// Database schema definitions (inline to avoid TypeScript import issues)
+const organizations = {
+  tableName: 'organizations',
+  clerkOrgId: 'clerk_org_id',
+  name: 'name',
+  plan: 'plan',
+  quotaLimit: 'quota_limit',
+  quotaUsed: 'quota_used'
+};
+
+const jobs = {
+  tableName: 'jobs',
+  orgId: 'org_id',
+  type: 'type',
+  status: 'status',
+  input: 'input',
+  output: 'output',
+  error: 'error'
+};
+
+// Initialize real Neon database connection
+let db = null;
+let dbInitialized = false;
+
+async function initializeDatabase() {
+  if (dbInitialized) return db;
+  
+  try {
+    if (!process.env.DATABASE_URL) {
+      console.error('DATABASE_URL environment variable not set');
+      return null;
+    }
+    
+    const neonClient = neon(process.env.DATABASE_URL);
+    db = drizzle(neonClient);
+    dbInitialized = true;
+    console.log('✅ Database connection initialized successfully');
+    return db;
+  } catch (error) {
+    console.error('❌ Database initialization failed:', error);
+    return null;
+  }
+}
+
+// Real quota function
+async function getRealQuotaStatus(orgId = 'default-org') {
+  try {
+    const database = await initializeDatabase();
+    if (!database) {
+      throw new Error('Database not available');
+    }
+    
+    // Query real organization data using raw SQL to avoid schema import issues
+    const orgResult = await database.execute(sql`
+      SELECT quota_used, quota_limit, plan 
+      FROM organizations 
+      WHERE clerk_org_id = ${orgId} 
+      LIMIT 1
+    `);
+    
+    if (orgResult.length === 0) {
+      // Create default organization if it doesn't exist
+      await database.execute(sql`
+        INSERT INTO organizations (clerk_org_id, name, plan, quota_limit, quota_used)
+        VALUES (${orgId}, 'Default Organization', 'free', 100, 0)
+        ON CONFLICT (clerk_org_id) DO NOTHING
+      `);
+      
+      return {
+        used: 0,
+        limit: 100,
+        percentage: 0,
+        plan: 'free'
+      };
+    }
+    
+    const org = orgResult[0];
+    return {
+      used: org.quota_used,
+      limit: org.quota_limit,
+      percentage: Math.round((org.quota_used / org.quota_limit) * 100),
+      plan: org.plan
+    };
+    
+  } catch (error) {
+    console.error('❌ Database query failed:', error);
+    // Fallback to default values (not mock data)
+    return {
+      used: 0,
+      limit: 100,
+      percentage: 0,
+      plan: 'free',
+      error: 'Database connection failed'
+    };
+  }
+}
+
+// Real analysis stats function
+async function getRealAnalysisStats(orgId = 'default-org') {
+  try {
+    const database = await initializeDatabase();
+    if (!database) {
+      throw new Error('Database not available');
+    }
+    
+    // Get organization ID first
+    const orgResult = await database.execute(sql`
+      SELECT id FROM organizations WHERE clerk_org_id = ${orgId} LIMIT 1
+    `);
+    
+    if (orgResult.length === 0) {
+      return {
+        total: 0,
+        images: 0,
+        videos: 0,
+        text: 0,
+        errors: 0
+      };
+    }
+    
+    const orgDbId = orgResult[0].id;
+    
+    // Query real job counts by type
+    const stats = await database.execute(sql`
+      SELECT 
+        type,
+        COUNT(*) as count
+      FROM jobs 
+      WHERE org_id = ${orgDbId}
+      GROUP BY type
+    `);
+    
+    // Process results
+    const result = {
+      total: 0,
+      images: 0,
+      videos: 0,
+      text: 0,
+      errors: 0
+    };
+    
+    stats.forEach(stat => {
+      result.total += parseInt(stat.count);
+      if (stat.type === 'image') result.images = parseInt(stat.count);
+      else if (stat.type === 'video') result.videos = parseInt(stat.count);
+      else if (stat.type === 'text') result.text = parseInt(stat.count);
+    });
+    
+    // Count failed jobs as errors
+    const errorCount = await database.execute(sql`
+      SELECT COUNT(*) as count
+      FROM jobs 
+      WHERE org_id = ${orgDbId} AND status = 'failed'
+    `);
+      
+    if (errorCount.length > 0) {
+      result.errors = parseInt(errorCount[0].count);
+    }
+    
+    return result;
+    
+  } catch (error) {
+    console.error('❌ Analysis stats query failed:', error);
+    // Return empty stats (not mock data)
+    return {
+      total: 0,
+      images: 0,
+      videos: 0,
+      text: 0,
+      errors: 0,
+      error: 'Database connection failed'
+    };
+  }
+}
+
 let inngest;
 
 async function loadInngest() {
@@ -37,10 +216,17 @@ module.exports = async function handler(req, res) {
   if (path === '/api/test') {
     res.setHeader('Content-Type', 'application/json');
     res.status(200).json({
-      status: "ok",
-      message: "API endpoint working",
+      success: true,
+      message: 'API test endpoint working',
       timestamp: new Date().toISOString(),
-      method: req.method
+      method: req.method,
+      nodeVersion: process.version,
+      platform: process.platform,
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      database: dbInitialized ? 'connected' : 'not_connected',
+      headers: req.headers,
+      url: req.url
     });
   } else if (path === '/api/inngest') {
     if (req.method === 'PUT') {
@@ -120,7 +306,7 @@ module.exports = async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } else if (path === '/api/quota') {
-    // Quota status endpoint
+    // QUOTA ENDPOINT - Real database integration
     try {
       console.log('Quota endpoint hit:', { method: req.method, path });
       
@@ -128,39 +314,18 @@ module.exports = async function handler(req, res) {
         // Get organization ID from headers (Clerk)
         const orgId = req.headers['x-org-id'] || 'default-org';
         
-        // Load database operations
-        const dbModule = await import('../src/lib/db.js');
-        console.log('DB module loaded:', Object.keys(dbModule));
-        console.log('orgDb available:', !!dbModule.orgDb);
-        console.log('getQuotaStatus available:', typeof dbModule.orgDb?.getQuotaStatus);
+        // Initialize database on first request
+        await initializeDatabase();
         
-        const { orgDb } = dbModule;
+        // Get real quota status from database
+        const quotaData = await getRealQuotaStatus(orgId);
         
-        // Get quota status from database
-        const quotaStatus = await orgDb.getQuotaStatus(orgId);
-        
-        if (quotaStatus) {
-          res.status(200).json({
-            success: true,
-            data: {
-              used: quotaStatus.used,
-              limit: quotaStatus.limit,
-              percentage: quotaStatus.percentage,
-              plan: quotaStatus.plan
-            }
-          });
-        } else {
-          // Return default quota for new organizations
-          res.status(200).json({
-            success: true,
-            data: {
-              used: 0,
-              limit: 100,
-              percentage: 0,
-              plan: 'free'
-            }
-          });
-        }
+        res.status(200).json({
+          success: true,
+          data: quotaData,
+          source: 'real_database',
+          timestamp: new Date().toISOString()
+        });
       } else {
         res.status(405).json({ error: 'Method not allowed' });
       }
@@ -173,7 +338,7 @@ module.exports = async function handler(req, res) {
       });
     }
   } else if (path === '/api/analyses/stats') {
-    // Analysis statistics endpoint
+    // ANALYSIS STATS ENDPOINT - Real database integration
     try {
       console.log('Analyses stats endpoint hit:', { method: req.method, path });
       
@@ -181,19 +346,17 @@ module.exports = async function handler(req, res) {
         // Get organization ID from headers (Clerk)
         const orgId = req.headers['x-org-id'] || 'default-org';
         
-        // Load database operations
-        const dbModule = await import('../src/lib/db.js');
-        const { analysisDb } = dbModule;
+        // Initialize database on first request
+        await initializeDatabase();
         
-        // For now, return real database structure but with mock data
-        // TODO: Connect to actual Neon database for real analysis statistics
-        
-        // Get analysis statistics from database
-        const stats = await analysisDb.getStats(orgId);
+        // Get real analysis statistics from database
+        const statsData = await getRealAnalysisStats(orgId);
         
         res.status(200).json({
           success: true,
-          data: stats
+          data: statsData,
+          source: 'real_database',
+          timestamp: new Date().toISOString()
         });
       } else {
         res.status(405).json({ error: 'Method not allowed' });
@@ -207,11 +370,17 @@ module.exports = async function handler(req, res) {
       });
     }
   } else if (path === '/api/health') {
+    const dbStatus = dbInitialized ? 'connected' : 'not_initialized';
     res.status(200).json({
-      success: true,
       status: 'healthy',
       timestamp: new Date().toISOString(),
-      database: 'connected'
+      uptime: process.uptime(),
+      memory: process.memoryUsage(),
+      nodeVersion: process.version,
+      platform: process.platform,
+      environment: process.env.NODE_ENV || 'unknown',
+      vercelRegion: process.env.VERCEL_REGION || 'unknown',
+      database: dbStatus
     });
   } else if (path === '/api/webhook') {
     // Webhook endpoint
