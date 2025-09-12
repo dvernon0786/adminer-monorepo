@@ -297,7 +297,7 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats'],
       timestamp: new Date().toISOString()
     });
   }
