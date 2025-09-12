@@ -18,6 +18,9 @@ module.exports = async function handler(req, res) {
   const url = new URL(req.url, `http://${req.headers.host}`);
   const path = url.pathname;
   
+  // Debug logging
+  console.log('API Request:', { method: req.method, path, url: req.url });
+  
   // Route based on path
   if (path === '/api/test') {
     res.setHeader('Content-Type', 'application/json');
@@ -47,13 +50,15 @@ module.exports = async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
   } else if (path === '/api/jobs') {
+    console.log('Jobs endpoint hit:', { method: req.method, path });
     if (req.method === 'POST') {
       try {
         const body = req.body;
         const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
+        console.log('Job creation request:', { jobId, body, method: req.method });
+        
         // TODO: Trigger Inngest event when Inngest is working
-        console.log('Job creation request:', { jobId, body });
         
         res.status(201).json({
           success: true,
@@ -172,47 +177,6 @@ module.exports = async function handler(req, res) {
       }
     } catch (error) {
       console.error('Webhook error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Internal server error',
-        message: error.message
-      });
-    }
-  } else if (path === '/api/apify/health') {
-    // Apify health check endpoint
-    res.setHeader('Content-Type', 'application/json');
-    try {
-      const healthStatus = await apifyService.healthCheck();
-      res.status(200).json({
-        success: true,
-        service: 'apify',
-        ...healthStatus,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      res.status(500).json({
-        success: false,
-        service: 'apify',
-        status: 'error',
-        message: error.message,
-        timestamp: new Date().toISOString()
-      });
-    }
-  } else if (path === '/api/apify/webhook') {
-    // Apify webhook endpoint
-    res.setHeader('Content-Type', 'application/json');
-    try {
-      const payload = req.body;
-      console.log('Apify webhook received:', payload);
-      
-      res.status(200).json({
-        success: true,
-        message: 'Apify webhook processed',
-        eventType: payload?.eventType,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error('Apify webhook error:', error);
       res.status(500).json({
         success: false,
         error: 'Internal server error',

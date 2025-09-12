@@ -1,7 +1,24 @@
 {
+  "version": 2,
   "functions": {
-    "api/test.js": {
+    "api/consolidated.js": {
+      "runtime": "@vercel/node@3.1.1"
+    },
+    "api/inngest.js": {
       "runtime": "@vercel/node@3.1.1"
     }
+  },
+  "routes": [
+    {
+      "src": "/api/inngest",
+      "dest": "/api/inngest.js"
+    },
+    {
+      "src": "/api/(.*)",
+      "dest": "/api/consolidated.js"
+    }
+  ],
+  "env": {
+    "NODE_ENV": "production"
   }
 }
