@@ -1,40 +1,102 @@
 import { inngest } from './client.js';
-import { jobDb, orgDb, webhookDb } from '../lib/db.js';
+import { neon } from '@neondatabase/serverless';
+import { sql } from 'drizzle-orm';
 import { ApifyService } from '../lib/apify.js';
+
+// Real database connection for Inngest functions
+async function getDatabase() {
+  if (!process.env.DATABASE_URL) {
+    throw new Error('DATABASE_URL not configured');
+  }
+  return neon(process.env.DATABASE_URL);
+}
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
   { id: 'job-created' },
   { event: 'job.created' },
   async ({ event, step }) => {
-    const { jobId, orgId, input, type } = event.data;
+    const { jobId, keyword, limit, orgId, timestamp, metadata } = event.data;
+    
+    console.log('🚀 Processing job.created event:', { jobId, keyword, orgId });
     
     // Create job in database
     await step.run('create-job-record', async () => {
-      const job = await jobDb.create({
-        orgId,
-        type: type || 'scrape',
-        input
-      });
-      console.log('Job created in database:', job);
-      return job;
+      const database = await getDatabase();
+      
+      // First, get the organization ID from clerk_org_id
+      const orgResult = await database.execute(sql`
+        SELECT id FROM organizations 
+        WHERE clerk_org_id = ${orgId} 
+        LIMIT 1
+      `);
+      
+      if (!orgResult.rows || orgResult.rows.length === 0) {
+        throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
+      }
+      
+      const dbOrgId = orgResult.rows[0].id;
+      
+      // Insert job into database
+      const jobResult = await database.execute(sql`
+        INSERT INTO jobs (id, org_id, keyword, status, type, input, created_at)
+        VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, 'pending', 'scrape', ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
+        RETURNING *
+      `);
+      
+      console.log('✅ Job created in database:', jobResult.rows[0]);
+      return jobResult.rows[0];
     });
     
     // Update job status to running
     await step.run('update-job-status', async () => {
-      const job = await jobDb.updateStatus(jobId, 'running');
-      console.log('Job status updated to running:', job);
-      return job;
+      const database = await getDatabase();
+      
+      const jobResult = await database.execute(sql`
+        UPDATE jobs 
+        SET status = 'running', updated_at = ${new Date().toISOString()}
+        WHERE id = ${jobId}
+        RETURNING *
+      `);
+      
+      console.log('✅ Job status updated to running:', jobResult.rows[0]);
+      return jobResult.rows[0];
     });
     
     // Consume quota
     await step.run('consume-quota', async () => {
       try {
-        const quota = await orgDb.consumeQuota(orgId, 1, 'scrape', `Job ${jobId}`);
-        console.log('Quota consumed:', quota);
-        return quota;
+        const database = await getDatabase();
+        
+        // Get organization
+        const orgResult = await database.execute(sql`
+          SELECT id, quota_used, quota_limit FROM organizations 
+          WHERE clerk_org_id = ${orgId} 
+          LIMIT 1
+        `);
+        
+        if (!orgResult.rows || orgResult.rows.length === 0) {
+          throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
+        }
+        
+        const org = orgResult.rows[0];
+        const newQuotaUsed = (org.quota_used || 0) + 1;
+        
+        if (newQuotaUsed > org.quota_limit) {
+          throw new Error(`Quota exceeded: ${newQuotaUsed}/${org.quota_limit}`);
+        }
+        
+        // Update quota
+        await database.execute(sql`
+          UPDATE organizations 
+          SET quota_used = ${newQuotaUsed}, updated_at = ${new Date().toISOString()}
+          WHERE clerk_org_id = ${orgId}
+        `);
+        
+        console.log('✅ Quota consumed:', { used: newQuotaUsed, limit: org.quota_limit });
+        return { used: newQuotaUsed, limit: org.quota_limit };
       } catch (error) {
-        console.error('Quota exceeded:', error);
+        console.error('❌ Quota exceeded:', error);
         // Quota exceeded - trigger quota exceeded event
         await inngest.send({
           name: 'quota.exceeded',
