@@ -93,10 +93,10 @@ async function getRealQuotaStatus(orgId = 'default-org') {
     const org = orgResult[0];
     console.log('✅ Organization found:', org);
     return {
-      used: org.quota_used,
-      limit: org.quota_limit,
-      percentage: Math.round((org.quota_used / org.quota_limit) * 100),
-      plan: org.plan
+      used: org.quota_used || 0,
+      limit: org.quota_limit || 100,
+      percentage: Math.round(((org.quota_used || 0) / (org.quota_limit || 100)) * 100),
+      plan: org.plan || 'free'
     };
     
   } catch (error) {
@@ -150,8 +150,19 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       };
     }
     
-    const orgDbId = orgResult[0].id;
+    const orgDbId = orgResult[0]?.id;
     console.log('✅ Organization ID found:', orgDbId);
+    
+    if (!orgDbId) {
+      console.log('⚠️ No organization ID found, returning empty stats');
+      return {
+        total: 0,
+        images: 0,
+        videos: 0,
+        text: 0,
+        errors: 0
+      };
+    }
     
     // Query real job counts by type
     console.log('📊 Querying job stats...');
@@ -179,10 +190,11 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     };
     
     stats.forEach(stat => {
-      result.total += parseInt(stat.count);
-      if (stat.type === 'image') result.images = parseInt(stat.count);
-      else if (stat.type === 'video') result.videos = parseInt(stat.count);
-      else if (stat.type === 'text') result.text = parseInt(stat.count);
+      const count = parseInt(stat.count) || 0;
+      result.total += count;
+      if (stat.type === 'image') result.images = count;
+      else if (stat.type === 'video') result.videos = count;
+      else if (stat.type === 'text') result.text = count;
     });
     
     // Count failed jobs as errors
