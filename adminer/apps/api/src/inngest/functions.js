@@ -13,7 +13,7 @@ async function getDatabase() {
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
-  { id: 'job-created' },
+  { id: 'jobs-job-created' },
   { event: 'job.created' },
   async ({ event, step }) => {
     const { jobId, keyword, limit, orgId, timestamp, metadata } = event.data;

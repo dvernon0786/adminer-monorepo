@@ -13,5 +13,8 @@
     "dotenv": "^17.2.2",
     "drizzle-orm": "^0.44.5",
     "inngest": "^3.40.2"
+  },
+  "devDependencies": {
+    "inngest-cli": "^1.11.10"
   }
 }
