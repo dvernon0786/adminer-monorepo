@@ -114,6 +114,54 @@ module.exports = async function handler(req, res) {
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
+  } else if (path === '/api/quota') {
+    // Quota status endpoint
+    try {
+      console.log('Quota endpoint hit:', { method: req.method, path });
+      
+      if (req.method === 'GET') {
+        // Get organization ID from headers (Clerk)
+        const orgId = req.headers['x-org-id'] || 'default-org';
+        
+        // Load database operations
+        const { orgDb } = await import('../src/lib/db.js');
+        
+        // Get quota status from database
+        const quotaStatus = await orgDb.getQuotaStatus(orgId);
+        
+        if (quotaStatus) {
+          res.status(200).json({
+            success: true,
+            data: {
+              used: quotaStatus.used,
+              limit: quotaStatus.limit,
+              percentage: quotaStatus.percentage,
+              plan: quotaStatus.plan
+            }
+          });
+        } else {
+          // Return default quota for new organizations
+          res.status(200).json({
+            success: true,
+            data: {
+              used: 0,
+              limit: 100,
+              percentage: 0,
+              plan: 'free'
+            }
+          });
+        }
+      } else {
+        res.status(405).json({ error: 'Method not allowed' });
+      }
+    } catch (error) {
+      console.error('Quota endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch quota',
+        message: error.message
+      });
+    }
   } else if (path === '/api/health') {
     res.status(200).json({
       success: true,
