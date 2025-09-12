@@ -25,7 +25,7 @@ const jobCreated = inngest.createFunction(
       const database = await getDatabase();
       
       // First, get the organization ID from clerk_org_id
-      const orgResult = await database.execute(sql`
+      const orgResult = await database.query(sql`
         SELECT id FROM organizations 
         WHERE clerk_org_id = ${orgId} 
         LIMIT 1
@@ -38,7 +38,7 @@ const jobCreated = inngest.createFunction(
       const dbOrgId = orgResult.rows[0].id;
       
       // Insert job into database
-      const jobResult = await database.execute(sql`
+      const jobResult = await database.query(sql`
         INSERT INTO jobs (id, org_id, keyword, status, type, input, created_at)
         VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, 'pending', 'scrape', ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
         RETURNING *
@@ -52,7 +52,7 @@ const jobCreated = inngest.createFunction(
     await step.run('update-job-status', async () => {
       const database = await getDatabase();
       
-      const jobResult = await database.execute(sql`
+      const jobResult = await database.query(sql`
         UPDATE jobs 
         SET status = 'running', updated_at = ${new Date().toISOString()}
         WHERE id = ${jobId}
@@ -69,7 +69,7 @@ const jobCreated = inngest.createFunction(
         const database = await getDatabase();
         
         // Get organization
-        const orgResult = await database.execute(sql`
+        const orgResult = await database.query(sql`
           SELECT id, quota_used, quota_limit FROM organizations 
           WHERE clerk_org_id = ${orgId} 
           LIMIT 1
@@ -87,7 +87,7 @@ const jobCreated = inngest.createFunction(
         }
         
         // Update quota
-        await database.execute(sql`
+        await database.query(sql`
           UPDATE organizations 
           SET quota_used = ${newQuotaUsed}, updated_at = ${new Date().toISOString()}
           WHERE clerk_org_id = ${orgId}
