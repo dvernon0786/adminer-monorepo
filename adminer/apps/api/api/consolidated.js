@@ -1,8 +1,7 @@
 // Import required modules
-// const { apifyService } = require('../src/lib/apify'); // Temporarily disabled for testing
-// const { inngest } = require('../src/inngest/functions'); // Temporarily disabled for testing
+import { inngest } from '../src/inngest/functions.js';
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
@@ -60,7 +59,6 @@ module.exports = async function handler(req, res) {
         
         // Trigger Inngest event
         try {
-          const { inngest } = require('../src/inngest/client');
           await inngest.send({
             name: 'job.created',
             data: {

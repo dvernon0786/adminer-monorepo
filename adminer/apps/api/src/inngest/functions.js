@@ -1,6 +1,6 @@
-const { inngest } = require('./client');
-const { jobDb, orgDb, webhookDb } = require('../lib/db');
-const { ApifyService } = require('../lib/apify');
+import { inngest } from './client.js';
+import { jobDb, orgDb, webhookDb } from '../lib/db.js';
+import { ApifyService } from '../lib/apify.js';
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
@@ -173,7 +173,7 @@ const apifyRunStart = inngest.createFunction(
   }
 );
 
-module.exports = {
+export {
   inngest,
   jobCreated,
   quotaExceeded,

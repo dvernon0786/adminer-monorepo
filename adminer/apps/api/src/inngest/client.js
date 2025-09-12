@@ -1,9 +1,8 @@
 // Inngest client configuration
-const { Inngest } = require('inngest');
-const { serve } = require('inngest/express');
+import { Inngest } from 'inngest';
 
 // Create Inngest client
-const inngest = new Inngest({
+export const inngest = new Inngest({
   id: 'adminer-jobs',
   name: 'Adminer Job Pipeline',
   env: process.env.NODE_ENV || 'production',
@@ -11,5 +10,3 @@ const inngest = new Inngest({
   signingKey: process.env.INNGEST_SIGNING_KEY,
   baseUrl: process.env.INNGEST_BASE_URL || 'https://api.inngest.com'
 });
-
-module.exports = { inngest, serve };
