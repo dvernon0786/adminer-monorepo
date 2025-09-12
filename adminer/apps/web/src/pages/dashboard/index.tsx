@@ -245,7 +245,7 @@ export default function Dashboard() {
                 onTabChange={setActiveTab}
                 analyses={mockAnalyses}
                 filteredAnalyses={mockAnalyses}
-                stats={mockStats}
+                stats={stats || { total: 0, images: 0, videos: 0, text: 0, errors: 0 }}
                 searchTerm={searchTerm}
                 onSearchChange={setSearchTerm}
                 onAnalysisClick={(analysis) => console.log("Analysis clicked:", analysis.id)}
