@@ -324,11 +324,11 @@ module.exports = async function handler(req, res) {
         let inngestError = null;
         
         try {
-          // Import Inngest client
-          const { inngest } = await import('../src/inngest/client.js');
+          // Use the existing loadInngest function
+          const inngestClient = await loadInngest();
           
           // Send event with proper payload structure
-          inngestResult = await inngest.send({
+          inngestResult = await inngestClient.send({
             name: 'job.created',
             data: {
               jobId,
