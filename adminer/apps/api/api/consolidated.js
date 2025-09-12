@@ -67,12 +67,12 @@ async function getRealQuotaStatus(orgId = 'default-org') {
     `);
     
     console.log('📊 Query result:', { 
-      rowCount: orgResult.length, 
+      rowCount: orgResult.rows?.length || 0, 
       result: orgResult,
       orgId 
     });
     
-    if (orgResult.length === 0) {
+    if (!orgResult.rows || orgResult.rows.length === 0) {
       console.log('🆕 No organization found, creating default...');
       // Create default organization if it doesn't exist
       await database.execute(sql`
@@ -90,7 +90,7 @@ async function getRealQuotaStatus(orgId = 'default-org') {
       };
     }
     
-    const org = orgResult[0];
+    const org = orgResult.rows[0];
     console.log('✅ Organization found:', org);
     return {
       used: org.quota_used || 0,
@@ -134,12 +134,12 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     `);
     
     console.log('📊 Organization query result:', { 
-      rowCount: orgResult.length, 
+      rowCount: orgResult.rows?.length || 0, 
       result: orgResult,
       orgId 
     });
     
-    if (orgResult.length === 0) {
+    if (!orgResult.rows || orgResult.rows.length === 0) {
       console.log('⚠️ No organization found for stats, returning empty stats');
       return {
         total: 0,
@@ -150,7 +150,7 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       };
     }
     
-    const orgDbId = orgResult[0]?.id;
+    const orgDbId = orgResult.rows[0]?.id;
     console.log('✅ Organization ID found:', orgDbId);
     
     if (!orgDbId) {
@@ -176,7 +176,7 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     `);
     
     console.log('📊 Job stats result:', { 
-      rowCount: stats.length, 
+      rowCount: stats.rows?.length || 0, 
       result: stats 
     });
     
@@ -189,13 +189,15 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       errors: 0
     };
     
-    stats.forEach(stat => {
-      const count = parseInt(stat.count) || 0;
-      result.total += count;
-      if (stat.type === 'image') result.images = count;
-      else if (stat.type === 'video') result.videos = count;
-      else if (stat.type === 'text') result.text = count;
-    });
+    if (stats.rows) {
+      stats.rows.forEach(stat => {
+        const count = parseInt(stat.count) || 0;
+        result.total += count;
+        if (stat.type === 'image') result.images = count;
+        else if (stat.type === 'video') result.videos = count;
+        else if (stat.type === 'text') result.text = count;
+      });
+    }
     
     // Count failed jobs as errors
     console.log('📊 Querying error count...');
@@ -206,12 +208,12 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     `);
     
     console.log('📊 Error count result:', { 
-      rowCount: errorCount.length, 
+      rowCount: errorCount.rows?.length || 0, 
       result: errorCount 
     });
       
-    if (errorCount.length > 0) {
-      result.errors = parseInt(errorCount[0].count);
+    if (errorCount.rows && errorCount.rows.length > 0) {
+      result.errors = parseInt(errorCount.rows[0].count) || 0;
     }
     
     console.log('✅ Final stats result:', result);
