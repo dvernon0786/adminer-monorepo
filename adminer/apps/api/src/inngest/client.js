@@ -3,7 +3,7 @@ import { Inngest } from 'inngest';
 
 // Fixed Inngest client with proper configuration
 export const inngest = new Inngest({
-  id: 'adminer-app',
+  id: 'adminer-jobs',
   name: 'Adminer Job Processor',
   eventKey: process.env.INNGEST_EVENT_KEY,
   signingKey: process.env.INNGEST_SIGNING_KEY,
