@@ -143,9 +143,32 @@ module.exports = async (req, res) => {
     return res.status(200).end();
   }
 
+  // Handle different HTTP methods
+  if (req.method === 'PUT') {
+    // Return function definitions for Inngest sync
+    const functionDefinitions = functions.map(fn => ({
+      id: fn.id || fn._def?.id,
+      name: fn.name || fn._def?.name || fn.id,
+      triggers: fn._def?.trigger ? [fn._def.trigger] : [{ event: 'unknown' }],
+      steps: fn._def?.steps || []
+    }));
+
+    return res.status(200).json({
+      functions: functionDefinitions,
+      appId: 'adminer-jobs',
+      appName: 'Adminer Job Pipeline',
+      framework: 'vercel',
+      platform: 'vercel',
+      env: process.env.NODE_ENV || 'production',
+      hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+      hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
+      functionsFound: functions.length
+    });
+  }
+
   try {
-    // Import serve function dynamically
-    const { serve } = await import('inngest/express');
+    // Try to use Inngest serve handler for POST requests
+    const { serve } = require('inngest/express');
     
     // Create serve handler
     const handler = serve({
@@ -153,59 +176,37 @@ module.exports = async (req, res) => {
       functions: functions
     });
     
-    // Use the serve handler
-    return await handler(req, res);
+    // Use the serve handler for POST requests
+    if (req.method === 'POST') {
+      return await handler(req, res);
+    }
   } catch (serveError) {
     console.error('Inngest serve error:', serveError);
     
-    // Fallback manual implementation for sync requests
-    if (req.method === 'PUT') {
-      // Return function definitions for Inngest sync
-      const functionDefinitions = functions.map(fn => ({
-        id: fn.id || fn._def?.id,
-        name: fn.name || fn._def?.name || fn.id,
-        triggers: fn._def?.trigger ? [fn._def.trigger] : [{ event: 'unknown' }],
-        steps: fn._def?.steps || []
-      }));
-
-      return res.status(200).json({
-        functions: functionDefinitions,
-        appId: 'adminer-jobs',
-        appName: 'Adminer Job Pipeline',
-        framework: 'vercel',
-        platform: 'vercel',
-        env: process.env.NODE_ENV || 'production',
-        hasEventKey: !!process.env.INNGEST_EVENT_KEY,
-        hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
-        functionsFound: functions.length
-      });
-    }
-
+    // Fallback for POST requests
     if (req.method === 'POST') {
-      // Handle webhook events
       const { event } = req.body;
       console.log('Received Inngest webhook event:', event);
       
       return res.status(200).json({
         success: true,
-        message: 'Event received',
+        message: 'Event received (fallback)',
         eventType: event?.name
       });
     }
-
-    if (req.method === 'GET') {
-      // Health check
-      return res.status(200).json({
-        success: true,
-        message: 'Inngest endpoint ready',
-        functionsFound: functions.length,
-        appId: 'adminer-jobs',
-        hasEventKey: !!process.env.INNGEST_EVENT_KEY,
-        hasSigningKey: !!process.env.INNGEST_SIGNING_KEY
-      });
-    }
-
-    return res.status(405).json({ error: 'Method not allowed' });
-    
   }
+
+  if (req.method === 'GET') {
+    // Health check
+    return res.status(200).json({
+      success: true,
+      message: 'Inngest endpoint ready',
+      functionsFound: functions.length,
+      appId: 'adminer-jobs',
+      hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+      hasSigningKey: !!process.env.INNGEST_SIGNING_KEY
+    });
+  }
+
+  return res.status(405).json({ error: 'Method not allowed' });
 };
