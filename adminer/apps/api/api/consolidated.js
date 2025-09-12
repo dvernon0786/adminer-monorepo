@@ -27,6 +27,7 @@ module.exports = async function handler(req, res) {
   
   // Debug logging
   console.log('API Request:', { method: req.method, path, url: req.url });
+  console.log('Path matching check:', { path, isQuota: path === '/api/quota' });
   
   // Route based on path
   if (path === '/api/test') {
@@ -260,7 +261,7 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota'],
       timestamp: new Date().toISOString()
     });
   }
