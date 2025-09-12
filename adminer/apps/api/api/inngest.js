@@ -1,4 +1,4 @@
-// Vercel-compatible Inngest webhook using CommonJS
+// FIXED INNGEST WEBHOOK ENDPOINT - Vercel-compatible
 const { serve } = require('inngest/express');
 
 // Import functions using dynamic import for ES modules
@@ -18,7 +18,7 @@ async function loadFunctions() {
   return { inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed, apifyRunStart };
 }
 
-// Create serve handler
+// Create serve handler with proper configuration
 async function createServeHandler() {
   const functions = await loadFunctions();
   return serve({
@@ -30,17 +30,38 @@ async function createServeHandler() {
       functions.apifyRunCompleted,
       functions.apifyRunFailed,
       functions.apifyRunStart
-    ]
+    ],
+    logLevel: 'info'
   });
 }
 
-// Export handlers
+// Export handlers with comprehensive error handling
 module.exports = async (req, res) => {
   try {
+    // Handle GET requests for debugging
+    if (req.method === 'GET') {
+      return res.json({
+        status: 'active',
+        functions: 6,
+        endpoint: '/api/inngest',
+        timestamp: new Date().toISOString(),
+        environment: {
+          hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+          hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
+          nodeEnv: process.env.NODE_ENV
+        }
+      });
+    }
+    
+    // Handle POST/PUT requests with Inngest
     const handler = await createServeHandler();
     return await handler(req, res);
   } catch (error) {
     console.error('Inngest handler error:', error);
-    res.status(500).json({ error: 'Internal server error' });
+    res.status(500).json({ 
+      error: 'Internal server error',
+      message: error.message,
+      timestamp: new Date().toISOString()
+    });
   }
 };

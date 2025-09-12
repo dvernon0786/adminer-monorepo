@@ -1,12 +1,18 @@
 // Inngest client configuration
 import { Inngest } from 'inngest';
 
-// Create Inngest client
+// Fixed Inngest client with proper configuration
 export const inngest = new Inngest({
-  id: 'adminer-jobs',
-  name: 'Adminer Job Pipeline',
-  env: process.env.NODE_ENV || 'production',
+  id: 'adminer-app',
+  name: 'Adminer Job Processor',
   eventKey: process.env.INNGEST_EVENT_KEY,
   signingKey: process.env.INNGEST_SIGNING_KEY,
-  baseUrl: process.env.INNGEST_BASE_URL || 'https://api.inngest.com'
+  isDev: process.env.NODE_ENV === 'development'
+});
+
+// Debug logging for environment variables
+console.log('Inngest Client Initialized:', {
+  hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+  hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
+  environment: process.env.NODE_ENV
 });

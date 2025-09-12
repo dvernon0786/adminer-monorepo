@@ -311,45 +311,78 @@ module.exports = async function handler(req, res) {
     console.log('Jobs endpoint hit:', { method: req.method, path });
     if (req.method === 'POST') {
       try {
-        const body = req.body;
+        const { keyword, limit = 10 } = req.body;
+        const orgId = req.headers['x-org-id'] || 'default-org';
+        
+        // Generate job ID
         const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        console.log('Job creation request:', { jobId, body, method: req.method });
+        console.log(`Creating job: ${jobId} for org: ${orgId}`);
         
-        // Trigger Inngest event
+        // Send event to Inngest with comprehensive error handling
+        let inngestResult = null;
+        let inngestError = null;
+        
         try {
-          const inngestClient = await loadInngest();
-          await inngestClient.send({
+          // Import Inngest client
+          const { inngest } = await import('../src/inngest/client.js');
+          
+          // Send event with proper payload structure
+          inngestResult = await inngest.send({
             name: 'job.created',
             data: {
               jobId,
-              orgId: 'default-org',
-              type: 'scrape',
-              input: body,
-              createdAt: new Date().toISOString()
+              keyword,
+              limit: parseInt(limit),
+              orgId,
+              timestamp: new Date().toISOString(),
+              metadata: {
+                source: 'api',
+                version: '1.0'
+              }
             }
           });
-          console.log('Inngest event triggered for job:', jobId);
-        } catch (inngestError) {
-          console.error('Inngest event failed:', inngestError);
-          // Continue with job creation even if Inngest fails
+          
+          console.log('✅ Inngest event sent successfully:', inngestResult);
+          
+        } catch (error) {
+          inngestError = error;
+          console.error('❌ Inngest event failed:', error.message);
+          console.error('Error details:', error);
         }
         
-        res.status(201).json({
+        // Return response with Inngest status
+        const response = {
           success: true,
-          data: {
-            jobId,
-            type: 'scrape',
-            status: 'created',
-            createdAt: new Date().toISOString()
-          }
-        });
+          data: { 
+            jobId, 
+            keyword, 
+            limit: parseInt(limit),
+            orgId 
+          },
+          timestamp: new Date().toISOString()
+        };
+        
+        if (inngestResult) {
+          response.inngest = {
+            status: 'sent',
+            eventId: inngestResult.ids?.[0] || 'unknown'
+          };
+        } else if (inngestError) {
+          response.inngest = {
+            status: 'failed',
+            error: inngestError.message
+          };
+        }
+        
+        res.status(201).json(response);
+        
       } catch (error) {
         console.error('Job creation error:', error);
         res.status(500).json({
           success: false,
-          error: 'Failed to create job',
-          message: error.message
+          error: error.message,
+          timestamp: new Date().toISOString()
         });
       }
     } else if (req.method === 'GET') {
@@ -548,6 +581,27 @@ module.exports = async function handler(req, res) {
         message: error.message
       });
     }
+  } else if (path === '/api/env-check') {
+    // Environment variables check endpoint
+    res.status(200).json({
+      success: true,
+      inngest: {
+        hasEventKey: !!process.env.INNGEST_EVENT_KEY,
+        hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
+        eventKeyLength: process.env.INNGEST_EVENT_KEY?.length || 0,
+        signingKeyLength: process.env.INNGEST_SIGNING_KEY?.length || 0,
+        eventKeyPreview: process.env.INNGEST_EVENT_KEY ? 
+          `${process.env.INNGEST_EVENT_KEY.substring(0, 8)}...` : 'Not set'
+      },
+      database: {
+        hasUrl: !!process.env.DATABASE_URL,
+        urlLength: process.env.DATABASE_URL?.length || 0,
+        urlPreview: process.env.DATABASE_URL ? 
+          `${process.env.DATABASE_URL.substring(0, 20)}...` : 'Not set'
+      },
+      environment: process.env.NODE_ENV || 'unknown',
+      timestamp: new Date().toISOString()
+    });
   } else if (path === '/api/setup-db') {
     // Database setup endpoint - creates tables if they don't exist
     try {
