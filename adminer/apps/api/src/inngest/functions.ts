@@ -1,4 +1,6 @@
 import { Inngest } from 'inngest';
+import { jobDb, orgDb, webhookDb } from '../lib/db';
+import { ApifyService } from '../lib/apify';
 
 // Create a client to send and receive events
 export const inngest = new Inngest({ 
@@ -11,27 +13,54 @@ export const jobCreated = inngest.createFunction(
   { id: 'job-created' },
   { event: 'job/created' },
   async ({ event, step }) => {
+    const { jobId, orgId, input, type } = event.data;
+    
+    // Create job in database
+    await step.run('create-job-record', async () => {
+      const job = await jobDb.create({
+        orgId,
+        type: type || 'scrape',
+        input
+      });
+      console.log('Job created in database:', job);
+      return job;
+    });
+    
+    // Update job status to running
     await step.run('update-job-status', async () => {
-      console.log('Updating job status for:', event.data);
-      return { status: 'processing' };
+      const job = await jobDb.updateStatus(jobId, 'running');
+      console.log('Job status updated to running:', job);
+      return job;
     });
-
-    await step.run('process-job', async () => {
-      console.log('Processing job:', event.data);
-      return { processed: true };
-    });
-
-    await step.run('complete-job', async () => {
-      console.log('Completing job:', event.data);
-      return { completed: true };
-    });
-
+    
+    // Consume quota
     await step.run('consume-quota', async () => {
-      console.log('Consuming quota for:', event.data);
-      return { quotaConsumed: true };
+      try {
+        const quota = await orgDb.consumeQuota(orgId, 1, 'scrape', `Job ${jobId}`);
+        console.log('Quota consumed:', quota);
+        return quota;
+      } catch (error) {
+        console.error('Quota exceeded:', error);
+        // Quota exceeded - trigger quota exceeded event
+        await inngest.send({
+          name: 'quota/exceeded',
+          data: { orgId, jobId, error: error.message }
+        });
+        throw error;
+      }
     });
-
-    return { message: 'Job created and processed successfully' };
+    
+    // Trigger Apify scraping
+    await step.run('start-apify-job', async () => {
+      await inngest.send({
+        name: 'apify/run.start',
+        data: { jobId, input, orgId }
+      });
+      console.log('Apify job triggered for:', jobId);
+      return { apifyTriggered: true };
+    });
+    
+    return { message: 'Job created and processing started' };
   }
 );
 
@@ -103,5 +132,49 @@ export const apifyRunFailed = inngest.createFunction(
     });
 
     return { message: 'Apify run failure handled' };
+  }
+);
+
+// Apify Run Start Handler
+const apifyService = new ApifyService();
+
+export const apifyRunStart = inngest.createFunction(
+  { id: 'apify-run-start' },
+  { event: 'apify/run.start' },
+  async ({ event, step }) => {
+    const { jobId, input, orgId } = event.data;
+    
+    await step.run('execute-apify-scrape', async () => {
+      try {
+        console.log('Starting Apify scrape for job:', jobId);
+        const result = await apifyService.runScrapeJob({
+          keyword: input.keyword,
+          limit: input.limit || 10
+        });
+        
+        console.log('Apify scrape completed:', result);
+        
+        // Update job with results
+        await jobDb.updateStatus(jobId, 'completed', result);
+        
+        // Trigger AI analysis
+        await inngest.send({
+          name: 'ai/analyze.start',
+          data: { jobId, scraped_data: result, orgId }
+        });
+        
+        return result;
+      } catch (error) {
+        console.error('Apify scrape failed:', error);
+        await jobDb.updateStatus(jobId, 'failed', null, error.message);
+        await inngest.send({
+          name: 'apify/run.failed',
+          data: { jobId, error: error.message, orgId }
+        });
+        throw error;
+      }
+    });
+    
+    return { message: 'Apify scraping completed' };
   }
 );

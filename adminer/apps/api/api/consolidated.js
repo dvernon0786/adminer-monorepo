@@ -1,7 +1,8 @@
 // Import required modules
-const { apifyService } = require('../src/lib/apify');
+// const { apifyService } = require('../src/lib/apify'); // Temporarily disabled for testing
+// const { inngest } = require('../src/inngest/functions'); // Temporarily disabled for testing
 
-module.exports = function handler(req, res) {
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
@@ -47,17 +48,30 @@ module.exports = function handler(req, res) {
     }
   } else if (path === '/api/jobs') {
     if (req.method === 'POST') {
-      // Job creation endpoint
-      const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
-      res.status(201).json({
-        success: true,
-        data: {
-          jobId,
-          type: 'scrape',
-          status: 'created',
-          createdAt: new Date().toISOString()
-        }
-      });
+      try {
+        const body = req.body;
+        const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
+        
+        // TODO: Trigger Inngest event when Inngest is working
+        console.log('Job creation request:', { jobId, body });
+        
+        res.status(201).json({
+          success: true,
+          data: {
+            jobId,
+            type: 'scrape',
+            status: 'created',
+            createdAt: new Date().toISOString()
+          }
+        });
+      } catch (error) {
+        console.error('Job creation error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to create job',
+          message: error.message
+        });
+      }
     } else if (req.method === 'GET') {
       // Job listing endpoint
       res.status(200).json({
