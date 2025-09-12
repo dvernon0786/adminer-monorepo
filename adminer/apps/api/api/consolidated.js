@@ -1,7 +1,15 @@
 // Import required modules
-import { inngest } from '../src/inngest/functions.js';
+let inngest;
 
-export default async function handler(req, res) {
+async function loadInngest() {
+  if (!inngest) {
+    const functions = await import('../src/inngest/functions.js');
+    inngest = functions.inngest;
+  }
+  return inngest;
+}
+
+module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
   res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, OPTIONS');
@@ -59,7 +67,8 @@ export default async function handler(req, res) {
         
         // Trigger Inngest event
         try {
-          await inngest.send({
+          const inngestClient = await loadInngest();
+          await inngestClient.send({
             name: 'job.created',
             data: {
               jobId,
