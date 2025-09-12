@@ -168,6 +168,37 @@ module.exports = async function handler(req, res) {
         message: error.message
       });
     }
+  } else if (path === '/api/analyses/stats') {
+    // Analysis statistics endpoint
+    try {
+      console.log('Analyses stats endpoint hit:', { method: req.method, path });
+      
+      if (req.method === 'GET') {
+        // Get organization ID from headers (Clerk)
+        const orgId = req.headers['x-org-id'] || 'default-org';
+        
+        // Load database operations
+        const dbModule = await import('../src/lib/db.js');
+        const { analysisDb } = dbModule;
+        
+        // Get analysis statistics from database
+        const stats = await analysisDb.getStats(orgId);
+        
+        res.status(200).json({
+          success: true,
+          data: stats
+        });
+      } else {
+        res.status(405).json({ error: 'Method not allowed' });
+      }
+    } catch (error) {
+      console.error('Analyses stats endpoint error:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch analysis statistics',
+        message: error.message
+      });
+    }
   } else if (path === '/api/health') {
     res.status(200).json({
       success: true,

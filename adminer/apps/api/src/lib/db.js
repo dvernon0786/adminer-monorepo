@@ -65,6 +65,46 @@ const orgDb = {
   }
 };
 
+const analysisDb = {
+  async getStats(orgId) {
+    console.log('Getting analysis statistics for org:', orgId);
+    
+    // For now, return mock statistics based on real data structure
+    // In production, this would query the actual analyses table
+    return {
+      total: 12,
+      images: 5,
+      videos: 3,
+      text: 4,
+      errors: 0
+    };
+  },
+
+  async getAnalyses(orgId, limit = 50, offset = 0) {
+    console.log('Getting analyses for org:', orgId, { limit, offset });
+    
+    // Mock analyses data for now
+    return [
+      {
+        id: 'analysis-1',
+        orgId: orgId,
+        type: 'image',
+        status: 'completed',
+        createdAt: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
+        summary: 'Image analysis completed'
+      },
+      {
+        id: 'analysis-2', 
+        orgId: orgId,
+        type: 'video',
+        status: 'pending',
+        createdAt: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
+        summary: 'Video analysis in progress'
+      }
+    ];
+  }
+};
+
 const webhookDb = {
   async store(type, source, data) {
     console.log('Storing webhook event:', { type, source, data });
@@ -81,5 +121,6 @@ const webhookDb = {
 module.exports = {
   jobDb,
   orgDb,
+  analysisDb,
   webhookDb
 };
