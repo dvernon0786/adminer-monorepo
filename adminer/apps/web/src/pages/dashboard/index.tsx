@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { useQuota } from '../../hooks/useQuota';
+import { useAnalysesStats } from '../../hooks/useAnalysesStats';
 import { QuotaBanner } from '../../components/QuotaBanner';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import JobsTable from '../../components/dashboard/JobsTable';
@@ -14,19 +15,11 @@ import { Badge } from '../../components/ui/badge';
 
 export default function Dashboard() {
   const { data: quota, loading, error } = useQuota();
+  const { data: stats, loading: statsLoading, error: statsError } = useAnalysesStats();
 
   // Mock data for dashboard components
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
-
-  // Mock dashboard stats
-  const mockStats = {
-    total: 12,
-    images: 5,
-    videos: 3,
-    text: 4,
-    errors: 0
-  };
 
   // Mock analyses data
   const mockAnalyses = [
@@ -50,8 +43,9 @@ export default function Dashboard() {
 
   console.log("DESIGN-SYSTEM-DASHBOARD: Component executing...");
   console.log("DESIGN-SYSTEM-DASHBOARD: Quota data:", quota);
+  console.log("DESIGN-SYSTEM-DASHBOARD: Stats data:", stats);
 
-  if (loading) {
+  if (loading || statsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="flex items-center justify-center min-h-screen">
@@ -129,7 +123,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-400 text-sm font-medium">Total Analyses</p>
-                    <p className="text-3xl font-bold text-white">{mockStats.total}</p>
+                    <p className="text-3xl font-bold text-white">{stats?.total || 0}</p>
                   </div>
                   <div className="w-12 h-12 bg-blue-500/20 rounded-lg flex items-center justify-center">
                     <span className="text-2xl">📊</span>
@@ -143,7 +137,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-400 text-sm font-medium">Images</p>
-                    <p className="text-3xl font-bold text-white">{mockStats.images}</p>
+                    <p className="text-3xl font-bold text-white">{stats?.images || 0}</p>
                   </div>
                   <div className="w-12 h-12 bg-green-500/20 rounded-lg flex items-center justify-center">
                     <span className="text-2xl">🖼️</span>
@@ -157,7 +151,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-400 text-sm font-medium">Videos</p>
-                    <p className="text-3xl font-bold text-white">{mockStats.videos}</p>
+                    <p className="text-3xl font-bold text-white">{stats?.videos || 0}</p>
                   </div>
                   <div className="w-12 h-12 bg-purple-500/20 rounded-lg flex items-center justify-center">
                     <span className="text-2xl">🎥</span>
@@ -171,7 +165,7 @@ export default function Dashboard() {
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="text-slate-400 text-sm font-medium">Text</p>
-                    <p className="text-3xl font-bold text-white">{mockStats.text}</p>
+                    <p className="text-3xl font-bold text-white">{stats?.text || 0}</p>
                   </div>
                   <div className="w-12 h-12 bg-orange-500/20 rounded-lg flex items-center justify-center">
                     <span className="text-2xl">📝</span>
