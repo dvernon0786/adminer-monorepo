@@ -146,12 +146,38 @@ module.exports = async (req, res) => {
   // Handle different HTTP methods
   if (req.method === 'PUT') {
     // Return function definitions for Inngest sync
-    const functionDefinitions = functions.map(fn => ({
-      id: fn.id || fn._def?.id,
-      name: fn.name || fn._def?.name || fn.id,
-      triggers: fn._def?.trigger ? [fn._def.trigger] : [{ event: 'unknown' }],
-      steps: fn._def?.steps || []
-    }));
+    const functionDefinitions = [
+      {
+        id: 'job-created',
+        name: 'Job Created Handler',
+        triggers: [{ event: 'job.created' }],
+        steps: ['create-job-record', 'update-job-status', 'consume-quota', 'trigger-apify']
+      },
+      {
+        id: 'apify-run-start',
+        name: 'Apify Run Start',
+        triggers: [{ event: 'apify.run.start' }],
+        steps: ['execute-scraping']
+      },
+      {
+        id: 'ai-analyze-start',
+        name: 'AI Analysis Start',
+        triggers: [{ event: 'ai.analyze.start' }],
+        steps: ['analyze-data']
+      },
+      {
+        id: 'quota-exceeded',
+        name: 'Quota Exceeded Handler',
+        triggers: [{ event: 'quota.exceeded' }],
+        steps: ['send-notification']
+      },
+      {
+        id: 'subscription-updated',
+        name: 'Subscription Updated Handler',
+        triggers: [{ event: 'subscription.updated' }],
+        steps: ['update-quota']
+      }
+    ];
 
     return res.status(200).json({
       functions: functionDefinitions,
