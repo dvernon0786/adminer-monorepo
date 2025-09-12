@@ -125,7 +125,12 @@ module.exports = async function handler(req, res) {
         const orgId = req.headers['x-org-id'] || 'default-org';
         
         // Load database operations
-        const { orgDb } = await import('../src/lib/db.js');
+        const dbModule = await import('../src/lib/db.js');
+        console.log('DB module loaded:', Object.keys(dbModule));
+        console.log('orgDb available:', !!dbModule.orgDb);
+        console.log('getQuotaStatus available:', typeof dbModule.orgDb?.getQuotaStatus);
+        
+        const { orgDb } = dbModule;
         
         // Get quota status from database
         const quotaStatus = await orgDb.getQuotaStatus(orgId);
