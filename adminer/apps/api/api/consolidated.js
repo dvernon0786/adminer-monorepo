@@ -428,6 +428,109 @@ module.exports = async function handler(req, res) {
       vercelRegion: process.env.VERCEL_REGION || 'unknown',
       database: dbStatus
     });
+  } else if (path === '/api/setup-db') {
+    // Database setup endpoint - creates tables if they don't exist
+    try {
+      console.log('🔧 Setting up database schema...');
+      const database = await initializeDatabase();
+      if (!database) {
+        throw new Error('Database not available');
+      }
+      
+      // Create organizations table
+      console.log('📊 Creating organizations table...');
+      await database.execute(sql`
+        CREATE TABLE IF NOT EXISTS organizations (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          clerk_org_id TEXT NOT NULL UNIQUE,
+          name TEXT NOT NULL,
+          plan TEXT NOT NULL DEFAULT 'free',
+          quota_limit INTEGER NOT NULL DEFAULT 100,
+          quota_used INTEGER NOT NULL DEFAULT 0,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `);
+      
+      // Create jobs table
+      console.log('📊 Creating jobs table...');
+      await database.execute(sql`
+        CREATE TABLE IF NOT EXISTS jobs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organizations(id),
+          type TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'pending',
+          input JSONB NOT NULL,
+          output JSONB,
+          error TEXT,
+          started_at TIMESTAMP,
+          completed_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `);
+      
+      // Create quota_usage table
+      console.log('📊 Creating quota_usage table...');
+      await database.execute(sql`
+        CREATE TABLE IF NOT EXISTS quota_usage (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organizations(id),
+          job_id UUID REFERENCES jobs(id),
+          type TEXT NOT NULL,
+          amount INTEGER NOT NULL,
+          description TEXT,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `);
+      
+      // Create subscriptions table
+      console.log('📊 Creating subscriptions table...');
+      await database.execute(sql`
+        CREATE TABLE IF NOT EXISTS subscriptions (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          org_id UUID NOT NULL REFERENCES organizations(id),
+          dodo_subscription_id TEXT UNIQUE,
+          plan TEXT NOT NULL,
+          status TEXT NOT NULL DEFAULT 'active',
+          current_period_start TIMESTAMP,
+          current_period_end TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL,
+          updated_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `);
+      
+      // Create webhook_events table
+      console.log('📊 Creating webhook_events table...');
+      await database.execute(sql`
+        CREATE TABLE IF NOT EXISTS webhook_events (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          type TEXT NOT NULL,
+          source TEXT NOT NULL,
+          data JSONB NOT NULL,
+          processed BOOLEAN DEFAULT FALSE,
+          processed_at TIMESTAMP,
+          created_at TIMESTAMP DEFAULT NOW() NOT NULL
+        )
+      `);
+      
+      console.log('✅ Database schema setup complete');
+      
+      res.status(200).json({
+        success: true,
+        message: 'Database schema created successfully',
+        tables: ['organizations', 'jobs', 'quota_usage', 'subscriptions', 'webhook_events'],
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ Database setup failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Database setup failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   } else if (path === '/api/webhook') {
     // Webhook endpoint
     res.status(200).json({
