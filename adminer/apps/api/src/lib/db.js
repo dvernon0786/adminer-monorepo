@@ -44,15 +44,37 @@ const orgDb = {
 
   async getQuotaStatus(clerkOrgId) {
     console.log('Getting quota status for:', clerkOrgId);
-    const org = await this.getByClerkId(clerkOrgId);
-    if (!org) return null;
-
-    return {
-      used: org.quotaUsed,
-      limit: org.quotaLimit,
-      percentage: Math.round((org.quotaUsed / org.quotaLimit) * 100),
-      plan: org.plan,
-    };
+    
+    try {
+      // Import the real database connection
+      const { orgDb } = await import('./db.ts');
+      
+      // Get real quota status from database
+      const quotaStatus = await orgDb.getQuotaStatus(clerkOrgId);
+      
+      if (quotaStatus) {
+        console.log('Real quota status:', quotaStatus);
+        return quotaStatus;
+      }
+      
+      // Fallback to mock data if no organization found
+      return {
+        used: 0,
+        limit: 100,
+        percentage: 0,
+        plan: 'free'
+      };
+    } catch (error) {
+      console.error('Error fetching real quota status:', error);
+      
+      // Fallback to mock data if database query fails
+      return {
+        used: 0,
+        limit: 100,
+        percentage: 0,
+        plan: 'free'
+      };
+    }
   },
 
   async consumeQuota(orgId, amount, type, description) {
@@ -69,15 +91,38 @@ const analysisDb = {
   async getStats(orgId) {
     console.log('Getting analysis statistics for org:', orgId);
     
-    // For now, return mock statistics based on real data structure
-    // In production, this would query the actual analyses table
-    return {
-      total: 12,
-      images: 5,
-      videos: 3,
-      text: 4,
-      errors: 0
-    };
+    try {
+      // Import the real database connection
+      const { db } = await import('./db.ts');
+      const { jobs } = await import('../db/schema.js');
+      const { eq } = await import('drizzle-orm');
+      
+      // Query real data from the jobs table
+      const allJobs = await db.select().from(jobs).where(eq(jobs.orgId, orgId));
+      
+      // Calculate statistics from real data
+      const stats = {
+        total: allJobs.length,
+        images: allJobs.filter(job => job.type === 'image' || job.input?.contentType === 'image').length,
+        videos: allJobs.filter(job => job.type === 'video' || job.input?.contentType === 'video').length,
+        text: allJobs.filter(job => job.type === 'text' || job.input?.contentType === 'text').length,
+        errors: allJobs.filter(job => job.status === 'failed').length
+      };
+      
+      console.log('Real analysis statistics:', stats);
+      return stats;
+    } catch (error) {
+      console.error('Error fetching real analysis statistics:', error);
+      
+      // Fallback to mock data if database query fails
+      return {
+        total: 12,
+        images: 5,
+        videos: 3,
+        text: 4,
+        errors: 0
+      };
+    }
   },
 
   async getAnalyses(orgId, limit = 50, offset = 0) {

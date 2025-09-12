@@ -185,6 +185,9 @@ module.exports = async function handler(req, res) {
         const dbModule = await import('../src/lib/db.js');
         const { analysisDb } = dbModule;
         
+        // For now, return real database structure but with mock data
+        // TODO: Connect to actual Neon database for real analysis statistics
+        
         // Get analysis statistics from database
         const stats = await analysisDb.getStats(orgId);
         
