@@ -440,6 +440,52 @@ module.exports = async function handler(req, res) {
       vercelRegion: process.env.VERCEL_REGION || 'unknown',
       database: dbStatus
     });
+  } else if (path === '/api/debug-db') {
+    // Debug endpoint to see raw database query results
+    try {
+      console.log('🔍 Debug: Testing database query...');
+      const database = await initializeDatabase();
+      if (!database) {
+        throw new Error('Database not available');
+      }
+      
+      // Test a simple query to see the result structure
+      const testResult = await database.execute(sql`
+        SELECT quota_used, quota_limit, plan 
+        FROM organizations 
+        WHERE clerk_org_id = ${'default-org'} 
+        LIMIT 1
+      `);
+      
+      console.log('🔍 Debug: Raw query result:', {
+        type: typeof testResult,
+        isArray: Array.isArray(testResult),
+        length: testResult?.length,
+        result: testResult
+      });
+      
+      res.status(200).json({
+        success: true,
+        debug: {
+          type: typeof testResult,
+          isArray: Array.isArray(testResult),
+          length: testResult?.length,
+          result: testResult,
+          firstItem: testResult?.[0],
+          firstItemKeys: testResult?.[0] ? Object.keys(testResult[0]) : null
+        },
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('❌ Debug query failed:', error);
+      res.status(500).json({
+        success: false,
+        error: 'Debug query failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   } else if (path === '/api/setup-db') {
     // Database setup endpoint - creates tables if they don't exist
     try {
