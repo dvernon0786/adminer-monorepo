@@ -1,86 +1,4 @@
 // Inngest webhook endpoint - handles Inngest sync and events
-const { Inngest } = require('inngest');
-
-// Create Inngest client
-const inngest = new Inngest({
-  id: 'adminer-jobs',
-  name: 'Adminer Job Pipeline',
-  env: process.env.NODE_ENV || 'production',
-  eventKey: process.env.INNGEST_EVENT_KEY,
-  signingKey: process.env.INNGEST_SIGNING_KEY,
-  baseUrl: process.env.INNGEST_BASE_URL || 'https://api.inngest.com'
-});
-
-// Define Inngest functions
-const jobCreated = inngest.createFunction(
-  { id: 'job-created' },
-  { event: 'job.created' },
-  async ({ event, step }) => {
-    console.log('Job created event received:', event.data);
-    return { message: 'Job created and processing started' };
-  }
-);
-
-const quotaExceeded = inngest.createFunction(
-  { id: 'quota-exceeded' },
-  { event: 'quota.exceeded' },
-  async ({ event, step }) => {
-    console.log('Quota exceeded event received:', event.data);
-    return { message: 'Quota exceeded handling completed' };
-  }
-);
-
-const subscriptionUpdated = inngest.createFunction(
-  { id: 'subscription-updated' },
-  { event: 'subscription.updated' },
-  async ({ event, step }) => {
-    console.log('Subscription updated event received:', event.data);
-    return { message: 'Subscription updated successfully' };
-  }
-);
-
-const apifyRunStart = inngest.createFunction(
-  { id: 'apify-run-start' },
-  { event: 'apify.run.start' },
-  async ({ event, step }) => {
-    console.log('Apify run start event received:', event.data);
-    return { message: 'Apify scraping started' };
-  }
-);
-
-const apifyRunCompleted = inngest.createFunction(
-  { id: 'apify-run-completed' },
-  { event: 'apify.run.completed' },
-  async ({ event, step }) => {
-    console.log('Apify run completed event received:', event.data);
-    return { message: 'Apify run completed successfully' };
-  }
-);
-
-const apifyRunFailed = inngest.createFunction(
-  { id: 'apify-run-failed' },
-  { event: 'apify.run.failed' },
-  async ({ event, step }) => {
-    console.log('Apify run failed event received:', event.data);
-    return { message: 'Apify run failure handled' };
-  }
-);
-
-// Create serve handler
-const { serve } = require('inngest/express');
-
-const inngestHandler = serve({
-  client: inngest,
-  functions: [
-    jobCreated,
-    quotaExceeded,
-    subscriptionUpdated,
-    apifyRunStart,
-    apifyRunCompleted,
-    apifyRunFailed
-  ]
-});
-
 module.exports = async (req, res) => {
   // Set CORS headers for Inngest
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -92,8 +10,84 @@ module.exports = async (req, res) => {
   }
 
   try {
-    // Use Inngest serve handler for proper function registration
-    return await inngestHandler(req, res);
+    // Handle Inngest sync request (PUT method)
+    if (req.method === 'PUT') {
+      // Return function definitions for Inngest sync
+      const functions = [
+        {
+          id: 'job-created',
+          name: 'Job Created Handler',
+          triggers: [{ event: 'job.created' }],
+          steps: ['create-job-record', 'update-job-status', 'consume-quota', 'start-apify-job']
+        },
+        {
+          id: 'quota-exceeded',
+          name: 'Quota Exceeded Handler',
+          triggers: [{ event: 'quota.exceeded' }],
+          steps: ['send-quota-notification', 'trigger-upgrade-flow']
+        },
+        {
+          id: 'subscription-updated',
+          name: 'Subscription Updated Handler',
+          triggers: [{ event: 'subscription.updated' }],
+          steps: ['update-org-quota', 'send-confirmation']
+        },
+        {
+          id: 'apify-run-start',
+          name: 'Apify Run Start Handler',
+          triggers: [{ event: 'apify.run.start' }],
+          steps: ['execute-apify-scrape']
+        },
+        {
+          id: 'apify-run-completed',
+          name: 'Apify Run Completed Handler',
+          triggers: [{ event: 'apify.run.completed' }],
+          steps: ['get-dataset-items', 'update-job-status']
+        },
+        {
+          id: 'apify-run-failed',
+          name: 'Apify Run Failed Handler',
+          triggers: [{ event: 'apify.run.failed' }],
+          steps: ['update-job-status']
+        }
+      ];
+
+      return res.status(200).json({
+        functions,
+        appId: 'adminer-jobs',
+        appName: 'Adminer Job Pipeline',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Handle Inngest webhook events (POST method)
+    if (req.method === 'POST') {
+      console.log('Inngest webhook event received:', req.body);
+      return res.status(200).json({
+        success: true,
+        message: 'Webhook event processed',
+        timestamp: new Date().toISOString()
+      });
+    }
+
+    // Handle health check (GET method)
+    if (req.method === 'GET') {
+      return res.status(200).json({
+        success: true,
+        message: 'Inngest endpoint ready',
+        timestamp: new Date().toISOString(),
+        status: 'active',
+        endpoint: '/api/inngest'
+      });
+    }
+
+    // Method not allowed
+    return res.status(405).json({
+      error: 'Method not allowed',
+      allowed: ['GET', 'POST', 'PUT'],
+      received: req.method
+    });
+
   } catch (error) {
     console.error('Inngest webhook error:', error);
     res.status(500).json({
