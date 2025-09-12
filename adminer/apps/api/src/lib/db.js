@@ -27,6 +27,34 @@ const jobDb = {
 };
 
 const orgDb = {
+  async getByClerkId(clerkOrgId) {
+    console.log('Getting organization by Clerk ID:', clerkOrgId);
+    // For now, return a mock organization for testing
+    return {
+      id: 'org-' + clerkOrgId,
+      clerkOrgId: clerkOrgId,
+      name: 'Test Organization',
+      plan: 'free',
+      quotaLimit: 100,
+      quotaUsed: 0,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+  },
+
+  async getQuotaStatus(clerkOrgId) {
+    console.log('Getting quota status for:', clerkOrgId);
+    const org = await this.getByClerkId(clerkOrgId);
+    if (!org) return null;
+
+    return {
+      used: org.quotaUsed,
+      limit: org.quotaLimit,
+      percentage: Math.round((org.quotaUsed / org.quotaLimit) * 100),
+      plan: org.plan,
+    };
+  },
+
   async consumeQuota(orgId, amount, type, description) {
     console.log('Consuming quota:', { orgId, amount, type, description });
     // Mock quota consumption - always succeeds for testing
