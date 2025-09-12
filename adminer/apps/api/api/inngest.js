@@ -1,5 +1,5 @@
 // Vercel-compatible Inngest webhook using CommonJS
-const { serve } = require('inngest/next');
+const { serve } = require('inngest/express');
 
 // Import functions using dynamic import for ES modules
 let inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed, apifyRunStart;
