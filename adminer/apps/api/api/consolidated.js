@@ -484,13 +484,20 @@ module.exports = async function handler(req, res) {
         throw new Error('Database not available');
       }
       
-      // Test a simple query to see the result structure
-      const testResult = await database.execute(sql`
-        SELECT quota_used, quota_limit, plan 
-        FROM organizations 
-        WHERE clerk_org_id = ${'default-org'} 
-        LIMIT 1
-      `);
+      // Use custom SQL from request body if provided
+      let testResult;
+      if (req.body && req.body.sql) {
+        console.log('🔍 Debug: Using custom SQL:', req.body.sql);
+        testResult = await database.execute(sql.raw(req.body.sql));
+      } else {
+        // Default test query
+        testResult = await database.execute(sql`
+          SELECT quota_used, quota_limit, plan 
+          FROM organizations 
+          WHERE clerk_org_id = ${'default-org'} 
+          LIMIT 1
+        `);
+      }
       
       console.log('🔍 Debug: Raw query result:', {
         type: typeof testResult,
