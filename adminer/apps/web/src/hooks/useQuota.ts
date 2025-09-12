@@ -33,22 +33,32 @@ export function useQuota() {
       try {
         setLoading(true);
         
-        // Mock response for static deployment - API functions removed
-        // TODO: Replace with external API service or re-implement serverless functions later
+        // Call real API endpoint
+        const response = await fetch('/api/quota', {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        });
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const result = await response.json();
         
-        // Simulate network delay for realistic behavior
-        await new Promise(resolve => setTimeout(resolve, 200));
-        
-        if (!cancelled) {
-          // Return mock quota data with realistic values
+        if (!cancelled && result.success && result.data) {
           setData({
-            used: 45,
-            limit: 100,
-            percentage: 45
+            used: result.data.used || 0,
+            limit: result.data.limit || 100,
+            percentage: result.data.percentage || 0
           });
         }
       } catch (e: any) {
-        if (!cancelled) setError(e?.message ?? "Failed to fetch quota");
+        if (!cancelled) {
+          console.error('Failed to fetch quota:', e);
+          setError(e?.message ?? "Failed to fetch quota");
+        }
       } finally {
         if (!cancelled) setLoading(false);
       }

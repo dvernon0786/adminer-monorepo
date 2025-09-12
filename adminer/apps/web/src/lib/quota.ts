@@ -5,19 +5,47 @@ export type QuotaStatus =
   | { ok: false; code: number; reason: string };
 
 export async function getQuotaStatus(): Promise<QuotaStatus> {
-  // Mock response for static deployment - API functions removed
-  // TODO: Replace with external API service or re-implement serverless functions later
-  
-  // Simulate network delay for realistic behavior
-  await new Promise(resolve => setTimeout(resolve, 150));
-  
-  // Return mock quota data with realistic values
-  return {
-    ok: true,
-    plan: "free",
-    used: 45,
-    limit: 100
-  };
+  try {
+    // Call real API endpoint
+    const response = await fetch('/api/quota', {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        return { ok: false, code: 401, reason: "unauthenticated" };
+      }
+      if (response.status === 402) {
+        return { ok: false, code: 402, reason: "quota_exceeded", upgradeUrl: "/billing" };
+      }
+      throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+    }
+
+    const data = await response.json();
+    
+    if (data.success && data.data) {
+      return {
+        ok: true,
+        plan: data.data.plan || "free",
+        used: data.data.used || 0,
+        limit: data.data.limit || 100
+      };
+    } else {
+      throw new Error(data.message || 'Invalid response format');
+    }
+  } catch (error) {
+    console.error('Failed to fetch quota status:', error);
+    // Return default values on error
+    return {
+      ok: true,
+      plan: "free",
+      used: 0,
+      limit: 100
+    };
+  }
 }
 
 // Legacy compatibility - returns the old format for existing components
