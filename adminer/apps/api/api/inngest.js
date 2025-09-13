@@ -2,7 +2,7 @@
 const { serve } = require('inngest/express');
 
 // Import functions using dynamic import for ES modules
-let inngest, testFunction;
+let inngest, minimalTest;
 
 async function loadFunctions() {
   if (!inngest) {
@@ -11,14 +11,14 @@ async function loadFunctions() {
       const functions = await import('../src/inngest/functions.js');
       console.log('Functions loaded:', Object.keys(functions));
       inngest = functions.inngest;
-      testFunction = functions.testFunction;
+      minimalTest = functions.minimalTest;
       console.log('Functions assigned successfully');
     } catch (error) {
       console.error('Error loading functions:', error);
       throw error;
     }
   }
-  return { inngest, testFunction };
+  return { inngest, minimalTest };
 }
 
 // Create serve handler with proper configuration
@@ -27,7 +27,7 @@ async function createServeHandler() {
   return serve({
     client: functions.inngest,
     functions: [
-      functions.testFunction
+      functions.minimalTest
     ],
     logLevel: 'info'
   });
