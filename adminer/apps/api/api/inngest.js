@@ -2,20 +2,15 @@
 const { serve } = require('inngest/express');
 
 // Import functions using dynamic import for ES modules
-let inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed, apifyRunStart;
+let inngest, testFunction;
 
 async function loadFunctions() {
   if (!inngest) {
     const functions = await import('../src/inngest/functions.js');
     inngest = functions.inngest;
-    jobCreated = functions.jobCreated;
-    quotaExceeded = functions.quotaExceeded;
-    subscriptionUpdated = functions.subscriptionUpdated;
-    apifyRunCompleted = functions.apifyRunCompleted;
-    apifyRunFailed = functions.apifyRunFailed;
-    apifyRunStart = functions.apifyRunStart;
+    testFunction = functions.testFunction;
   }
-  return { inngest, jobCreated, quotaExceeded, subscriptionUpdated, apifyRunCompleted, apifyRunFailed, apifyRunStart };
+  return { inngest, testFunction };
 }
 
 // Create serve handler with proper configuration
@@ -24,12 +19,7 @@ async function createServeHandler() {
   return serve({
     client: functions.inngest,
     functions: [
-      functions.jobCreated,
-      functions.quotaExceeded,
-      functions.subscriptionUpdated,
-      functions.apifyRunCompleted,
-      functions.apifyRunFailed,
-      functions.apifyRunStart
+      functions.testFunction
     ],
     logLevel: 'info'
   });
@@ -42,7 +32,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       return res.json({
         status: 'active',
-        functions: 6,
+        functions: 1,
         endpoint: '/api/inngest',
         timestamp: new Date().toISOString(),
         environment: {
