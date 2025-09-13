@@ -172,7 +172,7 @@ const apifyRunCompleted = inngest.createFunction(
       return { itemsRetrieved: true };
     });
 
-    await step.run('update-job-status', async () => {
+    await step.run('update-job-status-completed', async () => {
       console.log('Updating job status for:', event.data);
       return { statusUpdated: true };
     });
@@ -186,7 +186,7 @@ const apifyRunFailed = inngest.createFunction(
   { id: 'apify-run-failed' },
   { event: 'apify.run.failed' },
   async ({ event, step }) => {
-    await step.run('update-job-status', async () => {
+    await step.run('update-job-status-failed', async () => {
       console.log('Updating job status for failed run:', event.data);
       return { statusUpdated: 'failed' };
     });
