@@ -32,7 +32,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       return res.json({
         status: 'active',
-        functions: 1,
+        functions: 1, // Updated
         endpoint: '/api/inngest',
         timestamp: new Date().toISOString(),
         environment: {
