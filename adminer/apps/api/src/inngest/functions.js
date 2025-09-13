@@ -14,28 +14,61 @@ const jobCreated = inngest.createFunction(
     
     console.log('🚀 Processing job.created event:', { jobId, keyword, orgId });
     
-    // Create job in database
-    await step.run('create-job-record', async () => {
-      // First, get the organization ID from clerk_org_id
-      const orgResult = await database.query(
-        "SELECT id FROM organizations WHERE clerk_org_id = $1 LIMIT 1",
+    // Step 1: Find or create organization dynamically
+    const organization = await step.run('find-or-create-organization', async () => {
+      console.log(`Looking up organization: ${orgId}`);
+      
+      // First, try to find existing organization
+      const existingOrg = await database.query(
+        "SELECT id, clerk_org_id, quota_used, quota_limit FROM organizations WHERE clerk_org_id = $1",
         [orgId]
       );
       
-      if (!orgResult.rows || orgResult.rows.length === 0) {
-        throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
+      if (existingOrg.rows && existingOrg.rows.length > 0) {
+        console.log("Found existing organization:", existingOrg.rows[0]);
+        return existingOrg.rows[0];
       }
       
-      const dbOrgId = orgResult.rows[0].id;
-      
-      // Insert job into database
-      const jobResult = await database.query(
-        "INSERT INTO jobs (id, org_id, keyword, status, input, created_at) VALUES ($1, $2, $3, $4, $5, $6) RETURNING *",
-        [jobId, dbOrgId, keyword || 'unknown', 'pending', JSON.stringify(metadata || {}), timestamp || new Date().toISOString()]
+      // If organization doesn't exist, create it dynamically
+      console.log(`Creating new organization: ${orgId}`);
+      const newOrg = await database.query(
+        `INSERT INTO organizations (id, clerk_org_id, name, quota_used, quota_limit, created_at, updated_at) 
+         VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW()) 
+         RETURNING id, clerk_org_id, quota_used, quota_limit`,
+        [
+          orgId,
+          `Organization ${orgId}`, // Dynamic name based on orgId
+          0, // Initial quota_used
+          100 // Default quota_limit (could be configurable)
+        ]
       );
       
-      console.log('✅ Job created in database:', jobResult.rows[0]);
-      return jobResult.rows[0];
+      console.log("Created new organization:", newOrg.rows[0]);
+      return newOrg.rows[0];
+    });
+
+    // Step 2: Check quota
+    if (organization.quota_used >= organization.quota_limit) {
+      throw new Error(`Quota exceeded for organization: ${orgId} (${organization.quota_used}/${organization.quota_limit})`);
+    }
+
+    // Step 3: Create job in database
+    const jobResult = await step.run('create-job', async () => {
+      console.log(`Creating job in database: ${jobId}`);
+      
+      const result = await database.query(
+        "INSERT INTO jobs (id, org_id, keyword, status, input, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id",
+        [
+          jobId,
+          organization.id,
+          keyword,
+          'pending',
+          JSON.stringify({ limit: parseInt(limit) })
+        ]
+      );
+      
+      console.log("Job creation result:", result);
+      return result.rows;
     });
     
     // Update job status to running
@@ -49,57 +82,58 @@ const jobCreated = inngest.createFunction(
       return jobResult.rows[0];
     });
     
-    // Consume quota
-    await step.run('consume-quota', async () => {
-      try {
-        // Get organization
-        const orgResult = await database.query(
-          "SELECT id, quota_used, quota_limit FROM organizations WHERE clerk_org_id = $1 LIMIT 1",
-          [orgId]
-        );
-        
-        if (!orgResult.rows || orgResult.rows.length === 0) {
-          throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
-        }
-        
-        const org = orgResult.rows[0];
-        const newQuotaUsed = (org.quota_used || 0) + 1;
-        
-        if (newQuotaUsed > org.quota_limit) {
-          throw new Error(`Quota exceeded: ${newQuotaUsed}/${org.quota_limit}`);
-        }
-        
-        // Update quota
-        await database.query(
-          "UPDATE organizations SET quota_used = $1, updated_at = $2 WHERE clerk_org_id = $3",
-          [newQuotaUsed, new Date().toISOString(), orgId]
-        );
-        
-        console.log('✅ Quota consumed:', { used: newQuotaUsed, limit: org.quota_limit });
-        return { used: newQuotaUsed, limit: org.quota_limit };
-      } catch (error) {
-        console.error('❌ Quota exceeded:', error);
-        // Quota exceeded - trigger quota exceeded event
-        await inngest.send({
-          name: 'quota.exceeded',
-          data: { orgId, jobId, error: error.message }
-        });
-        throw error;
-      }
+    // Step 4: Consume quota
+    const quotaResult = await step.run('consume-quota', async () => {
+      console.log(`Consuming quota for org: ${orgId}`);
+      
+      const result = await database.query(
+        "UPDATE organizations SET quota_used = quota_used + 1, updated_at = NOW() WHERE clerk_org_id = $1 RETURNING quota_used, quota_limit",
+        [orgId]
+      );
+      
+      console.log("Quota consumption result:", result);
+      return result.rows;
     });
-    
-    // Trigger Apify scraping
-    await step.run('start-apify-job', async () => {
-      await inngest.send({
-        name: 'apify.run.start',
-        data: { jobId, input, orgId }
-      });
-      console.log('Apify job triggered for:', jobId);
-      return { apifyTriggered: true };
+
+    // Step 5: Update job status
+    await step.run('update-job-status', async () => {
+      console.log(`Updating job status: ${jobId}`);
+      
+      const result = await database.query(
+        "UPDATE jobs SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, status",
+        ['created', jobId]
+      );
+      
+      console.log("Job status update result:", result);
+      return result.rows;
     });
+
+    console.log(`Job ${jobId} processed successfully for org ${orgId}`);
     
-    return { message: 'Job created and processing started' };
+    return {
+      success: true,
+      jobId,
+      orgId,
+      quotaUsed: quotaResult[0]?.quota_used || 0,
+      quotaLimit: quotaResult[0]?.quota_limit || 0
+    };
+
+  } catch (error) {
+    console.error(`Error processing job ${jobId} for org ${orgId}:`, error);
+    
+    // Update job status to failed (if job was created)
+    try {
+      await database.query(
+        "UPDATE jobs SET status = $1, error = $2, updated_at = NOW() WHERE id = $3",
+        ['failed', error.message, jobId]
+      );
+    } catch (updateError) {
+      console.error("Failed to update job status:", updateError);
+    }
+    
+    throw error;
   }
+}
 );
 
 // Quota Exceeded Handler
