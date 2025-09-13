@@ -6,9 +6,17 @@ let inngest, testFunction;
 
 async function loadFunctions() {
   if (!inngest) {
-    const functions = await import('../src/inngest/functions.js');
-    inngest = functions.inngest;
-    testFunction = functions.testFunction;
+    try {
+      console.log('Loading functions...');
+      const functions = await import('../src/inngest/functions.js');
+      console.log('Functions loaded:', Object.keys(functions));
+      inngest = functions.inngest;
+      testFunction = functions.testFunction;
+      console.log('Functions assigned successfully');
+    } catch (error) {
+      console.error('Error loading functions:', error);
+      throw error;
+    }
   }
   return { inngest, testFunction };
 }
