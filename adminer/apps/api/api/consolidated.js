@@ -242,8 +242,9 @@ let inngest;
 
 async function loadInngest() {
   if (!inngest) {
-    const functions = await import('../src/inngest/functions.js');
-    inngest = functions.inngest;
+    // Import the Inngest client directly from client.js
+    const { inngest: inngestClient } = require('../src/inngest/client.js');
+    inngest = inngestClient;
   }
   return inngest;
 }
