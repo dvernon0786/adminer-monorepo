@@ -1,18 +1,12 @@
-// Inngest client configuration
-import { Inngest } from 'inngest';
+// VERCEL COMPATIBLE INNGEST CLIENT (CommonJS)
+const { Inngest } = require("inngest");
 
-// Fixed Inngest client with proper configuration
-export const inngest = new Inngest({
-  id: 'adminer-jobs',
-  name: 'Adminer Job Processor',
+const inngest = new Inngest({
+  id: "adminer-jobs",
+  name: "Adminer Job Processor",
   eventKey: process.env.INNGEST_EVENT_KEY,
   signingKey: process.env.INNGEST_SIGNING_KEY,
-  isDev: process.env.NODE_ENV === 'development'
+  isDev: process.env.NODE_ENV === "development"
 });
 
-// Debug logging for environment variables
-console.log('Inngest Client Initialized:', {
-  hasEventKey: !!process.env.INNGEST_EVENT_KEY,
-  hasSigningKey: !!process.env.INNGEST_SIGNING_KEY,
-  environment: process.env.NODE_ENV
-});
+module.exports = { inngest };

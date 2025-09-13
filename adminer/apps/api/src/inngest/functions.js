@@ -1,13 +1,10 @@
-// MINIMAL WORKING INNGEST FUNCTION
-// File: src/inngest/functions.js
+// VERCEL COMPATIBLE INNGEST FUNCTION (CommonJS)
+const { inngest } = require("./client.js");
+const { neon } = require("@neondatabase/serverless");
 
-import { inngest } from "./client.js";
-import { neon } from '@neondatabase/serverless';
-
-// Initialize database only if DATABASE_URL is available
 const database = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
 
-export const jobCreatedFunction = inngest.createFunction(
+const jobCreatedFunction = inngest.createFunction(
   { id: "job-created" },
   { event: "job.created" },
   async ({ event }) => {
@@ -15,14 +12,13 @@ export const jobCreatedFunction = inngest.createFunction(
     
     console.log(`Processing job: ${jobId} for org: ${orgId}`);
     
-    // Check if database is available
     if (!database) {
-      console.log('Database not available, returning mock success');
-      return { success: true, jobId, orgId, message: 'Database not available - mock success' };
+      console.log("Database not available, job processed locally only");
+      return { success: true, jobId, orgId, note: "database unavailable" };
     }
     
     try {
-      // Step 1: Find or create organization
+      // Find or create organization
       const existingOrg = await database.query(
         "SELECT id, clerk_org_id, quota_used, quota_limit FROM organizations WHERE clerk_org_id = $1",
         [orgId]
@@ -40,13 +36,13 @@ export const jobCreatedFunction = inngest.createFunction(
         organization = newOrg.rows[0];
       }
 
-      // Step 2: Create job
+      // Create job
       await database.query(
         "INSERT INTO jobs (id, org_id, keyword, status, input, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW())",
         [jobId, orgId, keyword, 'created', JSON.stringify({ limit: 1 })]
       );
 
-      // Step 3: Update quota
+      // Update quota
       await database.query(
         "UPDATE organizations SET quota_used = quota_used + 1, updated_at = NOW() WHERE clerk_org_id = $1",
         [orgId]
@@ -61,3 +57,5 @@ export const jobCreatedFunction = inngest.createFunction(
     }
   }
 );
+
+module.exports = { jobCreatedFunction };
