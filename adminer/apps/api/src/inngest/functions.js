@@ -133,7 +133,6 @@ const jobCreated = inngest.createFunction(
     
     throw error;
   }
-}
 );
 
 // Quota Exceeded Handler
