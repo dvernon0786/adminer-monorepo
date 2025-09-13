@@ -14,6 +14,8 @@ const jobCreated = inngest.createFunction(
     
     console.log('🚀 Processing job.created event:', { jobId, keyword, orgId });
     
+    try {
+    
     // Step 1: Find or create organization dynamically
     const organization = await step.run('find-or-create-organization', async () => {
       console.log(`Looking up organization: ${orgId}`);
