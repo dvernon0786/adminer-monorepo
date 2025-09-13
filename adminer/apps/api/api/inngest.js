@@ -1,33 +1,39 @@
 // FIXED INNGEST WEBHOOK ENDPOINT - Vercel-compatible
-const { serve } = require('inngest/express');
+const { serve } = require('inngest/next');
 
-// Import functions using dynamic import for ES modules
-let inngest, minimalTest;
+// Import functions and client using require for CommonJS
+let inngestClient, jobCreatedFunction;
 
 async function loadFunctions() {
-  if (!inngest) {
+  if (!inngestClient) {
     try {
-      console.log('Loading functions...');
-      const functions = await import('../src/inngest/functions.js');
-      console.log('Functions loaded:', Object.keys(functions));
-      inngest = functions.inngest;
-      minimalTest = functions.minimalTest;
-      console.log('Functions assigned successfully');
+      console.log('Loading Inngest client and functions...');
+      
+      // Load client
+      const { inngest } = require('../src/inngest/client.js');
+      inngestClient = inngest;
+      
+      // Load functions
+      const { jobCreatedFunction: jobFunc } = require('../src/inngest/functions.js');
+      jobCreatedFunction = jobFunc;
+      
+      console.log('✅ Inngest client and functions loaded successfully');
     } catch (error) {
-      console.error('Error loading functions:', error);
+      console.error('❌ Error loading Inngest components:', error);
       throw error;
     }
   }
-  return { inngest, minimalTest };
+  return { inngestClient, jobCreatedFunction };
 }
 
 // Create serve handler with proper configuration
 async function createServeHandler() {
-  const functions = await loadFunctions();
+  const { inngestClient, jobCreatedFunction } = await loadFunctions();
+  
   return serve({
-    client: functions.inngest,
+    client: inngestClient,
     functions: [
-      functions.minimalTest
+      jobCreatedFunction
     ],
     logLevel: 'info'
   });
@@ -40,7 +46,7 @@ module.exports = async (req, res) => {
     if (req.method === 'GET') {
       return res.json({
         status: 'active',
-        functions: 1, // Updated
+        functions: 1,
         endpoint: '/api/inngest',
         timestamp: new Date().toISOString(),
         environment: {
