@@ -292,10 +292,7 @@ module.exports = async function handler(req, res) {
   } else if (path === '/api/inngest') {
     if (req.method === 'PUT') {
       try {
-        // Load the actual Inngest functions
-        const inngestClient = await loadInngest();
-        
-        // Return proper Inngest sync format
+        // Return proper Inngest sync format without loading client
         res.status(200).json({
           functions: [
             {
