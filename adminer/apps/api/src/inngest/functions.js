@@ -31,8 +31,8 @@ const jobCreated = inngest.createFunction(
       
       // Insert job into database
       const jobResult = await database`
-        INSERT INTO jobs (id, org_id, keyword, status, type, input, created_at)
-        VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, ${'pending'}, ${'scrape'}, ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
+        INSERT INTO jobs (id, org_id, keyword, status, input, created_at)
+        VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, ${'pending'}, ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
         RETURNING *
       `;
       
@@ -201,7 +201,7 @@ const apifyRunStart = inngest.createFunction(
         // Update job with results
         await database`
           UPDATE jobs 
-          SET status = ${'completed'}, output = ${JSON.stringify(result)}, updated_at = ${new Date().toISOString()}
+          SET status = ${'completed'}, raw_data = ${JSON.stringify(result)}, updated_at = ${new Date().toISOString()}
           WHERE id = ${jobId}
         `;
         
