@@ -17,11 +17,11 @@ const jobCreated = inngest.createFunction(
     // Create job in database
     await step.run('create-job-record', async () => {
       // First, get the organization ID from clerk_org_id
-      const orgResult = await database(`
+      const orgResult = await database`
         SELECT id FROM organizations 
-        WHERE clerk_org_id = $1 
+        WHERE clerk_org_id = ${orgId} 
         LIMIT 1
-      `, [orgId]);
+      `;
       
       if (!orgResult || orgResult.length === 0) {
         throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
@@ -30,19 +30,11 @@ const jobCreated = inngest.createFunction(
       const dbOrgId = orgResult[0].id;
       
       // Insert job into database
-      const jobResult = await database(`
+      const jobResult = await database`
         INSERT INTO jobs (id, org_id, keyword, status, type, input, created_at)
-        VALUES ($1, $2, $3, $4, $5, $6, $7)
+        VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, ${'pending'}, ${'scrape'}, ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
         RETURNING *
-      `, [
-        jobId, 
-        dbOrgId, 
-        keyword || 'unknown', 
-        'pending', 
-        'scrape', 
-        JSON.stringify(metadata || {}), 
-        timestamp || new Date().toISOString()
-      ]);
+      `;
       
       console.log('✅ Job created in database:', jobResult[0]);
       return jobResult[0];
@@ -50,12 +42,12 @@ const jobCreated = inngest.createFunction(
     
     // Update job status to running
     await step.run('update-job-status', async () => {
-      const jobResult = await database(`
+      const jobResult = await database`
         UPDATE jobs 
-        SET status = 'running', updated_at = $2
-        WHERE id = $1
+        SET status = ${'running'}, updated_at = ${new Date().toISOString()}
+        WHERE id = ${jobId}
         RETURNING *
-      `, [jobId, new Date().toISOString()]);
+      `;
       
       console.log('✅ Job status updated to running:', jobResult[0]);
       return jobResult[0];
@@ -65,11 +57,11 @@ const jobCreated = inngest.createFunction(
     await step.run('consume-quota', async () => {
       try {
         // Get organization
-        const orgResult = await database(`
+        const orgResult = await database`
           SELECT id, quota_used, quota_limit FROM organizations 
-          WHERE clerk_org_id = $1 
+          WHERE clerk_org_id = ${orgId} 
           LIMIT 1
-        `, [orgId]);
+        `;
         
         if (!orgResult || orgResult.length === 0) {
           throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
@@ -83,11 +75,11 @@ const jobCreated = inngest.createFunction(
         }
         
         // Update quota
-        await database(`
+        await database`
           UPDATE organizations 
-          SET quota_used = $2, updated_at = $3
-          WHERE clerk_org_id = $1
-        `, [orgId, newQuotaUsed, new Date().toISOString()]);
+          SET quota_used = ${newQuotaUsed}, updated_at = ${new Date().toISOString()}
+          WHERE clerk_org_id = ${orgId}
+        `;
         
         console.log('✅ Quota consumed:', { used: newQuotaUsed, limit: org.quota_limit });
         return { used: newQuotaUsed, limit: org.quota_limit };
@@ -207,11 +199,11 @@ const apifyRunStart = inngest.createFunction(
         console.log('Apify scrape completed:', result);
         
         // Update job with results
-        await database(`
+        await database`
           UPDATE jobs 
-          SET status = $2, output = $3, updated_at = $4
-          WHERE id = $1
-        `, [jobId, 'completed', JSON.stringify(result), new Date().toISOString()]);
+          SET status = ${'completed'}, output = ${JSON.stringify(result)}, updated_at = ${new Date().toISOString()}
+          WHERE id = ${jobId}
+        `;
         
         // Trigger AI analysis
         await inngest.send({
@@ -222,11 +214,11 @@ const apifyRunStart = inngest.createFunction(
         return result;
       } catch (error) {
         console.error('Apify scrape failed:', error);
-        await database(`
+        await database`
           UPDATE jobs 
-          SET status = $2, error = $3, updated_at = $4
-          WHERE id = $1
-        `, [jobId, 'failed', error.message, new Date().toISOString()]);
+          SET status = ${'failed'}, error = ${error.message}, updated_at = ${new Date().toISOString()}
+          WHERE id = ${jobId}
+        `;
         await inngest.send({
           name: 'apify.run.failed',
           data: { jobId, error: error.message, orgId }
