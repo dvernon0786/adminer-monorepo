@@ -71,17 +71,6 @@ const jobCreated = inngest.createFunction(
       return result.rows;
     });
     
-    // Update job status to running
-    await step.run('update-job-status', async () => {
-      const jobResult = await database.query(
-        "UPDATE jobs SET status = $1, updated_at = $2 WHERE id = $3 RETURNING *",
-        ['running', new Date().toISOString(), jobId]
-      );
-      
-      console.log('✅ Job status updated to running:', jobResult.rows[0]);
-      return jobResult.rows[0];
-    });
-    
     // Step 4: Consume quota
     const quotaResult = await step.run('consume-quota', async () => {
       console.log(`Consuming quota for org: ${orgId}`);
@@ -95,8 +84,8 @@ const jobCreated = inngest.createFunction(
       return result.rows;
     });
 
-    // Step 5: Update job status
-    await step.run('update-job-status', async () => {
+    // Step 5: Update job status to created
+    await step.run('update-job-status-created', async () => {
       console.log(`Updating job status: ${jobId}`);
       
       const result = await database.query(
