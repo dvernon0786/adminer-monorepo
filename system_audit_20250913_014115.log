@@ -1,0 +1,56 @@
+PAYMENT_FOUND: dodo
+PAYMENT_FOUND: stripe
+PAYMENT_FOUND: payment
+PAYMENT_FOUND: billing
+PAYMENT_FOUND: subscription
+SCHEMA_TABLES: ./adminer/backups/20250908_140624/api/src/db/schema.js
+1:import { pgTable, text, integer, timestamp, boolean, jsonb, primaryKey } from 'drizzle-orm/pg-core';
+3:export const orgs = pgTable('orgs', {
+21:export const plans = pgTable('plans', {
+27:export const usage = pgTable('usage', {
+35:export const webhookEvents = pgTable('webhook_events', {
+46:export const quotaUsage = pgTable('quota_usage', {
+54:export const jobs = pgTable('jobs', {
+SCHEMA_TABLES: ./adminer/backups/20250908_140624/api/src/db/schema.ts
+1:import { pgTable, text, timestamp, integer, boolean, jsonb, uuid, varchar } from 'drizzle-orm/pg-core';
+4:export const organizations = pgTable('organizations', {
+16:export const jobs = pgTable('jobs', {
+30:export const quotaUsage = pgTable('quota_usage', {
+41:export const subscriptions = pgTable('subscriptions', {
+54:export const webhookEvents = pgTable('webhook_events', {
+SCHEMA_TABLES: ./adminer/apps/api/src/db/schema.ts
+1:import { pgTable, text, timestamp, integer, boolean, jsonb, uuid, varchar } from 'drizzle-orm/pg-core';
+4:export const organizations = pgTable('organizations', {
+16:export const jobs = pgTable('jobs', {
+30:export const quotaUsage = pgTable('quota_usage', {
+41:export const subscriptions = pgTable('subscriptions', {
+54:export const webhookEvents = pgTable('webhook_events', {
+DB_CONNECTION_SUCCESS
+ORGS_TABLE_SUCCESS
+JOBS_TABLE_SUCCESS
+QUOTA_CALC_SUCCESS: 0%
+QUOTA_ENFORCEMENT_FOUND
+INNGEST_JOB_SUCCESS: job-1757691681417-52ieu4s7c
+INNGEST_WEBHOOK_FAILED
+LOCAL_DB_FOUND: localhost
+./scripts/smoke_bundle.js
+./scripts/smoke-local.env.bak
+./scripts/smoke-local.env
+LOCAL_DB_FOUND: 127.0.0.1
+./node_modules/@eslint/config-array/dist/esm/std__path/windows.js
+./adminer/node_modules/@secretlint/secretlint-rule-preset-recommend/module/index-CmmMpq50.js
+./adminer/node_modules/pg-types/test/types.js
+LOCAL_DB_FOUND: sqlite
+./node_modules/keyv/src/index.d.ts
+./node_modules/keyv/src/index.js
+./adminer/node_modules/typescript/lib/_tsc.js
+LOCAL_DB_FOUND: .db
+./scripts/smoke_bundle.js
+./node_modules/globals/index.d.ts
+./node_modules/@eslint-community/regexpp/index.js
+HARDCODED_DB_FOUND
+./node_modules/keyv/src/index.js:12:		sqlite: '@keyv/sqlite',
+./adminer/node_modules/@secretlint/secretlint-rule-preset-recommend/module/index-CmmMpq50.js:5680:    // MySQL URI patterns: jdbc:mysql://, mysql://, mysqlx://
+./adminer/node_modules/@secretlint/secretlint-rule-preset-recommend/module/index-CmmMpq50.js:5709:    // PostgreSQL URI patterns: postgresql://, postgres://
+./adminer/node_modules/@opentelemetry/instrumentation-mysql2/build/src/utils.js:50:    let jdbcString = `jdbc:mysql://${host || 'localhost'}`;
+./adminer/node_modules/@opentelemetry/instrumentation-mysql/build/src/utils.js:50:    let jdbcString = `jdbc:mysql://${host || 'localhost'}`;
