@@ -1,15 +1,9 @@
 import { inngest } from './client.js';
 import { neon } from '@neondatabase/serverless';
-import { sql } from 'drizzle-orm';
 import { ApifyService } from '../lib/apify.js';
 
 // Real database connection for Inngest functions
-async function getDatabase() {
-  if (!process.env.DATABASE_URL) {
-    throw new Error('DATABASE_URL not configured');
-  }
-  return neon(process.env.DATABASE_URL);
-}
+const database = neon(process.env.DATABASE_URL);
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
@@ -22,64 +16,66 @@ const jobCreated = inngest.createFunction(
     
     // Create job in database
     await step.run('create-job-record', async () => {
-      const database = await getDatabase();
-      
       // First, get the organization ID from clerk_org_id
-      const orgResult = await database.query(sql`
+      const orgResult = await database(`
         SELECT id FROM organizations 
-        WHERE clerk_org_id = ${orgId} 
+        WHERE clerk_org_id = $1 
         LIMIT 1
-      `);
+      `, [orgId]);
       
-      if (!orgResult.rows || orgResult.rows.length === 0) {
+      if (!orgResult || orgResult.length === 0) {
         throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
       }
       
-      const dbOrgId = orgResult.rows[0].id;
+      const dbOrgId = orgResult[0].id;
       
       // Insert job into database
-      const jobResult = await database.query(sql`
+      const jobResult = await database(`
         INSERT INTO jobs (id, org_id, keyword, status, type, input, created_at)
-        VALUES (${jobId}, ${dbOrgId}, ${keyword || 'unknown'}, 'pending', 'scrape', ${JSON.stringify(metadata || {})}, ${timestamp || new Date().toISOString()})
+        VALUES ($1, $2, $3, $4, $5, $6, $7)
         RETURNING *
-      `);
+      `, [
+        jobId, 
+        dbOrgId, 
+        keyword || 'unknown', 
+        'pending', 
+        'scrape', 
+        JSON.stringify(metadata || {}), 
+        timestamp || new Date().toISOString()
+      ]);
       
-      console.log('✅ Job created in database:', jobResult.rows[0]);
-      return jobResult.rows[0];
+      console.log('✅ Job created in database:', jobResult[0]);
+      return jobResult[0];
     });
     
     // Update job status to running
     await step.run('update-job-status', async () => {
-      const database = await getDatabase();
-      
-      const jobResult = await database.query(sql`
+      const jobResult = await database(`
         UPDATE jobs 
-        SET status = 'running', updated_at = ${new Date().toISOString()}
-        WHERE id = ${jobId}
+        SET status = 'running', updated_at = $2
+        WHERE id = $1
         RETURNING *
-      `);
+      `, [jobId, new Date().toISOString()]);
       
-      console.log('✅ Job status updated to running:', jobResult.rows[0]);
-      return jobResult.rows[0];
+      console.log('✅ Job status updated to running:', jobResult[0]);
+      return jobResult[0];
     });
     
     // Consume quota
     await step.run('consume-quota', async () => {
       try {
-        const database = await getDatabase();
-        
         // Get organization
-        const orgResult = await database.query(sql`
+        const orgResult = await database(`
           SELECT id, quota_used, quota_limit FROM organizations 
-          WHERE clerk_org_id = ${orgId} 
+          WHERE clerk_org_id = $1 
           LIMIT 1
-        `);
+        `, [orgId]);
         
-        if (!orgResult.rows || orgResult.rows.length === 0) {
+        if (!orgResult || orgResult.length === 0) {
           throw new Error(`Organization not found for clerk_org_id: ${orgId}`);
         }
         
-        const org = orgResult.rows[0];
+        const org = orgResult[0];
         const newQuotaUsed = (org.quota_used || 0) + 1;
         
         if (newQuotaUsed > org.quota_limit) {
@@ -87,11 +83,11 @@ const jobCreated = inngest.createFunction(
         }
         
         // Update quota
-        await database.query(sql`
+        await database(`
           UPDATE organizations 
-          SET quota_used = ${newQuotaUsed}, updated_at = ${new Date().toISOString()}
-          WHERE clerk_org_id = ${orgId}
-        `);
+          SET quota_used = $2, updated_at = $3
+          WHERE clerk_org_id = $1
+        `, [orgId, newQuotaUsed, new Date().toISOString()]);
         
         console.log('✅ Quota consumed:', { used: newQuotaUsed, limit: org.quota_limit });
         return { used: newQuotaUsed, limit: org.quota_limit };
@@ -211,7 +207,11 @@ const apifyRunStart = inngest.createFunction(
         console.log('Apify scrape completed:', result);
         
         // Update job with results
-        await jobDb.updateStatus(jobId, 'completed', result);
+        await database(`
+          UPDATE jobs 
+          SET status = $2, output = $3, updated_at = $4
+          WHERE id = $1
+        `, [jobId, 'completed', JSON.stringify(result), new Date().toISOString()]);
         
         // Trigger AI analysis
         await inngest.send({
@@ -222,7 +222,11 @@ const apifyRunStart = inngest.createFunction(
         return result;
       } catch (error) {
         console.error('Apify scrape failed:', error);
-        await jobDb.updateStatus(jobId, 'failed', null, error.message);
+        await database(`
+          UPDATE jobs 
+          SET status = $2, error = $3, updated_at = $4
+          WHERE id = $1
+        `, [jobId, 'failed', error.message, new Date().toISOString()]);
         await inngest.send({
           name: 'apify.run.failed',
           data: { jobId, error: error.message, orgId }
