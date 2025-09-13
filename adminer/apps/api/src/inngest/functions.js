@@ -7,7 +7,7 @@ const database = neon(process.env.DATABASE_URL);
 // Simple test function
 const testFunction = inngest.createFunction(
   { id: 'test-function' },
-  { event: 'test.event' },
+  { event: 'job.created' },
   async ({ event, step }) => {
     console.log('Test function executed:', event.data);
     
