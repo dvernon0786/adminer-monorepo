@@ -9,7 +9,7 @@ const database = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : nul
 
 // Enhanced Job Created Function with Direct Apify Integration
 const jobCreatedFunction = inngest.createFunction(
-  { id: "job-created" },
+  { id: "job-created-enhanced" },
   { event: "job.created" },
   async ({ event }) => {
     const { jobId, keyword, orgId } = event.data || {};
@@ -31,12 +31,12 @@ const jobCreatedFunction = inngest.createFunction(
       
       try {
         const orgResult = await database.query(`
-          INSERT INTO orgs (id, name, plan, status, quota_limit, quota_used, created_at, updated_at) 
-          VALUES ($1, $2, 'free', 'active', 100, 0, NOW(), NOW())
-          ON CONFLICT (id) DO UPDATE SET 
+          INSERT INTO organizations (clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at) 
+          VALUES ($1, $2, 'free', 100, 0, NOW(), NOW())
+          ON CONFLICT (clerk_org_id) DO UPDATE SET 
             updated_at = NOW(),
             name = EXCLUDED.name
-          RETURNING id, name, quota_used, quota_limit
+          RETURNING id, clerk_org_id, name, quota_used, quota_limit
         `, [orgId, `Organization ${orgId}`]);
         
         if (!orgResult || !Array.isArray(orgResult) || orgResult.length === 0) {
@@ -54,13 +54,12 @@ const jobCreatedFunction = inngest.createFunction(
       // Step 2: Create job record with "queued" status
       try {
         await database.query(`
-          INSERT INTO jobs (id, org_id, requested_by, keyword, status, input, created_at) 
-          VALUES ($1, $2, $3, $4, $5, $6, NOW())
+          INSERT INTO jobs (id, org_id, type, status, input, created_at) 
+          VALUES ($1, $2, $3, $4, $5, NOW())
         `, [
           jobId, 
           organization.id, 
-          'api',
-          keyword,
+          'scrape',
           'queued',
           JSON.stringify({ keyword, limit: 10 })
         ]);
@@ -76,7 +75,7 @@ const jobCreatedFunction = inngest.createFunction(
       try {
         await database.query(`
           UPDATE jobs 
-          SET status = $1, updated_at = NOW() 
+          SET status = $1, started_at = NOW() 
           WHERE id = $2
         `, ['running', jobId]);
         
@@ -105,7 +104,7 @@ const jobCreatedFunction = inngest.createFunction(
       try {
         await database.query(`
           UPDATE jobs 
-          SET status = $1, raw_data = $2, updated_at = NOW()
+          SET status = $1, output = $2, completed_at = NOW()
           WHERE id = $3
         `, [
           'completed', 
@@ -172,7 +171,7 @@ const jobCreatedFunction = inngest.createFunction(
       try {
         await database.query(`
           UPDATE jobs 
-          SET status = $1, error = $2, updated_at = NOW()
+          SET status = $1, error = $2, completed_at = NOW()
           WHERE id = $3
         `, ['failed', error.message, jobId]);
         
@@ -187,4 +186,42 @@ const jobCreatedFunction = inngest.createFunction(
   }
 );
 
-module.exports = { jobCreatedFunction };
+// Test function for local testing
+const testApifyIntegration = inngest.createFunction(
+  { id: "test-apify-integration" },
+  { event: "test.apify" },
+  async ({ event }) => {
+    console.log('🧪 Testing Apify integration...');
+    
+    try {
+      // Test health check
+      const healthCheck = await apifyDirectService.healthCheck();
+      console.log('🏥 Apify health check:', healthCheck);
+      
+      // Test scraping
+      const testResult = await apifyDirectService.testScraping();
+      console.log('🧪 Test scraping result:', {
+        status: testResult.status,
+        dataExtracted: testResult.dataExtracted,
+        hasData: testResult.data.length > 0
+      });
+      
+      return {
+        success: true,
+        healthCheck,
+        testResult,
+        message: 'Apify integration test completed'
+      };
+      
+    } catch (error) {
+      console.error('❌ Apify integration test failed:', error);
+      throw error;
+    }
+  }
+);
+
+module.exports = { 
+  jobCreatedFunction, 
+  testApifyIntegration,
+  apifyDirectService 
+};
