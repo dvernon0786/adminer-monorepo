@@ -1,10 +1,13 @@
 // apps/web/src/components/dashboard/StartJobForm.tsx
 import { useState } from "react";
 import { useStartJob } from "@/hooks/useJobs";
+import { AdditionalParamsSelector } from "@/components/ui/additional-params-selector";
+import { AdCountSelector } from "@/components/ui/ad-count-selector";
 
 export default function StartJobForm() {
   const [keyword, setKeyword] = useState("");
-  const [input, setInput] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedPriority, setSelectedPriority] = useState("");
   const [limit, setLimit] = useState<number | "">("");
   const { start, loading, error } = useStartJob();
 
@@ -14,22 +17,19 @@ export default function StartJobForm() {
     if (typeof limit !== "number" || limit < 1) return;
 
     try {
-      // Parse additional parameters with better error handling
-      let additionalParams = {};
-      if (input.trim()) {
-        try {
-          additionalParams = JSON.parse(input);
-        } catch (parseError) {
-          console.error("Invalid JSON input:", parseError);
-          // Show user-friendly error for JSON parse issues
-          alert("Invalid JSON format in Additional Parameters. Please check your input and try again.");
-          return;
-        }
+      // Build additional parameters from dropdown selections
+      const additionalParams: any = {};
+      if (selectedCountry) {
+        additionalParams.country = selectedCountry;
+      }
+      if (selectedPriority) {
+        additionalParams.priority = selectedPriority;
       }
       
       await start(keyword.trim(), { ...additionalParams, limit });
       setKeyword("");
-      setInput("");
+      setSelectedCountry("");
+      setSelectedPriority("");
       setLimit("");
     } catch (error) {
       console.error("Job creation error:", error);
@@ -59,42 +59,35 @@ export default function StartJobForm() {
           />
         </div>
 
-        <div>
-          <label htmlFor="limit" className="block text-sm font-medium text-gray-700 mb-2">
-            Number of Ads to Scrape
-          </label>
-          <input
-            id="limit"
-            type="number"
-            min={1}
-            max={2000}
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder="Enter number of ads (e.g., 200)"
-            value={limit}
-            onChange={(e) => setLimit(e.target.value === "" ? "" : Number(e.target.value))}
-            required
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Free: max 10 per keyword • Pro: up to 500/month • Enterprise: up to 2000/month. 
-            Backend will cap to your remaining quota automatically.
-          </p>
-        </div>
+        {/* Side-by-side layout for Number of Ads and Additional Parameters */}
+        <div className="flex flex-col sm:flex-row gap-4">
+          <div className="flex-1">
+            <AdCountSelector
+              selectedCount={limit}
+              onCountChange={setLimit}
+              disabled={loading}
+            />
+            <p className="text-xs text-gray-500 mt-1">
+              Free: max 10 per keyword • Pro: up to 500/month • Enterprise: up to 2000/month. 
+              Backend will cap to your remaining quota automatically.
+            </p>
+          </div>
 
-        <div>
-          <label htmlFor="input" className="block text-sm font-medium text-gray-700 mb-2">
-            Additional Parameters (Optional)
-          </label>
-          <textarea
-            id="input"
-            className="w-full border border-gray-300 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-colors"
-            placeholder='{"priority": "high", "country": "US"}'
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            rows={3}
-          />
-          <p className="text-xs text-gray-500 mt-1">
-            Valid JSON format for additional Apify parameters
-          </p>
+          <div className="flex-1">
+            <label className="block text-sm font-medium text-gray-700 mb-2">
+              Additional Parameters (Optional)
+            </label>
+            <AdditionalParamsSelector
+              selectedCountry={selectedCountry}
+              onCountryChange={setSelectedCountry}
+              selectedPriority={selectedPriority}
+              onPriorityChange={setSelectedPriority}
+              disabled={loading}
+            />
+            <p className="text-xs text-gray-500 mt-2">
+              Select target country and processing priority for your analysis
+            </p>
+          </div>
         </div>
 
         <button
