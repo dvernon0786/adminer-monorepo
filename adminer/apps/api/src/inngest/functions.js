@@ -32,7 +32,7 @@ const jobCreatedFunction = inngest.createFunction(
       try {
         const orgResult = await database.query(`
           INSERT INTO orgs (id, name, plan, status, quota_limit, quota_used, created_at, updated_at) 
-          VALUES ($1, $2, 'free', 'active', 100, 0, NOW(), NOW())
+          VALUES ($1, $2, 'free', 'active', 10, 0, NOW(), NOW())
           ON CONFLICT (id) DO UPDATE SET 
             updated_at = NOW(),
             name = EXCLUDED.name
@@ -120,15 +120,16 @@ const jobCreatedFunction = inngest.createFunction(
         throw new Error(`Failed to store results: ${storageError.message}`);
       }
       
-      // Step 6: Update quota
+      // Step 6: Update quota by actual ads scraped
+      const adsScraped = scrapeResults.dataExtracted || 0;
       try {
         await database.query(`
           UPDATE organizations 
-          SET quota_used = quota_used + 1, updated_at = NOW() 
-          WHERE clerk_org_id = $1
-        `, [orgId]);
+          SET quota_used = quota_used + $1, updated_at = NOW() 
+          WHERE clerk_org_id = $2
+        `, [adsScraped, orgId]);
         
-        console.log(`✅ Quota updated for organization: ${orgId}`);
+        console.log(`✅ Quota updated for organization: ${orgId} (${adsScraped} ads consumed)`);
         
       } catch (quotaError) {
         console.error('⚠️ Failed to update quota:', quotaError);

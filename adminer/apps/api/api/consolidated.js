@@ -84,7 +84,7 @@ async function getRealQuotaStatus(orgId = 'default-org') {
       console.log('✅ Default organization created');
       return {
         used: 0,
-        limit: 100,
+        limit: 10,
         percentage: 0,
         plan: 'free'
       };
@@ -109,7 +109,7 @@ async function getRealQuotaStatus(orgId = 'default-org') {
     // Fallback to default values (not mock data)
     return {
       used: 0,
-      limit: 100,
+      limit: 10,
       percentage: 0,
       plan: 'free',
       error: `Database query failed: ${error.message}`
