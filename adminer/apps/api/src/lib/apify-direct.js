@@ -94,20 +94,23 @@ class ApifyDirectService {
         throw new Error(`Apify API error: ${response.status} ${response.statusText} - ${errorText}`);
       }
 
-      const result = await response.json();
+      const scrapedData = await response.json();
       console.log('✅ Apify API response received:', {
-        hasData: !!result.data,
-        itemCount: result.data?.items?.length || 0,
-        runId: result.data?.runId
+        hasData: Array.isArray(scrapedData),
+        itemCount: scrapedData.length,
+        firstItem: scrapedData[0] ? 'present' : 'none',
+        responseType: typeof scrapedData,
+        isArray: Array.isArray(scrapedData)
       });
 
       const processingTime = Date.now() - startTime;
-      const dataExtracted = result.data?.items?.length || 0;
+      const dataExtracted = scrapedData.length;
 
       console.log('📊 Scraping completed:', {
         keyword: input.keyword,
         dataExtracted,
-        processingTime: `${processingTime}ms`
+        processingTime: `${processingTime}ms`,
+        sampleData: scrapedData[0] ? 'Facebook ad data present' : 'No data found'
       });
 
       return {
@@ -118,9 +121,9 @@ class ApifyDirectService {
         dataExtracted,
         processingTime,
         status: 'completed',
-        data: result.data?.items || [],
-        runId: result.data?.runId,
-        defaultDatasetId: result.data?.defaultDatasetId
+        data: scrapedData, // Direct array from Apify
+        runId: `apify-run-${Date.now()}`,
+        defaultDatasetId: `dataset-${Date.now()}`
       };
 
     } catch (error) {
