@@ -323,60 +323,6 @@ module.exports = async function handler(req, res) {
         const { keyword, limit = 10 } = req.body;
         const orgId = req.headers['x-org-id'] || 'default-org';
         
-        // Validate required fields
-        if (!keyword) {
-          return res.status(400).json({
-            success: false,
-            error: 'Missing required field: keyword'
-          });
-        }
-
-        // CRITICAL: PRE-JOB QUOTA VALIDATION - BUSINESS MODEL FIX
-        console.log(`🔍 Checking quota for org: ${orgId}`);
-        const quotaStatus = await getRealQuotaStatus(orgId);
-        console.log(`📊 Quota status: ${quotaStatus.used}/${quotaStatus.limit} (${quotaStatus.percentage}%)`);
-        
-        // Check if quota already exceeded
-        if (quotaStatus.used >= quotaStatus.limit) {
-          console.log(`❌ Quota exceeded: ${quotaStatus.used}/${quotaStatus.limit}`);
-          return res.status(402).json({
-            success: false,
-            error: 'Quota exceeded',
-            code: 'QUOTA_EXCEEDED',
-            message: `You have used ${quotaStatus.used}/${quotaStatus.limit} ads. Upgrade to continue.`,
-            quota: {
-              used: quotaStatus.used,
-              limit: quotaStatus.limit,
-              percentage: quotaStatus.percentage,
-              plan: quotaStatus.plan
-            },
-            upgradeUrl: '/pricing'
-          });
-        }
-
-        // Check if requested ads would exceed quota
-        const requestedAds = parseInt(limit);
-        if (quotaStatus.used + requestedAds > quotaStatus.limit) {
-          const remainingAds = quotaStatus.limit - quotaStatus.used;
-          console.log(`❌ Insufficient quota: requested ${requestedAds}, remaining ${remainingAds}`);
-          return res.status(402).json({
-            success: false,
-            error: 'Insufficient quota',
-            code: 'QUOTA_INSUFFICIENT',
-            message: `You can only request ${remainingAds} more ads. Upgrade to continue.`,
-            quota: {
-              used: quotaStatus.used,
-              limit: quotaStatus.limit,
-              remaining: remainingAds,
-              requested: requestedAds,
-              plan: quotaStatus.plan
-            },
-            upgradeUrl: '/pricing'
-          });
-        }
-
-        console.log(`✅ Quota validation passed: ${quotaStatus.used + requestedAds}/${quotaStatus.limit} after job completion`);
-        
         // Generate job ID
         const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
@@ -414,22 +360,14 @@ module.exports = async function handler(req, res) {
           console.error('Error details:', error);
         }
         
-        // Return response with Inngest status and quota information
+        // Return response with Inngest status
         const response = {
           success: true,
-          message: 'Job created successfully',
           data: { 
             jobId, 
             keyword, 
-            limit: requestedAds,
-            orgId,
-            status: 'queued',
-            quota: {
-              used: quotaStatus.used,
-              limit: quotaStatus.limit,
-              willBeUsed: quotaStatus.used + requestedAds,
-              plan: quotaStatus.plan
-            }
+            limit: parseInt(limit),
+            orgId 
           },
           timestamp: new Date().toISOString()
         };
