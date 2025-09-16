@@ -1,19 +1,29 @@
 // apps/web/src/components/dashboard/StartJobForm.tsx
 import { useState } from "react";
 import { useStartJob } from "@/hooks/useJobs";
+import { useQuota } from "@/hooks/useQuota";
 import { CountryOnlySelector } from "@/components/ui/country-only-selector";
 import { AdCountSelector } from "@/components/ui/ad-count-selector";
+import OrganizationRequired from "@/components/OrganizationRequired";
+import { QuotaPaywall } from "@/components/billing/QuotaPaywall";
 
 export default function StartJobForm() {
   const [keyword, setKeyword] = useState("");
   const [selectedCountry, setSelectedCountry] = useState("");
   const [limit, setLimit] = useState<number | "">("");
   const { start, loading, error } = useStartJob();
+  const { data: quota, needsOrg, needsUpgrade, canCreateJob, getRemainingQuota } = useQuota();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!keyword.trim()) return;
     if (typeof limit !== "number" || limit < 1) return;
+
+    // Client-side quota validation
+    if (!canCreateJob(limit)) {
+      console.error(`Cannot request ${limit} ads. You have ${getRemainingQuota()} ads remaining.`);
+      return;
+    }
 
     try {
       // Build additional parameters from country selection
@@ -31,6 +41,16 @@ export default function StartJobForm() {
       // Error handling is already done in the useStartJob hook
     }
   };
+
+  // Show organization requirement if user not in org
+  if (needsOrg) {
+    return <OrganizationRequired />;
+  }
+
+  // Show paywall if quota exceeded
+  if (needsUpgrade) {
+    return <QuotaPaywall quota={quota} />;
+  }
 
   return (
     <div className="rounded-2xl p-6 border shadow-sm bg-white">
@@ -68,6 +88,18 @@ export default function StartJobForm() {
             onCountChange={setLimit}
             disabled={loading}
           />
+          {quota && (
+            <div className="mt-2 p-2 bg-gray-50 rounded-lg">
+              <p className="text-xs text-gray-600">
+                <strong>Quota:</strong> {quota.used}/{quota.limit} ads used ({quota.percentage}%)
+                {quota.used > 0 && (
+                  <span className="ml-2 text-green-600">
+                    • {getRemainingQuota()} remaining
+                  </span>
+                )}
+              </p>
+            </div>
+          )}
           <p className="text-xs text-gray-500 mt-1">
             Free: max 10 per keyword • Pro: up to 500/month • Enterprise: up to 2000/month. 
             Backend will cap to your remaining quota automatically.
@@ -77,7 +109,7 @@ export default function StartJobForm() {
         <button
           type="submit"
           className="w-full px-6 py-3 rounded-xl bg-blue-600 text-white font-medium hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          disabled={loading || !keyword.trim() || typeof limit !== "number" || limit < 1}
+          disabled={loading || !keyword.trim() || typeof limit !== "number" || limit < 1 || !canCreateJob(limit)}
         >
           {loading ? "Starting Analysis..." : "Start Analysis"}
         </button>

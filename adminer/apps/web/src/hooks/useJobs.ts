@@ -1,21 +1,41 @@
 // apps/web/src/hooks/useJobs.ts
 import { useState } from "react";
+import { useOrganization } from "@clerk/clerk-react";
 
 export function useStartJob() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const { organization } = useOrganization();
 
   const start = async (keyword: string, input: Record<string, any> = {}) => {
     setLoading(true);
     setError(null);
     
+    // Check if user is in an organization
+    if (!organization) {
+      const errorMsg = "You must be in an organization to create jobs";
+      setError(errorMsg);
+      throw new Error(errorMsg);
+    }
+    
     try {
       const response = await fetch("/api/jobs", {
         method: "POST",
-        headers: { "content-type": "application/json" },
+        headers: { 
+          "content-type": "application/json",
+          "x-org-id": organization.id // Use real Clerk org ID
+        },
         credentials: "include",
         body: JSON.stringify({ keyword, ...input }),
       });
+
+      if (response.status === 400) {
+        const data = await response.json();
+        if (data.requiresOrganization) {
+          throw new Error("You must be in a valid Clerk organization to create jobs");
+        }
+        throw new Error(data?.message ?? "Invalid request");
+      }
 
       if (response.status === 402) {
         const data = await response.json();
