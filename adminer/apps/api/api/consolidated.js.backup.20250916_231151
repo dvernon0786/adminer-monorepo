@@ -48,49 +48,13 @@ async function initializeDatabase() {
 }
 
 // Real quota function
-async function getRealQuotaStatus(orgId) {
+async function getRealQuotaStatus(orgId = 'default-org') {
   try {
-    // REJECT DEFAULT-ORG - Force proper Clerk integration
-    if (!orgId || orgId === 'default-org' || orgId === 'no-org') {
-      throw new Error('Invalid organization ID - user must be in a valid Clerk organization');
+    console.log('🔍 Starting quota query for orgId:', orgId);
+    const database = await initializeDatabase();
+    if (!database) {
+      throw new Error('Database not available');
     }
-
-    let result = await database.query(`
-      SELECT o.plan, o.quota_limit, o.quota_used,
-             ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
-      FROM organizations o 
-      WHERE o.clerk_org_id = $1
-    `, [orgId]);
-    
-    // If organization doesn't exist, create it with proper Clerk org ID
-    if (!result || result.length === 0) {
-      console.log(`Creating new organization for Clerk org: ${orgId}`);
-      
-      await database.query(`
-        INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
-        VALUES ($1, $2, 'free', 'active', 10, 0, NOW(), NOW())
-      `, [orgId, `Organization ${orgId}`]);
-      
-      result = await database.query(`
-        SELECT o.plan, o.quota_limit, o.quota_used,
-               ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
-        FROM organizations o 
-        WHERE o.clerk_org_id = $1
-      `, [orgId]);
-    }
-    
-    const org = result[0];
-    return {
-      used: parseInt(org.quota_used) || 0,
-      limit: parseInt(org.quota_limit) || 10,
-      percentage: parseFloat(org.percentage) || 0,
-      plan: org.plan || 'free'
-    };
-  } catch (error) {
-    console.error('Error fetching quota status:', error);
-    throw error; // Don't return fallback for invalid org IDs
-  }
-}
     
     console.log('✅ Database initialized, executing query...');
     
@@ -505,66 +469,10 @@ module.exports = async function handler(req, res) {
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
-    } else if (path === '/api/quota') {
-    // QUOTA ENDPOINT - Real database integration with Clerk validation
+  } else if (path === '/api/quota') {
+    // QUOTA ENDPOINT - Real database integration
     try {
       console.log('Quota endpoint hit:', { method: req.method, path });
-      
-      if (req.method === 'GET') {
-        // Get organization ID from headers (Clerk)
-        const orgId = req.headers['x-org-id'];
-        
-        // STRICT VALIDATION - No fallbacks to default-org
-        if (!orgId || orgId === 'default-org') {
-          return res.status(400).json({
-            success: false,
-            error: 'Missing or invalid organization ID',
-            message: 'User must be in a valid Clerk organization',
-            requiresOrganization: true
-          });
-        }
-        
-        // Initialize database on first request
-        await initializeDatabase();
-        
-        // Get real quota status from database
-        const quotaStatus = await getRealQuotaStatus(orgId);
-        
-        // Check if quota is exceeded
-        if (quotaStatus.used >= quotaStatus.limit) {
-          return res.status(402).json({
-            success: false,
-            error: 'Quota exceeded',
-            code: 'QUOTA_EXCEEDED',
-            message: `You have used ${quotaStatus.used}/${quotaStatus.limit} ads. Upgrade to continue.`,
-            quota: quotaStatus,
-            upgradeUrl: '/pricing'
-          });
-        }
-        
-        return res.status(200).json({
-          success: true,
-          data: quotaStatus
-        });
-      } else {
-        res.status(405).json({ error: 'Method not allowed' });
-      }
-    } catch (error) {
-      console.error('Quota endpoint error:', error);
-      
-      if (error.message.includes('Invalid organization ID')) {
-        return res.status(400).json({
-          success: false,
-          error: error.message,
-          requiresOrganization: true
-        });
-      }
-      
-      res.status(500).json({
-        success: false,
-        error: 'Failed to fetch quota status'
-      });
-    });
       
       if (req.method === 'GET') {
         // Get organization ID from headers (Clerk)
