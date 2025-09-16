@@ -5,7 +5,7 @@ import { useQuota } from "@/hooks/useQuota";
 import { CountryOnlySelector } from "@/components/ui/country-only-selector";
 import { AdCountSelector } from "@/components/ui/ad-count-selector";
 import OrganizationRequired from "@/components/OrganizationRequired";
-import { QuotaPaywall } from "@/components/billing/QuotaPaywall";
+import QuotaPaywall from "@/components/billing/QuotaPaywall";
 
 export default function StartJobForm() {
   const [keyword, setKeyword] = useState("");
