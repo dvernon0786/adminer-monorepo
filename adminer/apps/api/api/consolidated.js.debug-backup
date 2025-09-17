@@ -92,17 +92,18 @@ async function getRealQuotaStatus(orgId) {
   }
 }
 
-// Fixed analysis stats function with proper database syntax
-async function getRealAnalysisStats(orgId) {
+// Real analysis stats function
+async function getRealAnalysisStats(orgId = 'default-org') {
   try {
     console.log('🔍 Starting analysis stats query for orgId:', orgId);
-    
-    // Validate organization ID
-    if (!orgId || orgId === 'default-org') {
-      throw new Error('Invalid organization ID - user must be in a valid Clerk organization');
+    const database = await initializeDatabase();
+    if (!database) {
+      throw new Error('Database not available');
     }
-
-    // Get organization database ID using neon client
+    
+    console.log('✅ Database initialized for stats, getting organization ID...');
+    
+    // Get organization ID first using neon client directly
     const neonClient = neon(process.env.DATABASE_URL);
     const orgResult = await neonClient`
       SELECT id FROM organizations WHERE clerk_org_id = ${orgId} LIMIT 1
@@ -124,46 +125,72 @@ async function getRealAnalysisStats(orgId) {
         errors: 0
       };
     }
-
-    const orgDbId = orgResult[0].id;
-    console.log('✅ Organization ID found:', orgDbId);
-
-    // Get job statistics with correct column name (organization_id)
-    console.log('📊 Querying job stats...');
-    const jobStats = await neonClient`
-      SELECT 
-        COUNT(*) as total_jobs,
-        COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_jobs,
-        COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_jobs,
-        COUNT(CASE WHEN status IN ('queued', 'running') THEN 1 END) as pending_jobs,
-        COALESCE(SUM(CASE WHEN status = 'completed' THEN 
-          COALESCE(
-            (raw_data->>'dataExtracted')::integer, 
-            CASE WHEN jsonb_typeof(raw_data->'data') = 'array' 
-              THEN jsonb_array_length(raw_data->'data')
-              ELSE 0 
-            END
-          )
-        END), 0) as total_ads_scraped
-      FROM jobs 
-      WHERE organization_id = ${orgDbId}
-    `;
-
-    console.log('📊 Job stats result:', { 
-      rowCount: jobStats?.length || 0, 
-      result: jobStats 
-    });
-
-    const stats = jobStats[0] || {};
     
-    // Process results with proper field mapping
+    const orgDbId = orgResult[0]?.id;
+    console.log('✅ Organization ID found:', orgDbId);
+    
+    if (!orgDbId) {
+      console.log('⚠️ No organization ID found, returning empty stats');
+      return {
+        total: 0,
+        images: 0,
+        videos: 0,
+        text: 0,
+        errors: 0
+      };
+    }
+    
+    // Query real job counts by type using neon client
+    console.log('📊 Querying job stats...');
+    const stats = await neonClient`
+      SELECT 
+        type,
+        COUNT(*) as count
+      FROM jobs 
+      WHERE org_id = ${orgDbId}
+      GROUP BY type
+    `;
+    
+    console.log('📊 Job stats result:', { 
+      rowCount: stats?.length || 0, 
+      result: stats 
+    });
+    
+    // Process results
     const result = {
-      total: parseInt(stats.total_jobs) || 0,
-      images: 0, // Will be calculated from job types if needed
-      videos: 0, // Will be calculated from job types if needed
-      text: 0,   // Will be calculated from job types if needed
-      errors: parseInt(stats.failed_jobs) || 0
+      total: 0,
+      images: 0,
+      videos: 0,
+      text: 0,
+      errors: 0
     };
+    
+    if (stats) {
+      stats.forEach(stat => {
+        const count = parseInt(stat.count) || 0;
+        result.total += count;
+        if (stat.type === 'image') result.images = count;
+        else if (stat.type === 'video') result.videos = count;
+        else if (stat.type === 'text') result.text = count;
+      });
+    }
+    
+    // Count failed jobs as errors using neon client
+    console.log('📊 Querying error count...');
+    const errorCount = await neonClient`
+      SELECT COUNT(*) as count
+      FROM jobs 
+      WHERE org_id = ${orgDbId} AND status = 'failed'
+    `;
+    
+    console.log('📊 Error count result:', { 
+      rowCount: errorCount?.length || 0, 
+      result: errorCount 
+    });
+      
+    if (errorCount && errorCount.length > 0) {
+      result.errors = parseInt(errorCount[0].count) || 0;
+    }
     
     console.log('✅ Final stats result:', result);
     return result;
