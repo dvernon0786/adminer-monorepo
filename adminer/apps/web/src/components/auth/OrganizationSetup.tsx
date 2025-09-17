@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useOrganization, useAuth } from '@clerk/clerk-react';
+import { useOrganization, useAuth, useClerk } from '@clerk/clerk-react';
 
 interface OrganizationSetupProps {
   onComplete?: () => void;
@@ -12,9 +12,11 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
   // Safe Clerk hooks usage with fallbacks
   const organizationHook = useOrganization();
   const authHook = useAuth();
+  const clerk = useClerk();
   
   const createOrganization = organizationHook?.createOrganization;
   const user = authHook?.user;
+  const isLoaded = authHook?.isLoaded;
   
   // Debug Clerk configuration
   console.log('ORGANIZATION_SETUP: Debug info:', {
@@ -22,6 +24,8 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
     createOrganization: !!createOrganization,
     user: !!user,
     userEmail: user?.primaryEmailAddress?.emailAddress,
+    isLoaded: isLoaded,
+    clerk: !!clerk,
     organizationHookKeys: organizationHook ? Object.keys(organizationHook) : 'undefined'
   });
   
@@ -29,6 +33,23 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [orgName, setOrgName] = useState('');
+
+  // Show loading state while Clerk is initializing
+  if (!isLoaded) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center p-4">
+        <div className="max-w-md w-full bg-white rounded-lg shadow-lg p-6 text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <h2 className="text-xl font-semibold text-gray-900 mb-2">
+            Loading...
+          </h2>
+          <p className="text-gray-600">
+            Please wait while we initialize your session.
+          </p>
+        </div>
+      </div>
+    );
+  }
 
   // Safe organization creation with comprehensive error handling
   const handleCreateOrg = useCallback(async () => {
@@ -48,6 +69,11 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
       console.log('ORGANIZATION_SETUP: organizationHook:', organizationHook);
       
       if (!createOrganization) {
+        // Check if Clerk is still loading
+        if (!isLoaded) {
+          throw new Error('Clerk is still loading - please wait a moment and try again');
+        }
+        
         // Check if Clerk is properly configured
         if (!organizationHook) {
           throw new Error('Clerk organization hook not available - please check Clerk configuration');
@@ -118,7 +144,18 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
           Create New Organization
         </button>
         <button
-          onClick={() => window.location.href = '/api/auth/sign-out'}
+          onClick={async () => {
+            try {
+              console.log('ORGANIZATION_SETUP: Signing out user...');
+              await clerk.signOut();
+              console.log('ORGANIZATION_SETUP: User signed out successfully');
+              window.location.href = '/sign-in';
+            } catch (error) {
+              console.error('ORGANIZATION_SETUP: Sign out failed:', error);
+              // Fallback to page reload if sign out fails
+              window.location.href = '/sign-in';
+            }
+          }}
           className="w-full px-4 py-3 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors"
           disabled={loading}
         >
@@ -181,7 +218,17 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
                   • Learn about Clerk organizations
                 </button>
                 <button
-                  onClick={() => window.location.href = '/api/auth/sign-out'}
+                  onClick={async () => {
+                    try {
+                      console.log('ORGANIZATION_SETUP: Signing out user from error section...');
+                      await clerk.signOut();
+                      console.log('ORGANIZATION_SETUP: User signed out successfully');
+                      window.location.href = '/sign-in';
+                    } catch (error) {
+                      console.error('ORGANIZATION_SETUP: Sign out failed:', error);
+                      window.location.href = '/sign-in';
+                    }
+                  }}
                   className="block text-xs text-blue-600 hover:text-blue-800 underline"
                 >
                   • Sign out and try again
