@@ -4,12 +4,29 @@ import { SignedIn, SignedOut, SignUpButton, useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
-import { usePersonalWorkspace } from '../auth/OrganizationWrapper'
+
+// Safe hook that handles being outside PersonalWorkspaceProvider
+const useSafeWorkspace = () => {
+  const { user } = useAuth();
+  
+  // Create fallback workspace if context not available
+  const fallbackWorkspace = {
+    id: user?.id || 'anonymous',
+    name: `${user?.firstName || 'Personal'} Workspace`,
+    slug: `personal-${user?.id || 'anonymous'}`,
+    createdBy: user?.id || 'anonymous',
+    members: user?.id ? [user.id] : [],
+    type: 'personal' as const
+  };
+
+  console.log('PRICING: Using fallback workspace (no context dependency)');
+  return { workspace: fallbackWorkspace, isLoaded: !!user };
+};
 
 export default function Pricing() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { workspace } = usePersonalWorkspace()
+  const { workspace } = useSafeWorkspace()
   const [upgrading, setUpgrading] = useState<string | null>(null)
   
   const plans = [
