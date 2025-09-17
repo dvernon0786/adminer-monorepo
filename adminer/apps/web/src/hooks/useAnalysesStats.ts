@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useAuth } from "@clerk/clerk-react";
+import { useAuth, useOrganization } from "@clerk/clerk-react";
 import { useLocation } from "react-router-dom";
 import { isProtectedPath } from "@/lib/isProtectedPath";
 
@@ -13,14 +13,15 @@ export type AnalysisStats = {
 
 export function useAnalysesStats() {
   const { isSignedIn, getToken } = useAuth();
+  const { organization } = useOrganization();
   const { pathname } = useLocation();
   const [data, setData] = useState<AnalysisStats | null>(null);
   const [error, setError] = useState<null | string>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Gate by auth + protected route
-    if (!isSignedIn || !isProtectedPath(pathname)) {
+    // Gate by auth + protected route + organization
+    if (!isSignedIn || !isProtectedPath(pathname) || !organization) {
       setData(null);
       setError(null);
       setLoading(false);
@@ -32,11 +33,12 @@ export function useAnalysesStats() {
       try {
         setLoading(true);
         
-        // Call real API endpoint
+        // Call real API endpoint with organization ID
         const response = await fetch('/api/analyses/stats', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
+            'x-org-id': organization.id,
           },
         });
 
@@ -68,7 +70,7 @@ export function useAnalysesStats() {
     return () => {
       cancelled = false;
     };
-  }, [isSignedIn, pathname, getToken]);
+  }, [isSignedIn, pathname, organization, getToken]);
 
   return { data, error, loading };
 }

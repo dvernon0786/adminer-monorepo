@@ -164,18 +164,19 @@ async function getRealAnalysisStats(orgId = 'default-org') {
     
     console.log('✅ Database initialized for stats, getting organization ID...');
     
-    // Get organization ID first
-    const orgResult = await database.execute(sql`
+    // Get organization ID first using neon client directly
+    const neonClient = neon(process.env.DATABASE_URL);
+    const orgResult = await neonClient`
       SELECT id FROM organizations WHERE clerk_org_id = ${orgId} LIMIT 1
-    `);
+    `;
     
     console.log('📊 Organization query result:', { 
-      rowCount: orgResult.rows?.length || 0, 
+      rowCount: orgResult?.length || 0, 
       result: orgResult,
       orgId 
     });
     
-    if (!orgResult.rows || orgResult.rows.length === 0) {
+    if (!orgResult || orgResult.length === 0) {
       console.log('⚠️ No organization found for stats, returning empty stats');
       return {
         total: 0,
@@ -186,7 +187,7 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       };
     }
     
-    const orgDbId = orgResult.rows[0]?.id;
+    const orgDbId = orgResult[0]?.id;
     console.log('✅ Organization ID found:', orgDbId);
     
     if (!orgDbId) {
@@ -200,19 +201,19 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       };
     }
     
-    // Query real job counts by type
+    // Query real job counts by type using neon client
     console.log('📊 Querying job stats...');
-    const stats = await database.execute(sql`
+    const stats = await neonClient`
       SELECT 
         type,
         COUNT(*) as count
       FROM jobs 
       WHERE org_id = ${orgDbId}
       GROUP BY type
-    `);
+    `;
     
     console.log('📊 Job stats result:', { 
-      rowCount: stats.rows?.length || 0, 
+      rowCount: stats?.length || 0, 
       result: stats 
     });
     
@@ -225,8 +226,8 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       errors: 0
     };
     
-    if (stats.rows) {
-      stats.rows.forEach(stat => {
+    if (stats) {
+      stats.forEach(stat => {
         const count = parseInt(stat.count) || 0;
         result.total += count;
         if (stat.type === 'image') result.images = count;
@@ -235,21 +236,21 @@ async function getRealAnalysisStats(orgId = 'default-org') {
       });
     }
     
-    // Count failed jobs as errors
+    // Count failed jobs as errors using neon client
     console.log('📊 Querying error count...');
-    const errorCount = await database.execute(sql`
+    const errorCount = await neonClient`
       SELECT COUNT(*) as count
       FROM jobs 
       WHERE org_id = ${orgDbId} AND status = 'failed'
-    `);
+    `;
     
     console.log('📊 Error count result:', { 
-      rowCount: errorCount.rows?.length || 0, 
+      rowCount: errorCount?.length || 0, 
       result: errorCount 
     });
       
-    if (errorCount.rows && errorCount.rows.length > 0) {
-      result.errors = parseInt(errorCount.rows[0].count) || 0;
+    if (errorCount && errorCount.length > 0) {
+      result.errors = parseInt(errorCount[0].count) || 0;
     }
     
     console.log('✅ Final stats result:', result);
