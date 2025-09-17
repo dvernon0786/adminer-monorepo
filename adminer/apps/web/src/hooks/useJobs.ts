@@ -1,19 +1,21 @@
 // apps/web/src/hooks/useJobs.ts
 import { useState } from "react";
-import { useOrganization } from "@clerk/clerk-react";
+import { useUser } from "@clerk/clerk-react";
+import { usePersonalWorkspace } from "../components/auth/OrganizationWrapper";
 
 export function useStartJob() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const { organization } = useOrganization();
+  const { user } = useUser();
+  const { workspace } = usePersonalWorkspace();
 
   const start = async (keyword: string, input: Record<string, any> = {}) => {
     setLoading(true);
     setError(null);
     
-    // Check if user is in an organization
-    if (!organization) {
-      const errorMsg = "You must be in an organization to create jobs";
+    // Check if user is authenticated
+    if (!user) {
+      const errorMsg = "You must be signed in to create jobs";
       setError(errorMsg);
       throw new Error(errorMsg);
     }
@@ -23,16 +25,22 @@ export function useStartJob() {
         method: "POST",
         headers: { 
           "content-type": "application/json",
-          "x-org-id": organization.id // Use real Clerk org ID
+          "x-user-id": user.id, // Use user ID instead of org ID
+          "x-workspace-id": workspace.id // Use personal workspace ID
         },
         credentials: "include",
-        body: JSON.stringify({ keyword, ...input }),
+        body: JSON.stringify({ 
+          keyword, 
+          userId: user.id,
+          workspaceId: workspace.id,
+          ...input 
+        }),
       });
 
       if (response.status === 400) {
         const data = await response.json();
         if (data.requiresOrganization) {
-          throw new Error("You must be in a valid Clerk organization to create jobs");
+          throw new Error("You must be in a valid workspace to create jobs");
         }
         throw new Error(data?.message ?? "Invalid request");
       }

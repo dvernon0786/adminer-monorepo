@@ -1,93 +1,80 @@
-// Organization Wrapper Component
-// This component wraps the dashboard and handles organization detection
+// Personal Workspace Wrapper Component
+// This component bypasses organization requirement and creates personal workspaces
 
-import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
-import { useOrganization, useUser } from "@clerk/clerk-react";
-import { OrganizationSetup } from './OrganizationSetup';
+import React, { createContext, useContext } from 'react';
+import { useUser } from '@clerk/clerk-react';
+
+interface PersonalWorkspace {
+  id: string;
+  name: string;
+  slug: string;
+  createdBy: string;
+  members: string[];
+  type: 'personal';
+}
+
+interface PersonalWorkspaceContextType {
+  workspace: PersonalWorkspace;
+  isLoaded: boolean;
+}
+
+const PersonalWorkspaceContext = createContext<PersonalWorkspaceContextType | null>(null);
+
+export const usePersonalWorkspace = () => {
+  const context = useContext(PersonalWorkspaceContext);
+  if (!context) {
+    throw new Error('usePersonalWorkspace must be used within PersonalWorkspaceProvider');
+  }
+  return context;
+};
 
 interface OrganizationWrapperProps {
   children: React.ReactNode;
 }
 
-// CRITICAL FIX: Render count tracking to prevent infinite loops
-let renderCount = 0;
-const resetRenderCount = () => {
-  renderCount = 0;
-};
-
 export function OrganizationWrapper({ children }: OrganizationWrapperProps) {
-  // Increment and check render count
-  renderCount++;
-  console.log(`ORGANIZATION_WRAPPER: Rendering... (count: ${renderCount})`);
+  const { isLoaded, isSignedIn, user } = useUser();
 
-  // CRITICAL FIX: Prevent infinite render loops
-  if (renderCount > 5) {
-    console.error('OrganizationWrapper infinite render detected - STOPPED');
-    setTimeout(resetRenderCount, 100);
-    
+  console.log('ORGANIZATION_WRAPPER: BYPASSING ORGANIZATION - USING USER WORKSPACE');
+
+  if (!isLoaded) {
     return (
-      <div className="p-6 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto mt-20">
-        <h3 className="text-red-800 font-semibold mb-2">Organization Setup Required</h3>
-        <p className="text-red-600 mb-4">
-          Unable to detect organization. Please refresh and try again.
-        </p>
-        <button 
-          onClick={() => {
-            resetRenderCount();
-            window.location.reload();
-          }}
-          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
-        >
-          Refresh & Retry
-        </button>
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-gray-900"></div>
       </div>
     );
   }
 
-  // Stable Clerk hook usage
-  const { isSignedIn, user, isLoaded: userLoaded } = useUser();
-  const { organization, isLoaded: orgLoaded } = useOrganization();
-
-  // Memoized status to prevent re-renders
-  const status = useMemo(() => {
-    console.log(`ORGANIZATION_WRAPPER: userLoaded=${userLoaded}, orgLoaded=${orgLoaded}, isSignedIn=${isSignedIn}, user=${!!user}, org=${!!organization}`);
-    
-    if (!userLoaded || !orgLoaded) return 'loading';
-    if (!isSignedIn || !user) return 'not-signed-in';
-    if (organization) {
-      resetRenderCount(); // Reset on success
-      return 'ready';
-    }
-    return 'needs-setup';
-  }, [userLoaded, orgLoaded, isSignedIn, user, organization?.id]); // Stable dependency on org ID
-
-  // Callback for setup completion - prevents re-render loops
-  const handleSetupComplete = useCallback(() => {
-    console.log('ORGANIZATION_WRAPPER: Setup completed');
-    resetRenderCount();
-  }, []);
-
-  // Loading state with render protection
-  if (status === 'loading') {
-    console.log('ORGANIZATION_WRAPPER: Loading Clerk data...');
-    return <OrganizationLoadingScreen />;
+  if (!isSignedIn || !user) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">
+          <h2 className="text-2xl font-bold mb-4">Authentication Required</h2>
+          <a href="/sign-in" className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+            Sign In
+          </a>
+        </div>
+      </div>
+    );
   }
 
-  // If user is not signed in, let the auth system handle it
-  if (status === 'not-signed-in') {
-    console.log('ORGANIZATION_WRAPPER: User not signed in, showing children');
-    return <>{children}</>;
-  }
+  // Create personal workspace using user ID
+  const personalWorkspace: PersonalWorkspace = {
+    id: user.id,
+    name: `${user.firstName || user.emailAddresses[0]?.emailAddress || 'Personal'} Workspace`,
+    slug: `personal-${user.id}`,
+    createdBy: user.id,
+    members: [user.id],
+    type: 'personal'
+  };
 
-  // Organization setup needed - STABLE COMPONENT
-  if (status === 'needs-setup') {
-    console.log('ORGANIZATION_WRAPPER: No organization, showing setup');
-    return <OrganizationSetup onComplete={handleSetupComplete} />;
-  }
-
-  // Normal app flow - organization exists
-  console.log('ORGANIZATION_WRAPPER: Organization found, showing children');
-  return <>{children}</>;
+  console.log('ORGANIZATION_WRAPPER: Personal workspace created:', personalWorkspace.name);
+  
+  return (
+    <PersonalWorkspaceContext.Provider value={{ workspace: personalWorkspace, isLoaded: true }}>
+      {children}
+    </PersonalWorkspaceContext.Provider>
+  );
 }
 
 // Loading screen component

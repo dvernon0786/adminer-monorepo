@@ -47,12 +47,12 @@ async function initializeDatabase() {
   }
 }
 
-// Real quota function
-async function getRealQuotaStatus(orgId) {
+// Real quota function - Updated for user-based workspaces
+async function getRealQuotaStatus(userId) {
   try {
-    // REJECT DEFAULT-ORG - Force proper Clerk integration
-    if (!orgId || orgId === 'default-org' || orgId === 'no-org') {
-      throw new Error('Invalid organization ID - user must be in a valid Clerk organization');
+    // Use user ID as organization ID for personal workspaces
+    if (!userId) {
+      throw new Error('User ID required for quota check');
     }
 
     let result = await database.query(`
@@ -60,62 +60,62 @@ async function getRealQuotaStatus(orgId) {
              ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
       FROM organizations o 
       WHERE o.clerk_org_id = $1
-    `, [orgId]);
+    `, [userId]);
     
-    // If organization doesn't exist, create it with proper Clerk org ID
+    // If organization doesn't exist, create personal workspace
     if (!result || result.length === 0) {
-      console.log(`Creating new organization for Clerk org: ${orgId}`);
+      console.log(`Creating personal workspace for user: ${userId}`);
       
       await database.query(`
         INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
-        VALUES ($1, $2, 'free', 'active', 10, 0, NOW(), NOW())
-      `, [orgId, `Organization ${orgId}`]);
+        VALUES ($1, $2, 'free', 'active', 100, 0, NOW(), NOW())
+      `, [userId, `Personal Workspace ${userId}`]);
       
       result = await database.query(`
         SELECT o.plan, o.quota_limit, o.quota_used,
                ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
         FROM organizations o 
         WHERE o.clerk_org_id = $1
-      `, [orgId]);
+      `, [userId]);
     }
     
     const org = result[0];
     return {
       used: parseInt(org.quota_used) || 0,
-      limit: parseInt(org.quota_limit) || 10,
+      limit: parseInt(org.quota_limit) || 100,
       percentage: parseFloat(org.percentage) || 0,
       plan: org.plan || 'free'
     };
   } catch (error) {
     console.error('Error fetching quota status:', error);
-    throw error; // Don't return fallback for invalid org IDs
+    throw error;
   }
 }
 
-// Fixed analysis stats function with proper database syntax
-async function getRealAnalysisStats(orgId) {
+// Fixed analysis stats function with proper database syntax - Updated for user-based workspaces
+async function getRealAnalysisStats(userId) {
   try {
-    console.log('🔍 Starting analysis stats query for orgId:', orgId);
+    console.log('🔍 Starting analysis stats query for userId:', userId);
     
-    // Validate organization ID
-    if (!orgId || orgId === 'default-org') {
-      throw new Error('Invalid organization ID - user must be in a valid Clerk organization');
+    // Validate user ID
+    if (!userId) {
+      throw new Error('User ID required for analysis stats');
     }
 
-    // Get organization database ID using neon client
+    // Get organization database ID using neon client - use user ID as clerk_org_id
     const neonClient = neon(process.env.DATABASE_URL);
     const orgResult = await neonClient`
-      SELECT id FROM organizations WHERE clerk_org_id = ${orgId} LIMIT 1
+      SELECT id FROM organizations WHERE clerk_org_id = ${userId} LIMIT 1
     `;
     
     console.log('📊 Organization query result:', { 
       rowCount: orgResult?.length || 0, 
       result: orgResult,
-      orgId 
+      userId 
     });
     
     if (!orgResult || orgResult.length === 0) {
-      console.log('⚠️ No organization found for stats, returning empty stats');
+      console.log('⚠️ No personal workspace found for stats, returning empty stats');
       return {
         total: 0,
         images: 0,
@@ -126,7 +126,7 @@ async function getRealAnalysisStats(orgId) {
     }
 
     const orgDbId = orgResult[0].id;
-    console.log('✅ Organization ID found:', orgDbId);
+    console.log('✅ Personal workspace ID found:', orgDbId);
 
     // Get job statistics with correct column name (organization_id)
     console.log('📊 Querying job stats...');
@@ -269,8 +269,13 @@ module.exports = async function handler(req, res) {
     console.log('Jobs endpoint hit:', { method: req.method, path });
     if (req.method === 'POST') {
       try {
-        const { keyword, limit = 10 } = req.body;
-        const orgId = req.headers['x-org-id'] || 'default-org';
+        const { keyword, limit = 10, userId, workspaceId } = req.body;
+        const userIdFromHeader = req.headers['x-user-id'];
+        const workspaceIdFromHeader = req.headers['x-workspace-id'];
+        
+        // Use user ID from header or body
+        const finalUserId = userIdFromHeader || userId;
+        const finalWorkspaceId = workspaceIdFromHeader || workspaceId || finalUserId;
         
         // Validate required fields
         if (!keyword) {
@@ -279,10 +284,19 @@ module.exports = async function handler(req, res) {
             error: 'Missing required field: keyword'
           });
         }
+        
+        if (!finalUserId) {
+          return res.status(400).json({
+            success: false,
+            error: 'Missing user ID',
+            message: 'User ID required for job creation',
+            requiresUser: true
+          });
+        }
 
         // CRITICAL: PRE-JOB QUOTA VALIDATION - BUSINESS MODEL FIX
-        console.log(`🔍 Checking quota for org: ${orgId}`);
-        const quotaStatus = await getRealQuotaStatus(orgId);
+        console.log(`🔍 Checking quota for user: ${finalUserId}`);
+        const quotaStatus = await getRealQuotaStatus(finalUserId);
         console.log(`📊 Quota status: ${quotaStatus.used}/${quotaStatus.limit} (${quotaStatus.percentage}%)`);
         
         // Check if quota already exceeded
@@ -329,7 +343,7 @@ module.exports = async function handler(req, res) {
         // Generate job ID
         const jobId = `job-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
         
-        console.log(`Creating job: ${jobId} for org: ${orgId}`);
+        console.log(`Creating job: ${jobId} for user: ${finalUserId}`);
         
         // Send event to Inngest with comprehensive error handling
         let inngestResult = null;
@@ -339,18 +353,21 @@ module.exports = async function handler(req, res) {
           // Use the existing loadInngest function
           const inngestClient = await loadInngest();
           
-          // Send event with proper payload structure
+          // Send event with proper payload structure using user ID
           inngestResult = await inngestClient.send({
             name: 'job.created',
             data: {
               jobId,
               keyword,
               limit: parseInt(limit),
-              orgId,
+              orgId: finalUserId, // Use user ID as organization ID
+              userId: finalUserId, // Add explicit user ID
+              workspaceId: finalWorkspaceId, // Add workspace ID
               timestamp: new Date().toISOString(),
               metadata: {
                 source: 'api',
-                version: '1.0'
+                version: '1.0',
+                workspaceType: 'personal'
               }
             }
           });
@@ -371,7 +388,8 @@ module.exports = async function handler(req, res) {
             jobId, 
             keyword, 
             limit: requestedAds,
-            orgId,
+            userId: finalUserId,
+            workspaceId: finalWorkspaceId,
             status: 'queued',
             quota: {
               used: quotaStatus.used,
@@ -424,24 +442,25 @@ module.exports = async function handler(req, res) {
       console.log('Quota endpoint hit:', { method: req.method, path });
       
       if (req.method === 'GET') {
-        // Get organization ID from headers (Clerk)
-        const orgId = req.headers['x-org-id'];
+        // Get user ID from headers (Personal Workspace)
+        const userId = req.headers['x-user-id'];
+        const workspaceId = req.headers['x-workspace-id'];
         
-        // STRICT VALIDATION - No fallbacks to default-org
-        if (!orgId || orgId === 'default-org') {
+        // STRICT VALIDATION - User ID required
+        if (!userId) {
           return res.status(400).json({
             success: false,
-            error: 'Missing or invalid organization ID',
-            message: 'User must be in a valid Clerk organization',
-            requiresOrganization: true
+            error: 'Missing user ID',
+            message: 'User ID required for quota check',
+            requiresUser: true
           });
         }
         
         // Initialize database on first request
         await initializeDatabase();
         
-        // Get real quota status from database
-        const quotaStatus = await getRealQuotaStatus(orgId);
+        // Get real quota status from database using user ID
+        const quotaStatus = await getRealQuotaStatus(userId);
         
         // Check if quota is exceeded
         if (quotaStatus.used >= quotaStatus.limit) {
@@ -465,11 +484,11 @@ module.exports = async function handler(req, res) {
     } catch (error) {
       console.error('Quota endpoint error:', error);
       
-      if (error.message.includes('Invalid organization ID')) {
+      if (error.message.includes('User ID required')) {
         return res.status(400).json({
           success: false,
           error: error.message,
-          requiresOrganization: true
+          requiresUser: true
         });
       }
       
@@ -484,14 +503,25 @@ module.exports = async function handler(req, res) {
       console.log('Analyses stats endpoint hit:', { method: req.method, path });
       
       if (req.method === 'GET') {
-        // Get organization ID from headers (Clerk)
-        const orgId = req.headers['x-org-id'] || 'default-org';
+        // Get user ID from headers (Personal Workspace)
+        const userId = req.headers['x-user-id'];
+        const workspaceId = req.headers['x-workspace-id'];
+        
+        // STRICT VALIDATION - User ID required
+        if (!userId) {
+          return res.status(400).json({
+            success: false,
+            error: 'Missing user ID',
+            message: 'User ID required for analysis stats',
+            requiresUser: true
+          });
+        }
         
         // Initialize database on first request
         await initializeDatabase();
         
-        // Get real analysis statistics from database
-        const statsData = await getRealAnalysisStats(orgId);
+        // Get real analysis statistics from database using user ID
+        const statsData = await getRealAnalysisStats(userId);
         
         res.status(200).json({
           success: true,

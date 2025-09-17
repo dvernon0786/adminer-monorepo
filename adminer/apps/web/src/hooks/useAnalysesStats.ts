@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useAuth, useOrganization } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useLocation } from "react-router-dom";
 import { isProtectedPath } from "@/lib/isProtectedPath";
+import { usePersonalWorkspace } from "../components/auth/OrganizationWrapper";
 
 export type AnalysisStats = {
   total: number;
@@ -13,15 +14,16 @@ export type AnalysisStats = {
 
 export function useAnalysesStats() {
   const { isSignedIn, getToken } = useAuth();
-  const { organization } = useOrganization();
+  const { user } = useUser();
+  const { workspace } = usePersonalWorkspace();
   const { pathname } = useLocation();
   const [data, setData] = useState<AnalysisStats | null>(null);
   const [error, setError] = useState<null | string>(null);
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    // Gate by auth + protected route + organization
-    if (!isSignedIn || !isProtectedPath(pathname) || !organization) {
+    // Gate by auth + protected route + user
+    if (!isSignedIn || !isProtectedPath(pathname) || !user) {
       setData(null);
       setError(null);
       setLoading(false);
@@ -33,12 +35,13 @@ export function useAnalysesStats() {
       try {
         setLoading(true);
         
-        // Call real API endpoint with organization ID
+        // Call real API endpoint with user ID and workspace ID
         const response = await fetch('/api/analyses/stats', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'x-org-id': organization.id,
+            'x-user-id': user.id, // Use user ID instead of org ID
+            'x-workspace-id': workspace.id, // Use personal workspace ID
           },
         });
 
@@ -70,7 +73,7 @@ export function useAnalysesStats() {
     return () => {
       cancelled = false;
     };
-  }, [isSignedIn, pathname, organization, getToken]);
+  }, [isSignedIn, pathname, user, workspace, getToken]);
 
   return { data, error, loading };
 }

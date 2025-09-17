@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
-import { useAuth, useOrganization } from "@clerk/clerk-react";
+import { useAuth, useUser } from "@clerk/clerk-react";
 import { useLocation } from "react-router-dom";
 import { isProtectedPath } from "@/lib/isProtectedPath";
+import { usePersonalWorkspace } from "../components/auth/OrganizationWrapper";
 
 export type Plan = "free" | "pro" | "enterprise";
 export type QuotaData = {
@@ -21,7 +22,8 @@ export type QuotaStatus = {
 
 export function useQuota() {
   const { isSignedIn, getToken } = useAuth();
-  const { organization, isLoaded: orgLoaded } = useOrganization();
+  const { user } = useUser();
+  const { workspace } = usePersonalWorkspace();
   const { pathname } = useLocation();
   const [data, setData] = useState<QuotaData | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -32,7 +34,7 @@ export function useQuota() {
 
   useEffect(() => {
     console.log('USE_QUOTA: Effect running...');
-    console.log('USE_QUOTA: isSignedIn:', isSignedIn, 'orgLoaded:', orgLoaded, 'organization:', !!organization);
+    console.log('USE_QUOTA: isSignedIn:', isSignedIn, 'user:', !!user, 'workspace:', !!workspace);
     
     // Gate by auth + protected route
     if (!isSignedIn || !isProtectedPath(pathname)) {
@@ -45,19 +47,12 @@ export function useQuota() {
       return;
     }
 
-    // Wait for Clerk to load organization data
-    if (!orgLoaded) {
-      console.log('USE_QUOTA: Waiting for orgLoaded...');
-      return;
-    }
-
-    // Check if user is in an organization
-    if (!organization) {
-      console.log('USE_QUOTA: No organization found');
-      setNeedsOrg(true);
-      setNeedsAuth(false);
+    // Check if user is authenticated
+    if (!user) {
+      console.log('USE_QUOTA: No user found');
+      setNeedsAuth(true);
+      setNeedsOrg(false);
       setNeedsUpgrade(false);
-      setError('You must be in an organization to use this feature');
       setLoading(false);
       return;
     }
@@ -71,12 +66,13 @@ export function useQuota() {
         setNeedsOrg(false);
         setNeedsUpgrade(false);
         
-        // Call real API endpoint with organization ID
+        // Call real API endpoint with user ID and workspace ID
         const response = await fetch('/api/quota', {
           method: 'GET',
           headers: {
             'Content-Type': 'application/json',
-            'x-org-id': organization.id, // Use real Clerk org ID
+            'x-user-id': user.id, // Use user ID instead of org ID
+            'x-workspace-id': workspace.id, // Use personal workspace ID
           },
         });
 
@@ -147,7 +143,7 @@ export function useQuota() {
     return () => {
       cancelled = false;
     };
-  }, [isSignedIn, pathname, organization, orgLoaded, getToken]); // Explicit dependencies
+  }, [isSignedIn, pathname, user, workspace, getToken]); // Explicit dependencies
 
   // Helper function to check if user can create jobs
   const canCreateJob = (requestedAds = 1) => {
