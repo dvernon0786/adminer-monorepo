@@ -44,6 +44,9 @@ root.render(
           loadingScreen: { display: "none" }
         }
       }}
+      // Enable organizations feature
+      afterSignInUrl="/dashboard"
+      afterSignUpUrl="/dashboard"
     >
       <App />
     </ClerkProvider>

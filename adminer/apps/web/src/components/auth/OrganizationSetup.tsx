@@ -16,6 +16,15 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
   const createOrganization = organizationHook?.createOrganization;
   const user = authHook?.user;
   
+  // Debug Clerk configuration
+  console.log('ORGANIZATION_SETUP: Debug info:', {
+    organizationHook: !!organizationHook,
+    createOrganization: !!createOrganization,
+    user: !!user,
+    userEmail: user?.primaryEmailAddress?.emailAddress,
+    organizationHookKeys: organizationHook ? Object.keys(organizationHook) : 'undefined'
+  });
+  
   const [currentStep, setCurrentStep] = useState<'welcome' | 'create'>('welcome');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,9 +44,21 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
     
     try {
       console.log('ORGANIZATION_SETUP: Creating organization...', orgName);
+      console.log('ORGANIZATION_SETUP: createOrganization available:', !!createOrganization);
+      console.log('ORGANIZATION_SETUP: organizationHook:', organizationHook);
       
       if (!createOrganization) {
-        throw new Error('Organization creation not available - Clerk may not be properly configured');
+        // Check if Clerk is properly configured
+        if (!organizationHook) {
+          throw new Error('Clerk organization hook not available - please check Clerk configuration');
+        }
+        
+        // Check if user has permission to create organizations
+        if (!user) {
+          throw new Error('User not authenticated - please sign in first');
+        }
+        
+        throw new Error('Organization creation not available. This may be due to:\n\n1. Clerk plan doesn\'t include organizations (requires Pro plan or higher)\n2. Organizations not enabled in Clerk dashboard\n3. User doesn\'t have permission to create organizations\n\nPlease contact support or upgrade your Clerk plan to enable organizations.');
       }
       
       const result = await createOrganization({ name: orgName.trim() });
@@ -60,7 +81,7 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
     } finally {
       setLoading(false);
     }
-  }, [orgName, createOrganization, onComplete, onError]);
+  }, [orgName, createOrganization, onComplete, onError, organizationHook, user]);
 
   // Handle step navigation
   const handleBack = useCallback(() => {
@@ -143,7 +164,30 @@ export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProp
 
         {error && (
           <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-600 text-sm">{error}</p>
+            <p className="text-red-600 text-sm whitespace-pre-line">{error}</p>
+            <div className="mt-3 space-y-2">
+              <p className="text-red-600 text-xs font-medium">Alternative options:</p>
+              <div className="space-y-1">
+                <button
+                  onClick={() => window.open('https://clerk.com/pricing', '_blank')}
+                  className="block text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  • Check Clerk pricing plans
+                </button>
+                <button
+                  onClick={() => window.open('https://clerk.com/docs/organizations', '_blank')}
+                  className="block text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  • Learn about Clerk organizations
+                </button>
+                <button
+                  onClick={() => window.location.href = '/api/auth/sign-out'}
+                  className="block text-xs text-blue-600 hover:text-blue-800 underline"
+                >
+                  • Sign out and try again
+                </button>
+              </div>
+            </div>
           </div>
         )}
 
