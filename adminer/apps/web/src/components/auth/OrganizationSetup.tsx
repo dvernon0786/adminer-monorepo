@@ -1,5 +1,5 @@
 import React, { useState, useCallback } from 'react';
-import { useOrganization, useAuth, useClerk } from '@clerk/clerk-react';
+import { useOrganization, useUser, useClerk } from '@clerk/clerk-react';
 
 interface OrganizationSetupProps {
   onComplete?: () => void;
@@ -9,14 +9,12 @@ interface OrganizationSetupProps {
 export function OrganizationSetup({ onComplete, onError }: OrganizationSetupProps) {
   console.log('ORGANIZATION_SETUP: Component rendering...');
   
-  // Safe Clerk hooks usage with fallbacks
+  // Safe Clerk hooks usage with fallbacks - USE SAME HOOKS AS ORGANIZATIONWRAPPER
   const organizationHook = useOrganization();
-  const authHook = useAuth();
+  const { user, isLoaded } = useUser(); // Use useUser() to match OrganizationWrapper
   const clerk = useClerk();
   
   const createOrganization = organizationHook?.createOrganization;
-  const user = authHook?.user;
-  const isLoaded = authHook?.isLoaded;
   
   // Debug Clerk configuration
   console.log('ORGANIZATION_SETUP: Debug info:', {
