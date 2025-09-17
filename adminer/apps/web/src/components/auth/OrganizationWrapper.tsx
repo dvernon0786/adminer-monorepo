@@ -1,7 +1,7 @@
 // Organization Wrapper Component
 // This component wraps the dashboard and handles organization detection
 
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { OrganizationSetup } from './OrganizationSetup';
 
@@ -9,43 +9,83 @@ interface OrganizationWrapperProps {
   children: React.ReactNode;
 }
 
+// CRITICAL FIX: Render count tracking to prevent infinite loops
+let renderCount = 0;
+const resetRenderCount = () => {
+  renderCount = 0;
+};
+
 export function OrganizationWrapper({ children }: OrganizationWrapperProps) {
+  // Increment and check render count
+  renderCount++;
+  console.log(`ORGANIZATION_WRAPPER: Rendering... (count: ${renderCount})`);
+
+  // CRITICAL FIX: Prevent infinite render loops
+  if (renderCount > 5) {
+    console.error('OrganizationWrapper infinite render detected - STOPPED');
+    setTimeout(resetRenderCount, 100);
+    
+    return (
+      <div className="p-6 bg-red-50 border border-red-200 rounded-lg max-w-md mx-auto mt-20">
+        <h3 className="text-red-800 font-semibold mb-2">Organization Setup Required</h3>
+        <p className="text-red-600 mb-4">
+          Unable to detect organization. Please refresh and try again.
+        </p>
+        <button 
+          onClick={() => {
+            resetRenderCount();
+            window.location.reload();
+          }}
+          className="px-4 py-2 bg-red-600 text-white rounded hover:bg-red-700"
+        >
+          Refresh & Retry
+        </button>
+      </div>
+    );
+  }
+
+  // Stable Clerk hook usage
   const { isSignedIn, user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const [renderCount, setRenderCount] = useState(0);
 
-  // Render protection
-  useEffect(() => {
-    setRenderCount(prev => prev + 1);
-    if (renderCount > 10) {
-      console.error('OrganizationWrapper infinite render detected');
-      throw new Error('OrganizationWrapper infinite render loop');
+  // Memoized status to prevent re-renders
+  const status = useMemo(() => {
+    console.log(`ORGANIZATION_WRAPPER: userLoaded=${userLoaded}, orgLoaded=${orgLoaded}, isSignedIn=${isSignedIn}, org=${!!organization}`);
+    
+    if (!userLoaded || !orgLoaded) return 'loading';
+    if (!isSignedIn) return 'not-signed-in';
+    if (organization) {
+      resetRenderCount(); // Reset on success
+      return 'ready';
     }
-  });
+    return 'needs-setup';
+  }, [userLoaded, orgLoaded, isSignedIn, organization?.id]); // Stable dependency on org ID
 
-  console.log('ORGANIZATION_WRAPPER: Rendering... (count: ' + renderCount + ')');
-  console.log('ORGANIZATION_WRAPPER: userLoaded:', userLoaded, 'orgLoaded:', orgLoaded);
-  console.log('ORGANIZATION_WRAPPER: isSignedIn:', isSignedIn, 'organization:', !!organization);
+  // Callback for setup completion - prevents re-render loops
+  const handleSetupComplete = useCallback(() => {
+    console.log('ORGANIZATION_WRAPPER: Setup completed');
+    resetRenderCount();
+  }, []);
 
-  // Show loading while Clerk is initializing
-  if (!userLoaded || !orgLoaded) {
+  // Loading state with render protection
+  if (status === 'loading') {
     console.log('ORGANIZATION_WRAPPER: Loading Clerk data...');
     return <OrganizationLoadingScreen />;
   }
 
   // If user is not signed in, let the auth system handle it
-  if (!isSignedIn) {
+  if (status === 'not-signed-in') {
     console.log('ORGANIZATION_WRAPPER: User not signed in, showing children');
     return <>{children}</>;
   }
 
-  // If user is signed in but has no organization, show setup flow
-  if (!organization) {
+  // Organization setup needed - STABLE COMPONENT
+  if (status === 'needs-setup') {
     console.log('ORGANIZATION_WRAPPER: No organization, showing setup');
-    return <OrganizationSetup />;
+    return <OrganizationSetup onComplete={handleSetupComplete} />;
   }
 
-  // User has an organization, show the normal app
+  // Normal app flow - organization exists
   console.log('ORGANIZATION_WRAPPER: Organization found, showing children');
   return <>{children}</>;
 }

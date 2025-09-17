@@ -3,7 +3,7 @@ import React, { useState } from 'react';
 import { useOrganization, useUser, useOrganizationList } from "@clerk/clerk-react";
 
 // Main Organization Setup Component
-export function OrganizationSetup() {
+export function OrganizationSetup({ onComplete }: { onComplete?: () => void }) {
   const { user } = useUser();
   const { organizationList, isLoaded: orgListLoaded } = useOrganizationList();
   const [setupStep, setSetupStep] = useState<'detect' | 'choose' | 'create' | 'join' | 'complete'>('detect');
@@ -53,7 +53,7 @@ export function OrganizationSetup() {
       );
     
     case 'complete':
-      return <OrganizationSetupComplete />;
+      return <OrganizationSetupComplete onComplete={onComplete} />;
     
     default:
       return <OrganizationChoiceStep onCreateNew={() => setSetupStep('create')} onJoinExisting={() => setSetupStep('join')} />;
@@ -332,17 +332,22 @@ function OrganizationJoinStep({
 }
 
 // Step 3: Setup complete
-function OrganizationSetupComplete() {
+function OrganizationSetupComplete({ onComplete }: { onComplete?: () => void }) {
   const { organization } = useOrganization();
   
   React.useEffect(() => {
+    // Call onComplete callback if provided
+    if (onComplete) {
+      onComplete();
+    }
+    
     // Redirect to dashboard after a brief delay
     const timer = setTimeout(() => {
       window.location.reload(); // Reload to trigger dashboard with new org
     }, 2000);
     
     return () => clearTimeout(timer);
-  }, []);
+  }, [onComplete]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-green-50 to-emerald-100 px-4">
