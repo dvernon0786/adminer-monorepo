@@ -31,9 +31,6 @@ export function useQuota() {
   const [needsUpgrade, setNeedsUpgrade] = useState(false);
 
   useEffect(() => {
-    console.log('USE_QUOTA: Effect running...');
-    console.log('USE_QUOTA: isSignedIn:', isSignedIn, 'orgLoaded:', orgLoaded, 'organization:', !!organization);
-    
     // Gate by auth + protected route
     if (!isSignedIn || !isProtectedPath(pathname)) {
       setData(null);
@@ -47,13 +44,11 @@ export function useQuota() {
 
     // Wait for Clerk to load organization data
     if (!orgLoaded) {
-      console.log('USE_QUOTA: Waiting for orgLoaded...');
       return;
     }
 
     // Check if user is in an organization
     if (!organization) {
-      console.log('USE_QUOTA: No organization found');
       setNeedsOrg(true);
       setNeedsAuth(false);
       setNeedsUpgrade(false);
@@ -147,7 +142,7 @@ export function useQuota() {
     return () => {
       cancelled = false;
     };
-  }, [isSignedIn, pathname, organization, orgLoaded, getToken]); // Explicit dependencies
+  }, [isSignedIn, pathname, organization, orgLoaded, getToken]);
 
   // Helper function to check if user can create jobs
   const canCreateJob = (requestedAds = 1) => {

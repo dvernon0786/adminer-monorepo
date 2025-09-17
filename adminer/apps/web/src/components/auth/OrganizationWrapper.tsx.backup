@@ -1,7 +1,7 @@
 // Organization Wrapper Component
 // This component wraps the dashboard and handles organization detection
 
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useOrganization, useUser } from "@clerk/clerk-react";
 import { OrganizationSetup } from './OrganizationSetup';
 
@@ -12,41 +12,23 @@ interface OrganizationWrapperProps {
 export function OrganizationWrapper({ children }: OrganizationWrapperProps) {
   const { isSignedIn, user, isLoaded: userLoaded } = useUser();
   const { organization, isLoaded: orgLoaded } = useOrganization();
-  const [renderCount, setRenderCount] = useState(0);
-
-  // Render protection
-  useEffect(() => {
-    setRenderCount(prev => prev + 1);
-    if (renderCount > 10) {
-      console.error('OrganizationWrapper infinite render detected');
-      throw new Error('OrganizationWrapper infinite render loop');
-    }
-  });
-
-  console.log('ORGANIZATION_WRAPPER: Rendering... (count: ' + renderCount + ')');
-  console.log('ORGANIZATION_WRAPPER: userLoaded:', userLoaded, 'orgLoaded:', orgLoaded);
-  console.log('ORGANIZATION_WRAPPER: isSignedIn:', isSignedIn, 'organization:', !!organization);
 
   // Show loading while Clerk is initializing
   if (!userLoaded || !orgLoaded) {
-    console.log('ORGANIZATION_WRAPPER: Loading Clerk data...');
     return <OrganizationLoadingScreen />;
   }
 
   // If user is not signed in, let the auth system handle it
   if (!isSignedIn) {
-    console.log('ORGANIZATION_WRAPPER: User not signed in, showing children');
     return <>{children}</>;
   }
 
   // If user is signed in but has no organization, show setup flow
   if (!organization) {
-    console.log('ORGANIZATION_WRAPPER: No organization, showing setup');
     return <OrganizationSetup />;
   }
 
   // User has an organization, show the normal app
-  console.log('ORGANIZATION_WRAPPER: Organization found, showing children');
   return <>{children}</>;
 }
 
