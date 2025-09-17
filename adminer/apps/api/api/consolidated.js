@@ -867,8 +867,8 @@ module.exports = async function handler(req, res) {
         // Create organization in database using neon client
         const neonClient = neon(process.env.DATABASE_URL);
         await neonClient`
-          INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
-          VALUES (${orgId}, ${name.trim()}, 'free', 'active', 10, 0, NOW(), NOW())
+          INSERT INTO organizations (clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+          VALUES (${orgId}, ${name.trim()}, 'free', 10, 0, NOW(), NOW())
         `;
 
         console.log(`Created organization: ${orgId} - ${name}`);
