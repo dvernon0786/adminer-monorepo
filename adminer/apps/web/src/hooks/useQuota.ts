@@ -166,6 +166,6 @@ export function useQuota() {
     needsUpgrade,      // NEW: Indicates paywall should be shown
     canCreateJob,      // NEW: Helper to check if job creation allowed
     getRemainingQuota, // NEW: Helper to get remaining ads
-    orgId: organization?.id // NEW: Provide the real org ID
+    orgId: workspace?.id // NEW: Provide the workspace ID
   };
 } 
