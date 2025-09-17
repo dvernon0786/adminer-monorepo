@@ -55,6 +55,12 @@ async function getRealQuotaStatus(userId) {
       throw new Error('User ID required for quota check');
     }
 
+    // Get database connection
+    const database = await initializeDatabase();
+    if (!database) {
+      throw new Error('Database connection failed');
+    }
+
     let result = await database.query(`
       SELECT o.plan, o.quota_limit, o.quota_used,
              ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
