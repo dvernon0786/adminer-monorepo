@@ -91,67 +91,6 @@ async function getRealQuotaStatus(orgId) {
     throw error; // Don't return fallback for invalid org IDs
   }
 }
-    
-    console.log('✅ Database initialized, executing query...');
-    
-    // Query real organization data using raw SQL to avoid schema import issues
-    const orgResult = await database.execute(sql`
-      SELECT quota_used, quota_limit, plan 
-      FROM organizations 
-      WHERE clerk_org_id = ${orgId} 
-      LIMIT 1
-    `);
-    
-    console.log('📊 Query result:', { 
-      rowCount: orgResult.rows?.length || 0, 
-      result: orgResult,
-      orgId 
-    });
-    
-    if (!orgResult.rows || orgResult.rows.length === 0) {
-      console.log('🆕 No organization found, creating default...');
-      // Create default organization if it doesn't exist
-      await database.execute(sql`
-        INSERT INTO organizations (clerk_org_id, name, plan, quota_limit, quota_used)
-        VALUES (${orgId}, 'Default Organization', 'free', 100, 0)
-        ON CONFLICT (clerk_org_id) DO NOTHING
-      `);
-      
-      console.log('✅ Default organization created');
-      return {
-        used: 0,
-        limit: 10,
-        percentage: 0,
-        plan: 'free'
-      };
-    }
-    
-    const org = orgResult.rows[0];
-    console.log('✅ Organization found:', org);
-    return {
-      used: org.quota_used || 0,
-      limit: org.quota_limit || 100,
-      percentage: Math.round(((org.quota_used || 0) / (org.quota_limit || 100)) * 100),
-      plan: org.plan || 'free'
-    };
-    
-  } catch (error) {
-    console.error('❌ Database query failed:', {
-      error: error.message,
-      stack: error.stack,
-      orgId,
-      errorType: error.constructor.name
-    });
-    // Fallback to default values (not mock data)
-    return {
-      used: 0,
-      limit: 10,
-      percentage: 0,
-      plan: 'free',
-      error: `Database query failed: ${error.message}`
-    };
-  }
-}
 
 // Real analysis stats function
 async function getRealAnalysisStats(orgId = 'default-org') {
@@ -564,34 +503,6 @@ module.exports = async function handler(req, res) {
       res.status(500).json({
         success: false,
         error: 'Failed to fetch quota status'
-      });
-    });
-      
-      if (req.method === 'GET') {
-        // Get organization ID from headers (Clerk)
-        const orgId = req.headers['x-org-id'] || 'default-org';
-        
-        // Initialize database on first request
-        await initializeDatabase();
-        
-        // Get real quota status from database
-        const quotaData = await getRealQuotaStatus(orgId);
-        
-        res.status(200).json({
-          success: true,
-          data: quotaData,
-          source: 'real_database',
-          timestamp: new Date().toISOString()
-        });
-      } else {
-        res.status(405).json({ error: 'Method not allowed' });
-      }
-    } catch (error) {
-      console.error('Quota endpoint error:', error);
-      res.status(500).json({
-        success: false,
-        error: 'Failed to fetch quota',
-        message: error.message
       });
     }
   } else if (path === '/api/analyses/stats') {
