@@ -50,16 +50,16 @@ export function OrganizationWrapper({ children }: OrganizationWrapperProps) {
 
   // Memoized status to prevent re-renders
   const status = useMemo(() => {
-    console.log(`ORGANIZATION_WRAPPER: userLoaded=${userLoaded}, orgLoaded=${orgLoaded}, isSignedIn=${isSignedIn}, org=${!!organization}`);
+    console.log(`ORGANIZATION_WRAPPER: userLoaded=${userLoaded}, orgLoaded=${orgLoaded}, isSignedIn=${isSignedIn}, user=${!!user}, org=${!!organization}`);
     
     if (!userLoaded || !orgLoaded) return 'loading';
-    if (!isSignedIn) return 'not-signed-in';
+    if (!isSignedIn || !user) return 'not-signed-in';
     if (organization) {
       resetRenderCount(); // Reset on success
       return 'ready';
     }
     return 'needs-setup';
-  }, [userLoaded, orgLoaded, isSignedIn, organization?.id]); // Stable dependency on org ID
+  }, [userLoaded, orgLoaded, isSignedIn, user, organization?.id]); // Stable dependency on org ID
 
   // Callback for setup completion - prevents re-render loops
   const handleSetupComplete = useCallback(() => {
