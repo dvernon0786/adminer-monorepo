@@ -1,14 +1,15 @@
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { Button } from '../ui/button'
-import { SignedIn, SignedOut, SignUpButton, useAuth, useOrganization } from '@clerk/clerk-react'
+import { SignedIn, SignedOut, SignUpButton, useAuth } from '@clerk/clerk-react'
 import { useNavigate } from 'react-router-dom'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { usePersonalWorkspace } from '../auth/OrganizationWrapper'
 
 export default function Pricing() {
   const navigate = useNavigate()
   const { user } = useAuth()
-  const { organization } = useOrganization()
+  const { workspace } = usePersonalWorkspace()
   const [upgrading, setUpgrading] = useState<string | null>(null)
   
   const plans = [
@@ -127,11 +128,11 @@ export default function Pricing() {
   const handlePlanAction = async (planId: string) => {
     if (planId === 'free') {
       // Handle free plan creation
-      const orgId = organization?.id
-      const orgName = organization?.name || 'My Org'
+      const orgId = workspace?.id
+      const orgName = workspace?.name || 'My Workspace'
       
       if (!orgId) {
-        toast.error('Please create or select an organization first')
+        toast.error('Please create or select a workspace first')
         return
       }
       
