@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from
 import { useAuth } from '@clerk/clerk-react'
 import Homepage from './pages/Homepage'
 import Dashboard from './pages/dashboard'
+import { OrganizationWrapper } from './components/auth/OrganizationWrapper'
 
 console.log("APP.TSX: App component starting...");
 console.log("APP.TSX: Dashboard component imported:", Dashboard);
@@ -47,7 +48,11 @@ function App() {
       <PostAuthRedirect />
       <Routes>
         <Route path="/" element={<Homepage />} />
-        <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/dashboard" element={
+          <OrganizationWrapper>
+            <Dashboard />
+          </OrganizationWrapper>
+        } />
         <Route path="*" element={<div><h1>404 - Page not found</h1></div>} />
       </Routes>
     </Router>

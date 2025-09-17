@@ -846,12 +846,89 @@ module.exports = async function handler(req, res) {
         message: error.message
       });
     }
+  } else if (path === '/api/organizations') {
+    // ORGANIZATION MANAGEMENT ENDPOINTS
+    
+    if (req.method === 'POST') {
+      // Create new organization
+      const { name } = req.body;
+      
+      if (!name || !name.trim()) {
+        return res.status(400).json({
+          success: false,
+          error: 'Organization name is required'
+        });
+      }
+
+      try {
+        // Generate a unique organization ID
+        const orgId = `org_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+        
+        // Create organization in database using neon client
+        const neonClient = neon(process.env.DATABASE_URL);
+        await neonClient`
+          INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
+          VALUES (${orgId}, ${name.trim()}, 'free', 'active', 10, 0, NOW(), NOW())
+        `;
+
+        console.log(`Created organization: ${orgId} - ${name}`);
+
+        return res.status(201).json({
+          success: true,
+          message: 'Organization created successfully',
+          data: {
+            id: orgId,
+            name: name.trim(),
+            plan: 'free',
+            quota_limit: 10,
+            quota_used: 0
+          }
+        });
+
+      } catch (error) {
+        console.error('Failed to create organization:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to create organization',
+          details: error.message
+        });
+      }
+    }
+    
+    if (req.method === 'GET') {
+      // List user's organizations
+      try {
+        // For demo purposes, return empty array to force organization creation
+        // In production, you'd fetch from Clerk or your database
+        
+        return res.status(200).json({
+          success: true,
+          data: [
+            // This would be populated from Clerk's organization list
+            // For now, return empty array to force organization creation
+          ]
+        });
+
+      } catch (error) {
+        console.error('Failed to fetch organizations:', error);
+        return res.status(500).json({
+          success: false,
+          error: 'Failed to fetch organizations'
+        });
+      }
+    }
+    
+    // Method not allowed
+    return res.status(405).json({
+      success: false,
+      error: 'Method not allowed'
+    });
   } else {
     // Default response for unknown paths
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats', '/api/organizations'],
       timestamp: new Date().toISOString()
     });
   }
