@@ -443,8 +443,8 @@ module.exports = async function handler(req, res) {
       res.status(405).json({ error: 'Method not allowed' });
     }
     } else if (path === '/api/quota') {
-    // QUOTA ENDPOINT - BULLETPROOF IMPLEMENTATION WITH COMPREHENSIVE FALLBACKS
-    console.log('QUOTA API: Emergency fix endpoint called');
+    // QUOTA ENDPOINT - FIXED TO USE PLANS TABLE
+    console.log('QUOTA API: Fixed endpoint using plans table');
     
     if (req.method !== 'GET') {
       return res.status(405).json({ 
@@ -454,169 +454,170 @@ module.exports = async function handler(req, res) {
     }
     
     try {
-      // Get user info from headers
       const userId = req.headers['x-user-id'];
       const workspaceId = req.headers['x-workspace-id'];
       
       console.log('QUOTA API: User ID:', userId);
       console.log('QUOTA API: Workspace ID:', workspaceId);
       
-      // Try database connection first
-      let quotaData;
+      if (!userId) {
+        return res.status(401).json({ success: false, error: 'User ID required' });
+      }
+
+      if (!process.env.DATABASE_URL) {
+        return res.status(500).json({ success: false, error: 'Database not configured' });
+      }
+
+      const { neon } = require('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL);
+      console.log('QUOTA API: Database connection initialized');
       
-      try {
-        console.log('QUOTA API: Attempting database connection...');
+      // STEP 1: Find or create user's personal organization
+      let orgResult = await sql`
+        SELECT id, plan FROM organizations 
+        WHERE clerk_org_id = ${userId}
+        LIMIT 1
+      `;
+
+      console.log('QUOTA API: Organization lookup:', orgResult);
+
+      if (orgResult.length === 0) {
+        console.log('QUOTA API: Creating personal organization with free plan');
         
-        // Use the same database connection as stats endpoint
-        const { neon } = require('@neondatabase/serverless');
+        // Create organization with free plan
+        await sql`
+          INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+          VALUES (gen_random_uuid(), ${userId}, 'Personal Workspace', 'free', 10, 0, NOW(), NOW())
+        `;
         
-        if (!process.env.DATABASE_URL) {
-          throw new Error('DATABASE_URL not configured');
-        }
-        
-        const sql = neon(process.env.DATABASE_URL);
-        console.log('QUOTA API: Database connection initialized');
-        
-        // FIXED: Query jobs using org_id that matches user's personal workspace
-        // First, find or create the user's personal organization
-        console.log('QUOTA API: Looking up organization for userId:', userId);
-        
-        let orgResult = await sql`
-          SELECT id FROM organizations 
-          WHERE clerk_org_id = ${userId || 'anonymous'}
+        orgResult = await sql`
+          SELECT id, plan FROM organizations 
+          WHERE clerk_org_id = ${userId}
           LIMIT 1
         `;
-
-        console.log('QUOTA API: Organization lookup result:', orgResult);
-
-        if (orgResult.length === 0) {
-          // Create personal organization for user
-          console.log('QUOTA API: Creating personal organization for user');
-          try {
-            await sql`
-              INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
-              VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, 'free', 100, 0, NOW(), NOW())
-            `;
-            
-            orgResult = await sql`
-              SELECT id FROM organizations 
-              WHERE clerk_org_id = ${userId || 'anonymous'}
-              LIMIT 1
-            `;
-            
-            console.log('QUOTA API: Personal organization created:', orgResult);
-          } catch (createError) {
-            console.error('QUOTA API: Error creating organization:', createError);
-            throw new Error(`Failed to create personal organization: ${createError.message}`);
-          }
-        }
-
-        const organizationId = orgResult[0]?.id;
-        
-        if (!organizationId) {
-          console.error('QUOTA API: No organization ID found after lookup/creation');
-          throw new Error('Organization ID not found');
-        }
-        
-        console.log('QUOTA API: Using organization ID:', organizationId);
-
-        // FIXED: Query jobs using org_id (correct column name)
-        const quotaResult = await sql`
-          SELECT 
-            COUNT(*) as used_jobs
-          FROM jobs 
-          WHERE org_id = ${organizationId}
-        `;
-        
-        console.log('QUOTA API: Database query successful:', quotaResult);
-        console.log('QUOTA API: Using correct column name org_id for organizationId:', organizationId);
-        
-        const usedJobs = parseInt(quotaResult[0]?.used_jobs || 0);
-        console.log('QUOTA API: Calculated used jobs from database:', usedJobs);
-        
-        quotaData = {
-          success: true,
-          data: {
-            used: usedJobs,
-            limit: 100,
-            percentage: Math.min(Math.round((usedJobs / 100) * 100), 100),
-            plan: 'free',
-            userId: userId || 'anonymous',
-            workspaceId: workspaceId || userId || 'anonymous',
-            organizationId: organizationId,
-            quotaType: 'personal',
-            resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            features: {
-              jobs: true,
-              analytics: true,
-              exports: true,
-              priority: false
-            }
-          }
-        };
-        
-        console.log('QUOTA API: SUCCESS - Returning real database data (not fallback):', quotaData);
-        
-      } catch (dbError) {
-        console.error('QUOTA API: Database error, using fallback:', dbError.message);
-        
-        // Fallback quota data when database unavailable
-        quotaData = {
-          success: true,
-          data: {
-            used: 0,
-            limit: 100,
-            percentage: 0,
-            plan: 'free',
-            userId: userId || 'anonymous',
-            workspaceId: workspaceId || userId || 'anonymous',
-            quotaType: 'personal',
-            resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
-            features: {
-              jobs: true,
-              analytics: true,
-              exports: true,
-              priority: false
-            },
-            note: 'Using default quota (database unavailable)'
-          }
-        };
-        
-        console.log('QUOTA API: Using fallback data due to DB error:', quotaData);
       }
+
+      const organizationId = orgResult[0]?.id;
+      const organizationPlan = orgResult[0]?.plan || 'free';
       
-      // Always return 200 OK with quota data
-      console.log('QUOTA API: Returning quota data:', quotaData);
-      return res.status(200).json(quotaData);
+      console.log('QUOTA API: Organization ID:', organizationId);
+      console.log('QUOTA API: Organization Plan:', organizationPlan);
+
+      // STEP 2: Get plan details from plans table (FIXED: Use actual plans table)
+      const planResult = await sql`
+        SELECT code, name, monthly_quota 
+        FROM plans 
+        WHERE code LIKE ${organizationPlan + '%'}
+        LIMIT 1
+      `;
       
-    } catch (error) {
-      console.error('QUOTA API: Unexpected error:', error);
+      console.log('QUOTA API: Plan lookup result:', planResult);
       
-      // Emergency fallback - never return HTTP 500
-      const emergencyQuota = {
+      // Default plan if not found
+      let planQuota = 10; // Default for free
+      let planCode = 'free-10';
+      
+      if (planResult.length > 0) {
+        planQuota = planResult[0].monthly_quota;
+        planCode = planResult[0].code;
+        console.log('QUOTA API: Using plan quota from database:', planQuota);
+      } else {
+        console.log('QUOTA API: Plan not found, using default free quota:', planQuota);
+      }
+
+      // STEP 3: Count ads scraped (NOT jobs - ads are the quota unit)
+      // This counts individual ads scraped across all jobs
+      const adsResult = await sql`
+        SELECT COALESCE(SUM(
+          CASE 
+            WHEN output IS NOT NULL AND output::text != '{}' 
+            THEN COALESCE(
+              (output->>'ads_count')::integer,
+              (output->>'results_count')::integer, 
+              (output->>'items_count')::integer,
+              CASE WHEN output->>'ads' IS NOT NULL 
+                   THEN json_array_length(output->'ads')
+                   ELSE 1 
+              END
+            )
+            ELSE 0 
+          END
+        ), 0) as total_ads_scraped
+        FROM jobs 
+        WHERE org_id = ${organizationId}
+        AND status = 'completed'
+      `;
+      
+      console.log('QUOTA API: Ads count query result:', adsResult);
+      
+      const adsScraped = parseInt(adsResult[0]?.total_ads_scraped || 0);
+      const percentage = Math.min(Math.round((adsScraped / planQuota) * 100), 100);
+      
+      console.log('QUOTA API: Total ads scraped:', adsScraped);
+      console.log('QUOTA API: Plan quota limit:', planQuota);
+      console.log('QUOTA API: Usage percentage:', percentage);
+
+      // STEP 4: Update organization quota to match plan
+      await sql`
+        UPDATE organizations 
+        SET quota_limit = ${planQuota}, updated_at = NOW()
+        WHERE id = ${organizationId}
+      `;
+      
+      console.log('QUOTA API: Updated organization quota_limit to:', planQuota);
+
+      const quotaData = {
         success: true,
         data: {
-          used: 0,
-          limit: 100,
-          percentage: 0,
-          plan: 'free',
+          used: adsScraped,
+          limit: planQuota,
+          percentage: percentage,
+          plan: organizationPlan,
+          planCode: planCode,
+          userId: userId,
+          workspaceId: workspaceId,
+          organizationId: organizationId,
           quotaType: 'personal',
+          quotaUnit: 'ads_scraped', // Clarify what we're counting
           resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           features: {
             jobs: true,
             analytics: true,
             exports: true,
-            priority: false
+            priority: organizationPlan !== 'free'
           },
-          note: 'Emergency fallback quota',
+          debug: {
+            planFromDatabase: true,
+            quotaSource: 'plans_table',
+            calculationMethod: 'ads_scraped_count'
+          }
+        }
+      };
+
+      console.log('QUOTA API: SUCCESS - Returning real data from plans table:', quotaData);
+      return res.status(200).json(quotaData);
+
+    } catch (error) {
+      console.error('QUOTA API: Error:', error);
+      
+      // Emergency fallback with correct free plan quota
+      const fallbackData = {
+        success: true,
+        data: {
+          used: 0,
+          limit: 10, // FIXED: Correct free plan limit
+          percentage: 0,
+          plan: 'free',
+          planCode: 'free-10',
+          quotaType: 'personal',
+          quotaUnit: 'ads_scraped',
+          note: 'Fallback data due to database error',
           error: error.message
         }
       };
       
-      console.log('QUOTA API: Emergency fallback activated:', emergencyQuota);
-      
-      // Return 200 OK even on error - NEVER return HTTP 500
-      return res.status(200).json(emergencyQuota);
+      console.log('QUOTA API: Using corrected fallback data:', fallbackData);
+      return res.status(200).json(fallbackData);
     }
   } else if (path === '/api/debug/quota') {
     // DEBUG ENDPOINT - Test quota database connection

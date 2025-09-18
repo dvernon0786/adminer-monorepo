@@ -5,11 +5,15 @@ import { isProtectedPath } from "@/lib/isProtectedPath";
 import { usePersonalWorkspace } from "../components/auth/OrganizationWrapper";
 
 export type Plan = "free" | "pro" | "enterprise";
+
 export type QuotaData = {
-  used: number;
-  limit: number;
-  percentage: number;
-  plan: string;
+  used: number;           // ads scraped (not jobs)
+  limit: number;          // from plans table
+  percentage: number;     // calculated usage %
+  plan: string;          // free, pro, enterprise
+  planCode: string;      // free-10, pro-500, ent-2000
+  quotaUnit: string;     // 'ads_scraped'
+  quotaSource: string;   // 'plans_table'
 };
 
 export type QuotaStatus = {
@@ -104,23 +108,32 @@ export function useQuota() {
       const result = await response.json();
       
       if (result.success && result.data) {
-        console.log('USE_QUOTA: API response:', result.data);
-        setData({
-          used: result.data.used || 0,
-          limit: result.data.limit || 100,
-          percentage: result.data.percentage || 0,
-          plan: result.data.plan || 'free'
-        });
+        console.log('USE_QUOTA: API response (per-ad quota):', result.data);
+        
+        const quotaData: QuotaData = {
+          used: result.data.used || 0,                    // ads scraped
+          limit: result.data.limit || 10,                 // from plans table
+          percentage: result.data.percentage || 0,        // calculated %
+          plan: result.data.plan || 'free',              // plan type
+          planCode: result.data.planCode || 'free-10',   // plan code
+          quotaUnit: result.data.quotaUnit || 'ads_scraped',
+          quotaSource: result.data.debug?.quotaSource || 'api'
+        };
+        
+        setData(quotaData);
         setNeedsAuth(false);
         setNeedsOrg(false);
         
-        // CHECK IF USER NEEDS UPGRADE
-        const quotaExceeded = result.data.used >= result.data.limit;
+        // Check if quota exceeded (per ads, not jobs)
+        const quotaExceeded = quotaData.used >= quotaData.limit;
         setNeedsUpgrade(quotaExceeded);
         
         if (quotaExceeded) {
-          setError(`Quota exceeded: ${result.data.used}/${result.data.limit} ads used`);
+          setError(`Quota exceeded: ${quotaData.used}/${quotaData.limit} ads scraped`);
         }
+        
+        console.log('USE_QUOTA: Quota unit is ads_scraped, not jobs');
+        
       } else {
         setError(result.error || 'Failed to fetch quota');
       }
@@ -145,14 +158,14 @@ export function useQuota() {
     fetchQuotaData();
   }, [fetchQuotaData]);
 
-  // Helper function to check if user can create jobs
-  const canCreateJob = useCallback((requestedAds = 1) => {
+  // Helper: Check if user can scrape more ads (not jobs)
+  const canScrapeAds = useCallback((requestedAds = 1) => {
     if (!data || needsUpgrade || needsOrg) return false;
     return (data.used + requestedAds) <= data.limit;
   }, [data, needsUpgrade, needsOrg]);
 
-  // Helper function to get remaining quota
-  const getRemainingQuota = useCallback(() => {
+  // Helper: Get remaining ad quota
+  const getRemainingAds = useCallback(() => {
     if (!data) return 0;
     return Math.max(0, data.limit - data.used);
   }, [data]);
@@ -162,11 +175,11 @@ export function useQuota() {
     error, 
     loading, 
     needsAuth, 
-    needsOrg,          // NEW: Indicates user needs to be in organization
-    needsUpgrade,      // NEW: Indicates paywall should be shown
-    canCreateJob,      // NEW: Helper to check if job creation allowed
-    getRemainingQuota, // NEW: Helper to get remaining ads
-    refresh,           // NEW: Manual refresh function
-    orgId: stableWorkspaceId // NEW: Provide the stable workspace ID
+    needsOrg,
+    needsUpgrade,
+    canScrapeAds,       // Updated: check ads, not jobs
+    getRemainingAds,    // Updated: remaining ads, not generic quota
+    refresh,
+    orgId: stableWorkspaceId
   };
 } 
