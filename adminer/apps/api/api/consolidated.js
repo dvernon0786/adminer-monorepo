@@ -477,30 +477,48 @@ module.exports = async function handler(req, res) {
         const sql = neon(process.env.DATABASE_URL);
         console.log('QUOTA API: Database connection initialized');
         
-        // FIXED: Query jobs using organization_id that matches user's personal workspace
+        // FIXED: Query jobs using org_id that matches user's personal workspace
         // First, find or create the user's personal organization
+        console.log('QUOTA API: Looking up organization for userId:', userId);
+        
         let orgResult = await sql`
           SELECT id FROM organizations 
           WHERE clerk_org_id = ${userId || 'anonymous'}
           LIMIT 1
         `;
 
+        console.log('QUOTA API: Organization lookup result:', orgResult);
+
         if (orgResult.length === 0) {
           // Create personal organization for user
           console.log('QUOTA API: Creating personal organization for user');
-          await sql`
-            INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
-            VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, ${`personal-${userId || 'anonymous'}`}, ${userId || 'anonymous'}, 'personal', 'free', 100, 0, NOW(), NOW())
-          `;
-          
-          orgResult = await sql`
-            SELECT id FROM organizations 
-            WHERE clerk_org_id = ${userId || 'anonymous'}
-            LIMIT 1
-          `;
+          try {
+            await sql`
+              INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
+              VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, ${`personal-${userId || 'anonymous'}`}, ${userId || 'anonymous'}, 'personal', 'free', 100, 0, NOW(), NOW())
+            `;
+            
+            orgResult = await sql`
+              SELECT id FROM organizations 
+              WHERE clerk_org_id = ${userId || 'anonymous'}
+              LIMIT 1
+            `;
+            
+            console.log('QUOTA API: Personal organization created:', orgResult);
+          } catch (createError) {
+            console.error('QUOTA API: Error creating organization:', createError);
+            throw new Error(`Failed to create personal organization: ${createError.message}`);
+          }
         }
 
         const organizationId = orgResult[0]?.id;
+        
+        if (!organizationId) {
+          console.error('QUOTA API: No organization ID found after lookup/creation');
+          throw new Error('Organization ID not found');
+        }
+        
+        console.log('QUOTA API: Using organization ID:', organizationId);
 
         // FIXED: Query jobs using org_id (correct column name)
         const quotaResult = await sql`
