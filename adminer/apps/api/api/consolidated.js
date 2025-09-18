@@ -618,6 +618,71 @@ module.exports = async function handler(req, res) {
       // Return 200 OK even on error - NEVER return HTTP 500
       return res.status(200).json(emergencyQuota);
     }
+  } else if (path === '/api/debug/quota') {
+    // DEBUG ENDPOINT - Test quota database connection
+    try {
+      console.log('DEBUG QUOTA: Testing database connection...');
+      
+      const userId = req.headers['x-user-id'] || 'test-user';
+      const { neon } = require('@neondatabase/serverless');
+      
+      if (!process.env.DATABASE_URL) {
+        return res.status(200).json({
+          success: false,
+          error: 'DATABASE_URL not configured',
+          userId: userId
+        });
+      }
+      
+      const sql = neon(process.env.DATABASE_URL);
+      console.log('DEBUG QUOTA: Database connection initialized');
+      
+      // Test organization lookup
+      const orgResult = await sql`
+        SELECT id, clerk_org_id, name FROM organizations 
+        WHERE clerk_org_id = ${userId}
+        LIMIT 1
+      `;
+      
+      console.log('DEBUG QUOTA: Organization lookup result:', orgResult);
+      
+      // Test jobs count
+      if (orgResult.length > 0) {
+        const orgId = orgResult[0].id;
+        const jobsResult = await sql`
+          SELECT COUNT(*) as count FROM jobs 
+          WHERE org_id = ${orgId}
+        `;
+        
+        console.log('DEBUG QUOTA: Jobs count result:', jobsResult);
+        
+        return res.status(200).json({
+          success: true,
+          userId: userId,
+          organization: orgResult[0],
+          jobsCount: jobsResult[0]?.count || 0,
+          databaseConnected: true
+        });
+      } else {
+        return res.status(200).json({
+          success: true,
+          userId: userId,
+          organization: null,
+          jobsCount: 0,
+          databaseConnected: true,
+          note: 'No organization found for user'
+        });
+      }
+      
+    } catch (error) {
+      console.error('DEBUG QUOTA: Error:', error);
+      return res.status(200).json({
+        success: false,
+        error: error.message,
+        userId: req.headers['x-user-id'] || 'test-user',
+        databaseConnected: false
+      });
+    }
   } else if (path === '/api/analyses/stats') {
     // ANALYSIS STATS ENDPOINT - Real database integration
     try {
