@@ -646,6 +646,14 @@ module.exports = async function handler(req, res) {
       
       console.log('DEBUG QUOTA: Organization lookup result:', orgResult);
       
+      // Also check all organizations to see what exists
+      const allOrgs = await sql`
+        SELECT id, clerk_org_id, name FROM organizations 
+        LIMIT 10
+      `;
+      
+      console.log('DEBUG QUOTA: All organizations in database:', allOrgs);
+      
       // Test jobs count
       if (orgResult.length > 0) {
         const orgId = orgResult[0].id;
@@ -661,7 +669,8 @@ module.exports = async function handler(req, res) {
           userId: userId,
           organization: orgResult[0],
           jobsCount: jobsResult[0]?.count || 0,
-          databaseConnected: true
+          databaseConnected: true,
+          allOrganizations: allOrgs
         });
       } else {
         // Try to create organization to test the creation process
@@ -687,7 +696,8 @@ module.exports = async function handler(req, res) {
             organization: newOrgResult[0] || null,
             jobsCount: 0,
             databaseConnected: true,
-            note: 'Organization created successfully'
+            note: 'Organization created successfully',
+            allOrganizations: allOrgs
           });
           
         } catch (createError) {
@@ -699,7 +709,8 @@ module.exports = async function handler(req, res) {
             jobsCount: 0,
             databaseConnected: true,
             error: createError.message,
-            note: 'Organization creation failed'
+            note: 'Organization creation failed',
+            allOrganizations: allOrgs
           });
         }
       }
