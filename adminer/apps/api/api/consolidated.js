@@ -152,7 +152,7 @@ async function getRealAnalysisStats(userId) {
           )
         END), 0) as total_ads_scraped
       FROM jobs 
-      WHERE organization_id = ${orgDbId}
+      WHERE org_id = ${orgDbId}
     `;
 
     console.log('📊 Job stats result:', { 
@@ -502,17 +502,19 @@ module.exports = async function handler(req, res) {
 
         const organizationId = orgResult[0]?.id;
 
-        // FIXED: Query jobs using organization_id (not user_id)
+        // FIXED: Query jobs using org_id (correct column name)
         const quotaResult = await sql`
           SELECT 
             COUNT(*) as used_jobs
           FROM jobs 
-          WHERE organization_id = ${organizationId}
+          WHERE org_id = ${organizationId}
         `;
         
         console.log('QUOTA API: Database query successful:', quotaResult);
+        console.log('QUOTA API: Using correct column name org_id for organizationId:', organizationId);
         
         const usedJobs = parseInt(quotaResult[0]?.used_jobs || 0);
+        console.log('QUOTA API: Calculated used jobs from database:', usedJobs);
         
         quotaData = {
           success: true,
@@ -535,7 +537,7 @@ module.exports = async function handler(req, res) {
           }
         };
         
-        console.log('QUOTA API: Database success - returning real data:', quotaData);
+        console.log('QUOTA API: SUCCESS - Returning real database data (not fallback):', quotaData);
         
       } catch (dbError) {
         console.error('QUOTA API: Database error, using fallback:', dbError.message);
