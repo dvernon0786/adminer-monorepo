@@ -41,7 +41,7 @@ function App() {
     }, 10000); // 10 second timeout
     
     return () => clearTimeout(timer);
-  }, [isLoaded, renderKey]);
+  }, [isLoaded]); // Removed renderKey from dependencies to prevent infinite loop
 
   if (!isLoaded) {
     console.log('APP.TSX: Auth loading in background...');
