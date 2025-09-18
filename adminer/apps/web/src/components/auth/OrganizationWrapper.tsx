@@ -1,7 +1,7 @@
 // Personal Workspace Wrapper Component
 // This component bypasses organization requirement and creates personal workspaces
 
-import React, { createContext, useContext } from 'react';
+import React, { createContext, useContext, useMemo } from 'react';
 import { useUser } from '@clerk/clerk-react';
 
 interface PersonalWorkspace {
@@ -58,20 +58,26 @@ export function OrganizationWrapper({ children }: OrganizationWrapperProps) {
     );
   }
 
-  // Create personal workspace using user ID
-  const personalWorkspace: PersonalWorkspace = {
+  // Memoized workspace to prevent unnecessary re-renders
+  const personalWorkspace = useMemo(() => ({
     id: user.id,
-    name: `${user.firstName || user.emailAddresses[0]?.emailAddress || 'Personal'} Workspace`,
+    name: `${user?.firstName || user?.emailAddresses[0]?.emailAddress || 'Personal'} Workspace`,
     slug: `personal-${user.id}`,
     createdBy: user.id,
     members: [user.id],
-    type: 'personal'
-  };
+    type: 'personal' as const
+  }), [user.id, user?.firstName, user?.emailAddresses]);
+
+  // Memoized context value to prevent unnecessary re-renders
+  const contextValue = useMemo(() => ({
+    workspace: personalWorkspace,
+    isLoaded: true
+  }), [personalWorkspace]);
 
   console.log('ORGANIZATION_WRAPPER: Personal workspace created:', personalWorkspace.name);
   
   return (
-    <PersonalWorkspaceContext.Provider value={{ workspace: personalWorkspace, isLoaded: true }}>
+    <PersonalWorkspaceContext.Provider value={contextValue}>
       {children}
     </PersonalWorkspaceContext.Provider>
   );

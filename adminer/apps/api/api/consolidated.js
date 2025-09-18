@@ -477,12 +477,37 @@ module.exports = async function handler(req, res) {
         const sql = neon(process.env.DATABASE_URL);
         console.log('QUOTA API: Database connection initialized');
         
-        // Query for user's quota usage
+        // FIXED: Query jobs using organization_id that matches user's personal workspace
+        // First, find or create the user's personal organization
+        let orgResult = await sql`
+          SELECT id FROM organizations 
+          WHERE clerk_org_id = ${userId || 'anonymous'}
+          LIMIT 1
+        `;
+
+        if (orgResult.length === 0) {
+          // Create personal organization for user
+          console.log('QUOTA API: Creating personal organization for user');
+          await sql`
+            INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
+            VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, ${`personal-${userId || 'anonymous'}`}, ${userId || 'anonymous'}, 'personal', 'free', 100, 0, NOW(), NOW())
+          `;
+          
+          orgResult = await sql`
+            SELECT id FROM organizations 
+            WHERE clerk_org_id = ${userId || 'anonymous'}
+            LIMIT 1
+          `;
+        }
+
+        const organizationId = orgResult[0]?.id;
+
+        // FIXED: Query jobs using organization_id (not user_id)
         const quotaResult = await sql`
           SELECT 
             COUNT(*) as used_jobs
           FROM jobs 
-          WHERE user_id = ${userId || 'anonymous'}
+          WHERE organization_id = ${organizationId}
         `;
         
         console.log('QUOTA API: Database query successful:', quotaResult);
@@ -498,6 +523,7 @@ module.exports = async function handler(req, res) {
             plan: 'free',
             userId: userId || 'anonymous',
             workspaceId: workspaceId || userId || 'anonymous',
+            organizationId: organizationId,
             quotaType: 'personal',
             resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
             features: {
