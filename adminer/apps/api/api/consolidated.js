@@ -664,14 +664,44 @@ module.exports = async function handler(req, res) {
           databaseConnected: true
         });
       } else {
-        return res.status(200).json({
-          success: true,
-          userId: userId,
-          organization: null,
-          jobsCount: 0,
-          databaseConnected: true,
-          note: 'No organization found for user'
-        });
+        // Try to create organization to test the creation process
+        console.log('DEBUG QUOTA: Attempting to create organization...');
+        try {
+          await sql`
+            INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
+            VALUES (gen_random_uuid(), ${userId}, ${`Personal Workspace`}, ${`personal-${userId}`}, ${userId}, 'personal', 'free', 100, 0, NOW(), NOW())
+          `;
+          
+          // Check if creation was successful
+          const newOrgResult = await sql`
+            SELECT id, clerk_org_id, name FROM organizations 
+            WHERE clerk_org_id = ${userId}
+            LIMIT 1
+          `;
+          
+          console.log('DEBUG QUOTA: Organization creation result:', newOrgResult);
+          
+          return res.status(200).json({
+            success: true,
+            userId: userId,
+            organization: newOrgResult[0] || null,
+            jobsCount: 0,
+            databaseConnected: true,
+            note: 'Organization created successfully'
+          });
+          
+        } catch (createError) {
+          console.error('DEBUG QUOTA: Organization creation failed:', createError);
+          return res.status(200).json({
+            success: false,
+            userId: userId,
+            organization: null,
+            jobsCount: 0,
+            databaseConnected: true,
+            error: createError.message,
+            note: 'Organization creation failed'
+          });
+        }
       }
       
     } catch (error) {
