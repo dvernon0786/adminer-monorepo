@@ -494,8 +494,8 @@ module.exports = async function handler(req, res) {
           console.log('QUOTA API: Creating personal organization for user');
           try {
             await sql`
-              INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
-              VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, ${`personal-${userId || 'anonymous'}`}, ${userId || 'anonymous'}, 'personal', 'free', 100, 0, NOW(), NOW())
+              INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+              VALUES (gen_random_uuid(), ${userId || 'anonymous'}, ${`Personal Workspace`}, 'free', 100, 0, NOW(), NOW())
             `;
             
             orgResult = await sql`
@@ -677,8 +677,8 @@ module.exports = async function handler(req, res) {
         console.log('DEBUG QUOTA: Attempting to create organization...');
         try {
           await sql`
-            INSERT INTO organizations (id, clerk_org_id, name, slug, created_by, type, plan, quota_limit, quota_used, created_at, updated_at)
-            VALUES (gen_random_uuid(), ${userId}, ${`Personal Workspace`}, ${`personal-${userId}`}, ${userId}, 'personal', 'free', 100, 0, NOW(), NOW())
+            INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+            VALUES (gen_random_uuid(), ${userId}, ${`Personal Workspace`}, 'free', 100, 0, NOW(), NOW())
           `;
           
           // Check if creation was successful
