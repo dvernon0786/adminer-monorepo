@@ -47,7 +47,7 @@ async function initializeDatabase() {
   }
 }
 
-// Real quota function - Updated for user-based workspaces
+// Real quota function - Updated to match quota API logic
 async function getRealQuotaStatus(userId) {
   try {
     // Use user ID as organization ID for personal workspaces
@@ -62,36 +62,73 @@ async function getRealQuotaStatus(userId) {
     }
 
     const sql = neon(process.env.DATABASE_URL);
-    let result = await sql`
-      SELECT o.plan, o.quota_limit, o.quota_used,
-             ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
-      FROM organizations o 
-      WHERE o.clerk_org_id = ${userId}
-    `;
     
-    // If organization doesn't exist, create personal workspace
-    if (!result || result.length === 0) {
-      console.log(`Creating personal workspace for user: ${userId}`);
+    // STEP 1: Find or create user's personal organization
+    let orgResult = await sql`
+      SELECT id, plan FROM organizations 
+      WHERE clerk_org_id = ${userId}
+      LIMIT 1
+    `;
+
+    if (orgResult.length === 0) {
+      console.log(`Creating personal organization with free plan for user: ${userId}`);
       
+      // Create organization with free plan
       await sql`
-        INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
-        VALUES (${userId}, ${`Personal Workspace ${userId}`}, 'free', 'active', 100, 0, NOW(), NOW())
+        INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+        VALUES (gen_random_uuid(), ${userId}, 'Personal Workspace', 'free', 10, 0, NOW(), NOW())
       `;
       
-      result = await sql`
-        SELECT o.plan, o.quota_limit, o.quota_used,
-               ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
-        FROM organizations o 
-        WHERE o.clerk_org_id = ${userId}
+      orgResult = await sql`
+        SELECT id, plan FROM organizations 
+        WHERE clerk_org_id = ${userId}
+        LIMIT 1
       `;
     }
+
+    const organizationId = orgResult[0]?.id;
+    const organizationPlan = orgResult[0]?.plan || 'free';
+
+    // STEP 2: Get plan details from plans table
+    const planResult = await sql`
+      SELECT code, name, monthly_quota 
+      FROM plans 
+      WHERE code LIKE ${organizationPlan + '%'}
+      LIMIT 1
+    `;
     
-    const org = result[0];
+    // Default plan if not found
+    let planQuota = 10; // Default for free
+    let planCode = 'free-10';
+    
+    if (planResult.length > 0) {
+      planQuota = planResult[0].monthly_quota;
+      planCode = planResult[0].code;
+    }
+
+    // STEP 3: Count completed jobs (same as quota API)
+    const jobsResult = await sql`
+      SELECT COUNT(*) as completed_jobs
+      FROM jobs 
+      WHERE org_id = ${organizationId}
+      AND status = 'completed'
+    `;
+    
+    const jobsCompleted = parseInt(jobsResult[0]?.completed_jobs || 0);
+    const percentage = Math.min(Math.round((jobsCompleted / planQuota) * 100), 100);
+    
+    // STEP 4: Update organization quota to match plan
+    await sql`
+      UPDATE organizations 
+      SET quota_limit = ${planQuota}, updated_at = NOW()
+      WHERE id = ${organizationId}
+    `;
+    
     return {
-      used: parseInt(org.quota_used) || 0,
-      limit: parseInt(org.quota_limit) || 100,
-      percentage: parseFloat(org.percentage) || 0,
-      plan: org.plan || 'free'
+      used: jobsCompleted,
+      limit: planQuota,
+      percentage: percentage,
+      plan: organizationPlan
     };
   } catch (error) {
     console.error('Error fetching quota status:', error);
@@ -557,7 +594,7 @@ module.exports = async function handler(req, res) {
           workspaceId: workspaceId,
           organizationId: organizationId,
           quotaType: 'personal',
-          quotaUnit: 'jobs_completed', // Clarify what we're counting
+          quotaUnit: 'ads_scraped', // Match frontend expectations
           resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           features: {
             jobs: true,
@@ -589,7 +626,7 @@ module.exports = async function handler(req, res) {
           plan: 'free',
           planCode: 'free-10',
           quotaType: 'personal',
-          quotaUnit: 'jobs_completed',
+          quotaUnit: 'ads_scraped',
           note: 'Fallback data due to database error',
           error: error.message
         }
