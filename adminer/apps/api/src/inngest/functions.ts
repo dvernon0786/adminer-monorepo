@@ -33,10 +33,20 @@ export const jobCreated = inngest.createFunction(
       return job;
     });
     
-    // Consume quota
+    // Consume quota - FIXED: Use actual ads requested instead of hardcoded 1
     await step.run('consume-quota', async () => {
       try {
-        const quota = await orgDb.consumeQuota(orgId, 1, 'scrape', `Job ${jobId}`);
+        // Extract the requested ads count from the input
+        const requestedAds = input?.limit || input?.ads_count || 10;
+        
+        console.log('QUOTA CONSUMPTION:', {
+          orgId: orgId,
+          jobId: jobId,
+          requestedAds: requestedAds,
+          method: 'consuming_actual_ads_not_hardcoded_1'
+        });
+        
+        const quota = await orgDb.consumeQuota(orgId, requestedAds, 'scrape', `Job ${jobId} - ${requestedAds} ads`);
         console.log('Quota consumed:', quota);
         return quota;
       } catch (error) {

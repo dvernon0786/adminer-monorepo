@@ -61,12 +61,21 @@ const jobCreated = inngest.createFunction(
         return result;
       });
 
-      // Step 4: Consume quota
+      // Step 4: Consume quota - FIXED: Use actual ads requested instead of hardcoded 1
       const quotaResult = await step.run('consume-quota', async () => {
         console.log(`Consuming quota for org: ${orgId}`);
         
+        // Extract the requested ads count from the event
+        const requestedAds = limit || event.data.ads_count || 10;
+        
+        console.log('QUOTA CONSUMPTION:', {
+          orgId: orgId,
+          requestedAds: requestedAds,
+          method: 'consuming_actual_ads_not_hardcoded_1'
+        });
+        
         const result = await sql`
-          UPDATE organizations SET quota_used = quota_used + 1, updated_at = NOW() 
+          UPDATE organizations SET quota_used = quota_used + ${requestedAds}, updated_at = NOW() 
           WHERE clerk_org_id = ${orgId} 
           RETURNING quota_used, quota_limit
         `;

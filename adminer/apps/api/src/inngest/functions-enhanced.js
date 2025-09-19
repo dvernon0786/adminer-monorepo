@@ -119,15 +119,24 @@ const jobCreatedFunction = inngest.createFunction(
         throw new Error(`Failed to store results: ${storageError.message}`);
       }
       
-      // Step 6: Update quota
+      // Step 6: Update quota - FIXED: Use actual ads scraped instead of hardcoded 1
       try {
+        // Extract the requested ads count from the event
+        const requestedAds = limit || event.data.ads_count || scrapeResults.dataExtracted || 10;
+        
+        console.log('QUOTA CONSUMPTION:', {
+          orgId: orgId,
+          requestedAds: requestedAds,
+          method: 'consuming_actual_ads_not_hardcoded_1'
+        });
+        
         await database.query(`
           UPDATE organizations 
-          SET quota_used = quota_used + 1, updated_at = NOW() 
-          WHERE clerk_org_id = $1
-        `, [orgId]);
+          SET quota_used = quota_used + $1, updated_at = NOW() 
+          WHERE clerk_org_id = $2
+        `, [requestedAds, orgId]);
         
-        console.log(`✅ Quota updated for organization: ${orgId}`);
+        console.log(`✅ Quota updated for organization: ${orgId} (${requestedAds} ads consumed)`);
         
       } catch (quotaError) {
         console.error('⚠️ Failed to update quota:', quotaError);
