@@ -555,21 +555,21 @@ module.exports = async function handler(req, res) {
         console.log('QUOTA API: Plan not found, using default free quota:', planQuota);
       }
 
-      // STEP 3: Count completed jobs (simplified quota tracking)
-      // For now, count completed jobs as quota usage
-      const jobsResult = await sql`
-        SELECT COUNT(*) as completed_jobs
-        FROM jobs 
-        WHERE org_id = ${organizationId}
-        AND status = 'completed'
+      // STEP 3: Get actual quota usage from organizations table (FIXED)
+      // Read quota_used from organizations table where Inngest functions update it
+      const quotaResult = await sql`
+        SELECT quota_used, quota_limit
+        FROM organizations 
+        WHERE id = ${organizationId}
+        LIMIT 1
       `;
       
-      console.log('QUOTA API: Jobs count query result:', jobsResult);
+      console.log('QUOTA API: Quota usage query result:', quotaResult);
       
-      const jobsCompleted = parseInt(jobsResult[0]?.completed_jobs || 0);
-      const percentage = Math.min(Math.round((jobsCompleted / planQuota) * 100), 100);
+      const quotaUsed = parseInt(quotaResult[0]?.quota_used || 0);
+      const percentage = Math.min(Math.round((quotaUsed / planQuota) * 100), 100);
       
-      console.log('QUOTA API: Total jobs completed:', jobsCompleted);
+      console.log('QUOTA API: Actual quota used from organizations table:', quotaUsed);
       console.log('QUOTA API: Plan quota limit:', planQuota);
       console.log('QUOTA API: Usage percentage:', percentage);
 
@@ -585,7 +585,7 @@ module.exports = async function handler(req, res) {
       const quotaData = {
         success: true,
         data: {
-          used: jobsCompleted,
+          used: quotaUsed, // FIXED: Use actual quota_used from organizations table
           limit: planQuota,
           percentage: percentage,
           plan: organizationPlan,
@@ -604,8 +604,8 @@ module.exports = async function handler(req, res) {
           },
           debug: {
             planFromDatabase: true,
-            quotaSource: 'plans_table',
-            calculationMethod: 'ads_scraped_count'
+            quotaSource: 'organizations_table', // FIXED: Correct data source
+            calculationMethod: 'quota_used_column' // FIXED: Correct calculation method
           }
         }
       };
