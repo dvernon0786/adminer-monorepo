@@ -3,45 +3,15 @@ import { BrowserRouter as Router, Routes, Route, useLocation, useNavigate } from
 import { useAuth } from '@clerk/clerk-react';
 import Homepage from './pages/Homepage';
 import Dashboard from './pages/dashboard';
+import PricingPage from './pages/pricing';
 import { OrganizationWrapper } from './components/auth/OrganizationWrapper';
 import { ErrorBoundary } from './components/ErrorBoundary';
 
-// Render protection to detect infinite loops
-let renderCount = 0;
-const MAX_RENDERS = 20;
-
 function App() {
   const { isLoaded } = useAuth();
-  const [renderKey, setRenderKey] = useState(0);
   
-  // Increment render count and detect infinite loops
-  renderCount++;
-  if (renderCount > MAX_RENDERS) {
-    console.error('INFINITE RENDER LOOP DETECTED:', renderCount, 'renders');
-    throw new Error(`Infinite render loop detected: ${renderCount} renders`);
-  }
-
-  console.log('APP.TSX: App function executing... (render #' + renderCount + ')');
+  console.log('APP.TSX: App function executing...');
   console.log('APP.TSX: Auth loaded:', isLoaded);
-  
-  // Reset render count on successful completion
-  useEffect(() => {
-    if (isLoaded) {
-      renderCount = 0; // Reset on successful auth load
-    }
-  }, [isLoaded]);
-
-  // Timeout protection for auth loading
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (!isLoaded) {
-        console.log('APP.TSX: Auth loading timeout, forcing re-render');
-        setRenderKey(prev => prev + 1);
-      }
-    }, 10000); // 10 second timeout
-    
-    return () => clearTimeout(timer);
-  }, [isLoaded]); // Removed renderKey from dependencies to prevent infinite loop
 
   if (!isLoaded) {
     console.log('APP.TSX: Auth loading in background...');
@@ -62,6 +32,7 @@ function App() {
       <PostAuthRedirect />
       <Routes>
         <Route path="/" element={<Homepage />} />
+        <Route path="/pricing" element={<PricingPage />} />
         <Route path="/dashboard" element={
           <ErrorBoundary>
             <OrganizationWrapper>

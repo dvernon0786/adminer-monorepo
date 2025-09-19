@@ -61,28 +61,29 @@ async function getRealQuotaStatus(userId) {
       throw new Error('Database connection failed');
     }
 
-    let result = await database.query(`
+    const sql = neon(process.env.DATABASE_URL);
+    let result = await sql`
       SELECT o.plan, o.quota_limit, o.quota_used,
              ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
       FROM organizations o 
-      WHERE o.clerk_org_id = $1
-    `, [userId]);
+      WHERE o.clerk_org_id = ${userId}
+    `;
     
     // If organization doesn't exist, create personal workspace
     if (!result || result.length === 0) {
       console.log(`Creating personal workspace for user: ${userId}`);
       
-      await database.query(`
+      await sql`
         INSERT INTO organizations (clerk_org_id, name, plan, status, quota_limit, quota_used, created_at, updated_at)
-        VALUES ($1, $2, 'free', 'active', 100, 0, NOW(), NOW())
-      `, [userId, `Personal Workspace ${userId}`]);
+        VALUES (${userId}, ${`Personal Workspace ${userId}`}, 'free', 'active', 100, 0, NOW(), NOW())
+      `;
       
-      result = await database.query(`
+      result = await sql`
         SELECT o.plan, o.quota_limit, o.quota_used,
                ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
         FROM organizations o 
-        WHERE o.clerk_org_id = $1
-      `, [userId]);
+        WHERE o.clerk_org_id = ${userId}
+      `;
     }
     
     const org = result[0];
@@ -142,15 +143,7 @@ async function getRealAnalysisStats(userId) {
         COUNT(CASE WHEN status = 'completed' THEN 1 END) as completed_jobs,
         COUNT(CASE WHEN status = 'failed' THEN 1 END) as failed_jobs,
         COUNT(CASE WHEN status IN ('queued', 'running') THEN 1 END) as pending_jobs,
-        COALESCE(SUM(CASE WHEN status = 'completed' THEN 
-          COALESCE(
-            (raw_data->>'dataExtracted')::integer, 
-            CASE WHEN jsonb_typeof(raw_data->'data') = 'array' 
-              THEN jsonb_array_length(raw_data->'data')
-              ELSE 0 
-            END
-          )
-        END), 0) as total_ads_scraped
+        COUNT(CASE WHEN status = 'completed' THEN 1 END) as total_ads_scraped
       FROM jobs 
       WHERE org_id = ${orgDbId}
     `;
@@ -525,35 +518,21 @@ module.exports = async function handler(req, res) {
         console.log('QUOTA API: Plan not found, using default free quota:', planQuota);
       }
 
-      // STEP 3: Count ads scraped (NOT jobs - ads are the quota unit)
-      // This counts individual ads scraped across all jobs
-      const adsResult = await sql`
-        SELECT COALESCE(SUM(
-          CASE 
-            WHEN output IS NOT NULL AND output::text != '{}' 
-            THEN COALESCE(
-              (output->>'ads_count')::integer,
-              (output->>'results_count')::integer, 
-              (output->>'items_count')::integer,
-              CASE WHEN output->>'ads' IS NOT NULL 
-                   THEN json_array_length(output->'ads')
-                   ELSE 1 
-              END
-            )
-            ELSE 0 
-          END
-        ), 0) as total_ads_scraped
+      // STEP 3: Count completed jobs (simplified quota tracking)
+      // For now, count completed jobs as quota usage
+      const jobsResult = await sql`
+        SELECT COUNT(*) as completed_jobs
         FROM jobs 
         WHERE org_id = ${organizationId}
         AND status = 'completed'
       `;
       
-      console.log('QUOTA API: Ads count query result:', adsResult);
+      console.log('QUOTA API: Jobs count query result:', jobsResult);
       
-      const adsScraped = parseInt(adsResult[0]?.total_ads_scraped || 0);
-      const percentage = Math.min(Math.round((adsScraped / planQuota) * 100), 100);
+      const jobsCompleted = parseInt(jobsResult[0]?.completed_jobs || 0);
+      const percentage = Math.min(Math.round((jobsCompleted / planQuota) * 100), 100);
       
-      console.log('QUOTA API: Total ads scraped:', adsScraped);
+      console.log('QUOTA API: Total jobs completed:', jobsCompleted);
       console.log('QUOTA API: Plan quota limit:', planQuota);
       console.log('QUOTA API: Usage percentage:', percentage);
 
@@ -569,7 +548,7 @@ module.exports = async function handler(req, res) {
       const quotaData = {
         success: true,
         data: {
-          used: adsScraped,
+          used: jobsCompleted,
           limit: planQuota,
           percentage: percentage,
           plan: organizationPlan,
@@ -578,7 +557,7 @@ module.exports = async function handler(req, res) {
           workspaceId: workspaceId,
           organizationId: organizationId,
           quotaType: 'personal',
-          quotaUnit: 'ads_scraped', // Clarify what we're counting
+          quotaUnit: 'jobs_completed', // Clarify what we're counting
           resetDate: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
           features: {
             jobs: true,
@@ -610,7 +589,7 @@ module.exports = async function handler(req, res) {
           plan: 'free',
           planCode: 'free-10',
           quotaType: 'personal',
-          quotaUnit: 'ads_scraped',
+          quotaUnit: 'jobs_completed',
           note: 'Fallback data due to database error',
           error: error.message
         }
@@ -861,8 +840,7 @@ module.exports = async function handler(req, res) {
       
       // Get all jobs for this organization
       const jobsResult = await database.execute(sql`
-        SELECT id, job_id, org_id, keyword, status, type, results_count, 
-               apify_run_id, created_at, completed_at, metadata
+        SELECT id, org_id, type, status, input, created_at
         FROM jobs 
         WHERE org_id = ${dbOrgId}
         ORDER BY created_at DESC 

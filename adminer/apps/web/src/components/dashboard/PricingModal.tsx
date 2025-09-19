@@ -14,7 +14,7 @@ const tiers = [
     features: [
       "Facebook only",
       "10 ads per search",
-      "100 ads / month",
+      "10 ads / month",
       "Standard task speed",
     ],
     cta: { label: "Start Free", href: "/api/dodo/checkout/free" },

@@ -3,7 +3,8 @@ import { neon } from '@neondatabase/serverless';
 import { ApifyService } from '../lib/apify.js';
 
 // Real database connection for Inngest functions
-const database = neon(process.env.DATABASE_URL);
+const { neon } = require('@neondatabase/serverless');
+const sql = neon(process.env.DATABASE_URL);
 
 // Job Created Handler
 const jobCreated = inngest.createFunction(
@@ -20,32 +21,25 @@ const jobCreated = inngest.createFunction(
         console.log(`Looking up organization: ${orgId}`);
         
         // First, try to find existing organization
-        const existingOrg = await database.query(
-          "SELECT id, clerk_org_id, quota_used, quota_limit FROM organizations WHERE clerk_org_id = $1",
-          [orgId]
-        );
+        const existingOrg = await sql`
+          SELECT id, clerk_org_id, quota_used, quota_limit FROM organizations WHERE clerk_org_id = ${orgId}
+        `;
         
-        if (existingOrg.rows && existingOrg.rows.length > 0) {
-          console.log("Found existing organization:", existingOrg.rows[0]);
-          return existingOrg.rows[0];
+        if (existingOrg && existingOrg.length > 0) {
+          console.log("Found existing organization:", existingOrg[0]);
+          return existingOrg[0];
         }
         
         // If organization doesn't exist, create it dynamically
         console.log(`Creating new organization: ${orgId}`);
-        const newOrg = await database.query(
-          `INSERT INTO organizations (id, clerk_org_id, name, quota_used, quota_limit, created_at, updated_at) 
-           VALUES (gen_random_uuid(), $1, $2, $3, $4, NOW(), NOW()) 
-           RETURNING id, clerk_org_id, quota_used, quota_limit`,
-          [
-            orgId,
-            `Organization ${orgId}`,
-            0,
-            100
-          ]
-        );
+        const newOrg = await sql`
+          INSERT INTO organizations (id, clerk_org_id, name, quota_used, quota_limit, created_at, updated_at) 
+          VALUES (gen_random_uuid(), ${orgId}, ${`Organization ${orgId}`}, 0, 100, NOW(), NOW()) 
+          RETURNING id, clerk_org_id, quota_used, quota_limit
+        `;
         
-        console.log("Created new organization:", newOrg.rows[0]);
-        return newOrg.rows[0];
+        console.log("Created new organization:", newOrg[0]);
+        return newOrg[0];
       });
 
       // Step 2: Check quota
@@ -57,45 +51,42 @@ const jobCreated = inngest.createFunction(
       const jobResult = await step.run('create-job', async () => {
         console.log(`Creating job in database: ${jobId}`);
         
-        const result = await database.query(
-          "INSERT INTO jobs (id, org_id, keyword, status, input, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, NOW(), NOW()) RETURNING id",
-          [
-            jobId,
-            organization.id,
-            keyword,
-            'pending',
-            JSON.stringify({ limit: parseInt(limit) })
-          ]
-        );
+        const result = await sql`
+          INSERT INTO jobs (id, org_id, keyword, status, input, created_at, updated_at) 
+          VALUES (${jobId}, ${organization.id}, ${keyword}, 'pending', ${JSON.stringify({ limit: parseInt(limit) })}, NOW(), NOW()) 
+          RETURNING id
+        `;
         
         console.log("Job creation result:", result);
-        return result.rows;
+        return result;
       });
 
       // Step 4: Consume quota
       const quotaResult = await step.run('consume-quota', async () => {
         console.log(`Consuming quota for org: ${orgId}`);
         
-        const result = await database.query(
-          "UPDATE organizations SET quota_used = quota_used + 1, updated_at = NOW() WHERE clerk_org_id = $1 RETURNING quota_used, quota_limit",
-          [orgId]
-        );
+        const result = await sql`
+          UPDATE organizations SET quota_used = quota_used + 1, updated_at = NOW() 
+          WHERE clerk_org_id = ${orgId} 
+          RETURNING quota_used, quota_limit
+        `;
         
         console.log("Quota consumption result:", result);
-        return result.rows;
+        return result;
       });
 
       // Step 5: Update job status to created
       await step.run('update-job-status-created', async () => {
         console.log(`Updating job status: ${jobId}`);
         
-        const result = await database.query(
-          "UPDATE jobs SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING id, status",
-          ['created', jobId]
-        );
+        const result = await sql`
+          UPDATE jobs SET status = 'created', updated_at = NOW() 
+          WHERE id = ${jobId} 
+          RETURNING id, status
+        `;
         
         console.log("Job status update result:", result);
-        return result.rows;
+        return result;
       });
 
       console.log(`Job ${jobId} processed successfully for org ${orgId}`);

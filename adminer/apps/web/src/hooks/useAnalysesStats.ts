@@ -73,7 +73,7 @@ export function useAnalysesStats() {
     return () => {
       cancelled = false;
     };
-  }, [isSignedIn, pathname, user, workspace, getToken]);
+  }, [isSignedIn, pathname, user?.id, workspace?.id]);
 
   return { data, error, loading };
 }
