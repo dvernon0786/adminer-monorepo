@@ -20,6 +20,14 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
   onClose,
   loading = null
 }) => {
+  console.log('QUOTA_MODAL_RENDER:', {
+    isOpen,
+    currentPlan,
+    quotaUsed,
+    quotaLimit,
+    timestamp: new Date().toISOString()
+  });
+  
   if (!isOpen) return null;
 
   const getUpgradeMessage = () => {

@@ -28,7 +28,15 @@ export default function Dashboard() {
 
   // Show quota exceeded modal when quota is at 100%
   useEffect(() => {
+    console.log('QUOTA_MODAL_CHECK:', {
+      quota: quota,
+      percentage: quota?.percentage,
+      shouldShow: quota && quota.percentage >= 100,
+      timestamp: new Date().toISOString()
+    });
+    
     if (quota && quota.percentage >= 100) {
+      console.log('QUOTA_MODAL_TRIGGERED: Setting showQuotaModal to true');
       setShowQuotaModal(true);
     }
   }, [quota]);
