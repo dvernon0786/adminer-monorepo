@@ -476,6 +476,12 @@ module.exports = async function handler(req, res) {
     // QUOTA ENDPOINT - FIXED TO USE PLANS TABLE
     console.log('QUOTA API: Fixed endpoint using plans table');
     
+    // Check for emergency reset parameter
+    const resetQuota = req.query.reset === 'true';
+    if (resetQuota) {
+      console.log('🚨 EMERGENCY QUOTA RESET: Reset parameter detected');
+    }
+    
     if (req.method !== 'GET') {
       return res.status(405).json({ 
         success: false, 
@@ -532,6 +538,33 @@ module.exports = async function handler(req, res) {
       
       console.log('QUOTA API: Organization ID:', organizationId);
       console.log('QUOTA API: Organization Plan:', organizationPlan);
+      
+      // EMERGENCY QUOTA RESET - Fix overage crisis
+      console.log('🚨 EMERGENCY QUOTA RESET: Reset parameter value:', resetQuota);
+      if (resetQuota) {
+        console.log('🚨 EMERGENCY QUOTA RESET: Resetting quota to 0 for org:', organizationId);
+        
+        const resetResult = await sql`
+          UPDATE organizations 
+          SET quota_used = 0, updated_at = NOW()
+          WHERE id = ${organizationId}
+          RETURNING quota_used, quota_limit
+        `;
+        
+        console.log('🚨 EMERGENCY QUOTA RESET: Reset result:', resetResult);
+        
+        // Verify the reset
+        const verifyResult = await sql`
+          SELECT quota_used, quota_limit
+          FROM organizations 
+          WHERE id = ${organizationId}
+          LIMIT 1
+        `;
+        
+        console.log('🚨 EMERGENCY QUOTA RESET: Verification result:', verifyResult);
+      } else {
+        console.log('🚨 EMERGENCY QUOTA RESET: Reset parameter not set, skipping reset');
+      }
 
       // STEP 2: Get plan details from plans table (FIXED: Use actual plans table)
       const planResult = await sql`
@@ -635,6 +668,96 @@ module.exports = async function handler(req, res) {
       console.log('QUOTA API: Using corrected fallback data:', fallbackData);
       return res.status(200).json(fallbackData);
     }
+  } else if (path === '/api/emergency/reset-quota') {
+    // EMERGENCY QUOTA RESET ENDPOINT - Fix quota overage crisis
+    try {
+      console.log('🚨 EMERGENCY QUOTA RESET: Starting quota reset...');
+      
+      const userId = req.headers['x-user-id'] || 'test-user';
+      const { neon } = require('@neondatabase/serverless');
+      
+      if (!process.env.DATABASE_URL) {
+        return res.status(200).json({
+          success: false,
+          error: 'DATABASE_URL not configured',
+          userId: userId
+        });
+      }
+      
+      const sql = neon(process.env.DATABASE_URL);
+      console.log('🚨 EMERGENCY QUOTA RESET: Database connection initialized');
+      
+      // Get current quota status
+      const currentQuota = await sql`
+        SELECT id, clerk_org_id, name, quota_used, quota_limit, plan
+        FROM organizations 
+        WHERE clerk_org_id = ${userId}
+        LIMIT 1
+      `;
+      
+      console.log('🚨 EMERGENCY QUOTA RESET: Current quota status:', currentQuota);
+      
+      if (currentQuota.length === 0) {
+        return res.status(200).json({
+          success: false,
+          error: 'Organization not found',
+          userId: userId
+        });
+      }
+      
+      const org = currentQuota[0];
+      const currentUsed = org.quota_used || 0;
+      const currentLimit = org.quota_limit || 10;
+      
+      console.log(`🚨 EMERGENCY QUOTA RESET: Current quota: ${currentUsed}/${currentLimit}`);
+      
+      // Reset quota to 0
+      const resetResult = await sql`
+        UPDATE organizations 
+        SET quota_used = 0, updated_at = NOW()
+        WHERE clerk_org_id = ${userId}
+        RETURNING id, clerk_org_id, quota_used, quota_limit
+      `;
+      
+      console.log('🚨 EMERGENCY QUOTA RESET: Quota reset result:', resetResult);
+      
+      // Verify reset
+      const verifyResult = await sql`
+        SELECT id, clerk_org_id, name, quota_used, quota_limit, plan
+        FROM organizations 
+        WHERE clerk_org_id = ${userId}
+        LIMIT 1
+      `;
+      
+      console.log('🚨 EMERGENCY QUOTA RESET: Verification result:', verifyResult);
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Quota reset successfully',
+        userId: userId,
+        beforeReset: {
+          used: currentUsed,
+          limit: currentLimit,
+          overage: Math.max(0, currentUsed - currentLimit)
+        },
+        afterReset: {
+          used: verifyResult[0]?.quota_used || 0,
+          limit: verifyResult[0]?.quota_limit || 10,
+          overage: 0
+        },
+        organization: verifyResult[0],
+        timestamp: new Date().toISOString()
+      });
+      
+    } catch (error) {
+      console.error('🚨 EMERGENCY QUOTA RESET: Error:', error);
+      return res.status(200).json({
+        success: false,
+        error: error.message,
+        userId: req.headers['x-user-id'] || 'test-user',
+        timestamp: new Date().toISOString()
+      });
+    }
   } else if (path === '/api/debug/quota') {
     // DEBUG ENDPOINT - Test quota database connection
     try {
@@ -654,18 +777,33 @@ module.exports = async function handler(req, res) {
       const sql = neon(process.env.DATABASE_URL);
       console.log('DEBUG QUOTA: Database connection initialized');
       
-      // Test organization lookup
-      const orgResult = await sql`
-        SELECT id, clerk_org_id, name FROM organizations 
+      // Test organization lookup (same logic as quota API)
+      let orgResult = await sql`
+        SELECT id, clerk_org_id, name, quota_used, quota_limit, plan, created_at, updated_at FROM organizations 
         WHERE clerk_org_id = ${userId}
         LIMIT 1
       `;
       
       console.log('DEBUG QUOTA: Organization lookup result:', orgResult);
       
+      // If organization doesn't exist, create it (same logic as quota API)
+      if (orgResult.length === 0) {
+        console.log('DEBUG QUOTA: Organization not found, creating...');
+        await sql`
+          INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+          VALUES (gen_random_uuid(), ${userId}, 'Personal Workspace', 'free', 10, 0, NOW(), NOW())
+        `;
+        
+        orgResult = await sql`
+          SELECT id, clerk_org_id, name, quota_used, quota_limit, plan, created_at, updated_at FROM organizations 
+          WHERE clerk_org_id = ${userId}
+          LIMIT 1
+        `;
+      }
+      
       // Also check all organizations to see what exists
       const allOrgs = await sql`
-        SELECT id, clerk_org_id, name FROM organizations 
+        SELECT id, clerk_org_id, name, quota_used, quota_limit FROM organizations 
         LIMIT 10
       `;
       
@@ -681,11 +819,33 @@ module.exports = async function handler(req, res) {
         
         console.log('DEBUG QUOTA: Jobs count result:', jobsResult);
         
+        // Get quota usage records
+        const quotaUsageResult = await sql`
+          SELECT id, org_id, job_id, type, amount, description, created_at
+          FROM quota_usage 
+          WHERE org_id = ${orgId}
+          ORDER BY created_at DESC
+        `;
+        
+        console.log('DEBUG QUOTA: Quota usage records:', quotaUsageResult);
+        
+        // Get job records
+        const jobRecords = await sql`
+          SELECT id, org_id, type, status, input, created_at, updated_at
+          FROM jobs 
+          WHERE org_id = ${orgId}
+          ORDER BY created_at DESC
+        `;
+        
+        console.log('DEBUG QUOTA: Job records:', jobRecords);
+        
         return res.status(200).json({
           success: true,
           userId: userId,
           organization: orgResult[0],
           jobsCount: jobsResult[0]?.count || 0,
+          quotaUsageRecords: quotaUsageResult,
+          jobRecords: jobRecords,
           databaseConnected: true,
           allOrganizations: allOrgs
         });
@@ -739,6 +899,75 @@ module.exports = async function handler(req, res) {
         error: error.message,
         userId: req.headers['x-user-id'] || 'test-user',
         databaseConnected: false
+      });
+    }
+  } else if (path === '/api/quota/monitor') {
+    // QUOTA MONITORING ENDPOINT - Detect quota anomalies
+    try {
+      console.log('QUOTA MONITOR: Checking for quota anomalies...');
+      
+      const { neon } = require('@neondatabase/serverless');
+      
+      if (!process.env.DATABASE_URL) {
+        return res.status(500).json({ success: false, error: 'Database not configured' });
+      }
+      
+      const sql = neon(process.env.DATABASE_URL);
+      
+      // Check for quota overages
+      const overages = await sql`
+        SELECT clerk_org_id, name, quota_used, quota_limit, 
+               (quota_used - quota_limit) as overage
+        FROM organizations 
+        WHERE quota_used > quota_limit
+        ORDER BY overage DESC
+      `;
+      
+      // Check for quota usage without records
+      const missingRecords = await sql`
+        SELECT o.clerk_org_id, o.name, o.quota_used, o.quota_limit,
+               COUNT(qu.id) as usage_records
+        FROM organizations o
+        LEFT JOIN quota_usage qu ON o.id = qu.org_id
+        WHERE o.quota_used > 0
+        GROUP BY o.id, o.clerk_org_id, o.name, o.quota_used, o.quota_limit
+        HAVING COUNT(qu.id) = 0
+        ORDER BY o.quota_used DESC
+      `;
+      
+      // Check for jobs without quota usage
+      const jobsWithoutQuota = await sql`
+        SELECT j.id, j.org_id, j.type, j.status, j.input,
+               o.clerk_org_id, o.name
+        FROM jobs j
+        JOIN organizations o ON j.org_id = o.id
+        LEFT JOIN quota_usage qu ON j.org_id = qu.org_id AND qu.job_id = j.id
+        WHERE qu.id IS NULL AND j.status = 'completed'
+        ORDER BY j.created_at DESC
+        LIMIT 10
+      `;
+      
+      return res.status(200).json({
+        success: true,
+        timestamp: new Date().toISOString(),
+        anomalies: {
+          quotaOverages: overages,
+          missingUsageRecords: missingRecords,
+          jobsWithoutQuota: jobsWithoutQuota
+        },
+        summary: {
+          totalOverages: overages.length,
+          totalMissingRecords: missingRecords.length,
+          totalJobsWithoutQuota: jobsWithoutQuota.length
+        }
+      });
+      
+    } catch (error) {
+      console.error('QUOTA MONITOR: Error:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message,
+        timestamp: new Date().toISOString()
       });
     }
   } else if (path === '/api/analyses/stats') {

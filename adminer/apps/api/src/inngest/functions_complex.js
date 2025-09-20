@@ -77,10 +77,21 @@ const jobCreated = inngest.createFunction(
         const result = await sql`
           UPDATE organizations SET quota_used = quota_used + ${requestedAds}, updated_at = NOW() 
           WHERE clerk_org_id = ${orgId} 
-          RETURNING quota_used, quota_limit
+          RETURNING quota_used, quota_limit, id
         `;
         
         console.log("Quota consumption result:", result);
+        
+        // FIXED: Add quota usage logging
+        if (result.length > 0) {
+          const orgId = result[0].id;
+          await sql`
+            INSERT INTO quota_usage (org_id, type, amount, description, created_at)
+            VALUES (${orgId}, 'scrape', ${requestedAds}, ${`Job ${jobId} - ${requestedAds} ads`}, NOW())
+          `;
+          console.log("Quota usage record created for org:", orgId);
+        }
+        
         return result;
       });
 

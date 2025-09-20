@@ -130,13 +130,24 @@ const jobCreatedFunction = inngest.createFunction(
           method: 'consuming_actual_ads_not_hardcoded_1'
         });
         
-        await database.query(`
+        const quotaResult = await database.query(`
           UPDATE organizations 
           SET quota_used = quota_used + $1, updated_at = NOW() 
           WHERE clerk_org_id = $2
+          RETURNING id, quota_used, quota_limit
         `, [requestedAds, orgId]);
         
         console.log(`✅ Quota updated for organization: ${orgId} (${requestedAds} ads consumed)`);
+        
+        // FIXED: Add quota usage logging
+        if (quotaResult.rows && quotaResult.rows.length > 0) {
+          const orgId = quotaResult.rows[0].id;
+          await database.query(`
+            INSERT INTO quota_usage (org_id, type, amount, description, created_at)
+            VALUES ($1, 'scrape', $2, $3, NOW())
+          `, [orgId, requestedAds, `Job ${jobId} - ${requestedAds} ads`]);
+          console.log("Quota usage record created for org:", orgId);
+        }
         
       } catch (quotaError) {
         console.error('⚠️ Failed to update quota:', quotaError);
