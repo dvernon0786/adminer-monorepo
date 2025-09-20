@@ -72,11 +72,18 @@ export default function Dashboard() {
   
   // V4 FIX: Simplified modal trigger - no infinite loops
   useEffect(() => {
+    console.log('🔍 MODAL_TRIGGER_CHECK:', {
+      quota: quota,
+      percentage: quota?.percentage,
+      showQuotaModal: showQuotaModal,
+      shouldTrigger: quota && quota.percentage >= 100 && !showQuotaModal
+    });
+    
     if (quota && quota.percentage >= 100 && !showQuotaModal) {
       console.log('🎯 V4_MODAL_TRIGGER: Quota is 100%, showing QuotaUpgradeModal');
       setShowQuotaModal(true);
     }
-  }, [quota, showQuotaModal]);
+  }, [quota]); // Removed showQuotaModal from dependencies to prevent infinite loop
 
   if (loading || statsLoading) {
     return (
