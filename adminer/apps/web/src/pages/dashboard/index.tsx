@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { useQuota } from '../../hooks/useQuota';
 import { useAnalysesStats } from '../../hooks/useAnalysesStats';
 import { QuotaBanner } from '../../components/QuotaBanner';
@@ -15,6 +16,7 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 
 export default function Dashboard() {
+  const { user } = useUser();
   const { data: quota, loading, error } = useQuota();
   const { data: stats, loading: statsLoading, error: statsError } = useAnalysesStats();
 
@@ -22,6 +24,7 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [showQuotaModal, setShowQuotaModal] = useState(false);
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
 
   // Show quota exceeded modal when quota is at 100%
   useEffect(() => {
@@ -30,11 +33,72 @@ export default function Dashboard() {
     }
   }, [quota]);
 
-  const handleUpgrade = (plan: string) => {
+  // FIXED: Direct checkout instead of pricing page redirect
+  const handleUpgrade = async (plan: string) => {
     if (plan === 'contact-sales') {
-      window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry', '_blank');
-    } else {
-      window.location.href = `/pricing?plan=${plan}`;
+      window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry&body=I am interested in the Enterprise plan for increased ad scraping capacity.', '_blank');
+      return;
+    }
+
+    try {
+      setUpgradeLoading(plan);
+      
+      console.log('QUOTA_MODAL_UPGRADE:', {
+        currentPlan: quota?.plan || 'free',
+        targetPlan: plan,
+        userEmail: user?.emailAddresses[0]?.emailAddress,
+        timestamp: new Date().toISOString()
+      });
+
+      // Determine plan code for Dodo API
+      const planCode = plan === 'pro' ? 'pro-500' : 'ent-2000';
+      
+      // CRITICAL FIX: Call Dodo checkout API directly
+      const response = await fetch('/api/dodo/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id || '',
+          'x-workspace-id': user?.id || ''
+        },
+        body: JSON.stringify({
+          plan: planCode,
+          email: user?.emailAddresses[0]?.emailAddress,
+          orgName: user?.fullName || 'Personal Workspace'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      console.log('QUOTA_MODAL_CHECKOUT_SUCCESS:', {
+        checkoutUrl: data.checkout_url,
+        sessionId: data.session_id,
+        planCode
+      });
+
+      if (data.immediate_activation) {
+        // Free plan activated immediately
+        window.location.href = data.redirect_url || '/dashboard?plan=free&activated=true';
+      } else if (data.checkout_url) {
+        // FIXED: Direct redirect to Dodo checkout (NO PRICING PAGE)
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL provided');
+      }
+
+    } catch (error) {
+      console.error('QUOTA_MODAL_UPGRADE_ERROR:', error);
+      
+      // Graceful fallback: redirect to pricing page if checkout fails
+      console.log('QUOTA_MODAL_FALLBACK: Redirecting to pricing page');
+      window.location.href = `/pricing?plan=${plan}&error=checkout_failed`;
+      
+    } finally {
+      setUpgradeLoading(null);
     }
   };
 
@@ -143,6 +207,7 @@ export default function Dashboard() {
         quotaLimit={quota?.limit || 10}
         onUpgrade={handleUpgrade}
         onClose={() => setShowQuotaModal(false)}
+        loading={upgradeLoading}
       />
       {/* Dashboard Header */}
       <DashboardHeader

@@ -8,6 +8,7 @@ interface QuotaExceededModalProps {
   quotaLimit: number;
   onUpgrade: (plan: string) => void;
   onClose: () => void;
+  loading?: string | null;
 }
 
 const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
@@ -16,7 +17,8 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
   quotaUsed,
   quotaLimit,
   onUpgrade,
-  onClose
+  onClose,
+  loading = null
 }) => {
   if (!isOpen) return null;
 
@@ -166,9 +168,10 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
               
               <button
                 onClick={() => handleUpgrade(option.plan)}
-                className="mt-auto gradient-btn text-center py-2.5 rounded-md font-medium hover:opacity-90 transition-opacity"
+                disabled={loading === option.plan}
+                className="mt-auto gradient-btn text-center py-2.5 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
               >
-                {option.plan === 'contact-sales' ? 'Contact Sales' : 'Upgrade Now'}
+                {loading === option.plan ? 'Creating checkout...' : (option.plan === 'contact-sales' ? 'Contact Sales' : 'Upgrade Now')}
               </button>
             </div>
           ))}
