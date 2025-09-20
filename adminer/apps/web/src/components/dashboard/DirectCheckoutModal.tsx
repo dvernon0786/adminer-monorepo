@@ -1,6 +1,6 @@
 /* VERSION: DIRECT_CHECKOUT_V3_20250921_UNIQUE */
 import React, { useState, useEffect } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/clerk-react';
 
 interface DirectCheckoutModalProps {
   isOpen: boolean;

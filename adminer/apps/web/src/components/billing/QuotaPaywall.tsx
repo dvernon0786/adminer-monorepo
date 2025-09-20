@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/clerk-react';
 import type { QuotaData } from "@/hooks/useQuota";
 
 interface QuotaPaywallProps {

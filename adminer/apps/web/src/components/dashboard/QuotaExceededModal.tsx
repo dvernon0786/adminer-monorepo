@@ -3,7 +3,7 @@
 /* VERSION: DISABLED_V3_20250921 */
 
 import React, { useState } from 'react';
-import { useUser } from '@clerk/nextjs';
+import { useUser } from '@clerk/clerk-react';
 import { X, AlertTriangle, Check } from "lucide-react";
 
 interface QuotaExceededModalProps {
