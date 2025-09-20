@@ -1,7 +1,8 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useQuota } from '../../hooks/useQuota';
 import { useAnalysesStats } from '../../hooks/useAnalysesStats';
 import { QuotaBanner } from '../../components/QuotaBanner';
+import QuotaExceededModal from '../../components/dashboard/QuotaExceededModal';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import JobsTable from '../../components/dashboard/JobsTable';
 import StartJobForm from '../../components/dashboard/StartJobForm';
@@ -20,6 +21,22 @@ export default function Dashboard() {
   // Mock data for dashboard components
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
+  const [showQuotaModal, setShowQuotaModal] = useState(false);
+
+  // Show quota exceeded modal when quota is at 100%
+  useEffect(() => {
+    if (quota && quota.percentage >= 100) {
+      setShowQuotaModal(true);
+    }
+  }, [quota]);
+
+  const handleUpgrade = (plan: string) => {
+    if (plan === 'contact-sales') {
+      window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry', '_blank');
+    } else {
+      window.location.href = `/pricing?plan=${plan}`;
+    }
+  };
 
   // Mock analyses data
   const mockAnalyses = [
@@ -62,6 +79,23 @@ export default function Dashboard() {
   }
 
   if (error) {
+    // Check if error is quota exceeded
+    if (error.includes('quota exceeded') || error.includes('Quota exceeded')) {
+      return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+          <QuotaExceededModal
+            isOpen={true}
+            currentPlan={quota?.plan || 'free'}
+            quotaUsed={quota?.used || 0}
+            quotaLimit={quota?.limit || 10}
+            onUpgrade={handleUpgrade}
+            onClose={() => {}} // Don't allow closing when quota exceeded
+          />
+        </div>
+      );
+    }
+    
+    // Show generic error for other issues
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
         <div className="flex items-center justify-center min-h-screen">
@@ -101,6 +135,15 @@ export default function Dashboard() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+      {/* Quota Exceeded Modal */}
+      <QuotaExceededModal
+        isOpen={showQuotaModal}
+        currentPlan={quota?.plan || 'free'}
+        quotaUsed={quota?.used || 0}
+        quotaLimit={quota?.limit || 10}
+        onUpgrade={handleUpgrade}
+        onClose={() => setShowQuotaModal(false)}
+      />
       {/* Dashboard Header */}
       <DashboardHeader
         backendStatus="connected"
