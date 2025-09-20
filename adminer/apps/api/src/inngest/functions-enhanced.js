@@ -4,6 +4,7 @@
 const { inngest } = require("./client.js");
 const { neon } = require("@neondatabase/serverless");
 const { apifyDirectService } = require("../lib/apify-direct.js");
+const { orgDb } = require("../lib/db.js");
 
 const database = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
 
@@ -119,7 +120,7 @@ const jobCreatedFunction = inngest.createFunction(
         throw new Error(`Failed to store results: ${storageError.message}`);
       }
       
-      // Step 6: Update quota - FIXED: Use actual ads scraped instead of hardcoded 1
+      // Step 6: Update quota - STANDARDIZED: Use orgDb.consumeQuota()
       try {
         // Extract the requested ads count from the event
         const requestedAds = limit || event.data.ads_count || scrapeResults.dataExtracted || 10;
@@ -127,27 +128,19 @@ const jobCreatedFunction = inngest.createFunction(
         console.log('QUOTA CONSUMPTION:', {
           orgId: orgId,
           requestedAds: requestedAds,
-          method: 'consuming_actual_ads_not_hardcoded_1'
+          method: 'standardized_orgDb_consumeQuota'
         });
         
-        const quotaResult = await database.query(`
-          UPDATE organizations 
-          SET quota_used = quota_used + $1, updated_at = NOW() 
-          WHERE clerk_org_id = $2
-          RETURNING id, quota_used, quota_limit
-        `, [requestedAds, orgId]);
+        // Use standardized quota consumption with proper audit trail
+        const quotaResult = await orgDb.consumeQuota(
+          orgId, 
+          requestedAds, 
+          'scrape', 
+          `Job ${jobId} - ${requestedAds} ads`
+        );
         
         console.log(`✅ Quota updated for organization: ${orgId} (${requestedAds} ads consumed)`);
-        
-        // FIXED: Add quota usage logging
-        if (quotaResult.rows && quotaResult.rows.length > 0) {
-          const orgId = quotaResult.rows[0].id;
-          await database.query(`
-            INSERT INTO quota_usage (org_id, type, amount, description, created_at)
-            VALUES ($1, 'scrape', $2, $3, NOW())
-          `, [orgId, requestedAds, `Job ${jobId} - ${requestedAds} ads`]);
-          console.log("Quota usage record created for org:", orgId);
-        }
+        console.log("Quota consumption result:", quotaResult);
         
       } catch (quotaError) {
         console.error('⚠️ Failed to update quota:', quotaError);

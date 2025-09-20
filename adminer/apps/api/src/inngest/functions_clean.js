@@ -1,6 +1,7 @@
 import { inngest } from './client.js';
 import { neon } from '@neondatabase/serverless';
 import { ApifyService } from '../lib/apify.js';
+import { orgDb } from '../lib/db.js';
 
 // Real database connection for Inngest functions
 const { neon } = require('@neondatabase/serverless');
@@ -61,36 +62,28 @@ const jobCreated = inngest.createFunction(
         return result;
       });
 
-      // Step 4: Consume quota - FIXED: Use actual ads requested instead of hardcoded 1
+      // Step 4: Consume quota - STANDARDIZED: Use orgDb.consumeQuota()
       const quotaResult = await step.run('consume-quota', async () => {
         console.log(`Consuming quota for org: ${orgId}`);
-        
+
         // Extract the requested ads count from the event
         const requestedAds = limit || event.data.ads_count || 10;
         
         console.log('QUOTA CONSUMPTION:', {
           orgId: orgId,
           requestedAds: requestedAds,
-          method: 'consuming_actual_ads_not_hardcoded_1'
+          method: 'standardized_orgDb_consumeQuota'
         });
         
-        const result = await sql`
-          UPDATE organizations SET quota_used = quota_used + ${requestedAds}, updated_at = NOW() 
-          WHERE clerk_org_id = ${orgId} 
-          RETURNING quota_used, quota_limit, id
-        `;
+        // Use standardized quota consumption with proper audit trail
+        const result = await orgDb.consumeQuota(
+          orgId, 
+          requestedAds, 
+          'scrape', 
+          `Job ${jobId} - ${requestedAds} ads`
+        );
         
         console.log("Quota consumption result:", result);
-        
-        // FIXED: Add quota usage logging
-        if (result.length > 0) {
-          const orgId = result[0].id;
-          await sql`
-            INSERT INTO quota_usage (org_id, type, amount, description, created_at)
-            VALUES (${orgId}, 'scrape', ${requestedAds}, ${`Job ${jobId} - ${requestedAds} ads`}, NOW())
-          `;
-          console.log("Quota usage record created for org:", orgId);
-        }
         
         return result;
       });

@@ -35656,3 +35656,158 @@ const quotaResult = await step.run('consume-quota', async () => {
 3. **Monitor**: Ensure consistent behavior across all functions
 
 **Status**: 🔍 **ARCHITECTURAL INCONSISTENCY IDENTIFIED - NEEDS STANDARDIZATION**
+
+---
+
+## 🔍 **PLANNER MODE: QUOTA ARCHITECTURE FIX ANALYSIS**
+
+**Date**: September 20, 2025  
+**Mode**: **PLANNER**  
+**Status**: 🔍 **ANALYZING QUOTA ARCHITECTURE CONSOLIDATION FIX**  
+**Priority**: **CRITICAL - ARCHITECTURAL STANDARDIZATION**
+
+---
+
+## 🎯 **FIX ANALYSIS: QUOTA IMPLEMENTATION CONSOLIDATION**
+
+**Fix Objective**: Consolidate all quota consumption to use a single, consistent implementation
+**Problem Addressed**: Multiple inconsistent quota consumption implementations causing data inconsistencies
+
+### **🔍 FIX COMPONENTS ANALYSIS**
+
+**1. Standardized Database Implementation**:
+- **Approach**: Create single `consumeQuota()` function
+- **Features**:
+  - ✅ **Organizations Update**: Updates `quota_used` in organizations table
+  - ✅ **Audit Trail**: Creates record in `quota_usage` table
+  - ✅ **Error Handling**: Proper error handling and validation
+  - ✅ **Logging**: Comprehensive logging for debugging
+  - ✅ **Metadata**: Supports job context and metadata
+
+**2. JavaScript Function Updates**:
+- **Target Files**: `functions_complex.js`, `functions_clean.js`, `functions-enhanced.js`
+- **Approach**: Replace direct SQL with standardized function calls
+- **Pattern**: `await consumeQuota(orgId, requestedAds, { jobId, keyword })`
+
+**3. Database Schema Enhancement**:
+- **New Table**: `quota_usage` for comprehensive audit trail
+- **Features**:
+  - ✅ **Foreign Key**: Links to organizations table
+  - ✅ **Metadata**: JSONB field for job context
+  - ✅ **Indexing**: Optimized for queries
+  - ✅ **Cascading**: Proper cleanup on organization deletion
+
+**4. API Endpoint Updates**:
+- **Debug Endpoint**: Updated to query `quota_usage` table
+- **Monitoring**: Enhanced with audit trail data
+- **Consistency**: Single source of truth for quota data
+
+### **🎯 STRENGTHS OF THE FIX**
+
+**1. Architectural Consistency**:
+- ✅ **Single Implementation**: Eliminates dual codebase maintenance
+- ✅ **Standardized Pattern**: All functions use same quota consumption logic
+- ✅ **Data Integrity**: Organizations + quota_usage always updated together
+- ✅ **Audit Trail**: Complete tracking of all quota consumption
+
+**2. Comprehensive Coverage**:
+- ✅ **All Inngest Functions**: Updated to use standardized approach
+- ✅ **Database Schema**: Proper table structure for audit trail
+- ✅ **API Integration**: Debug endpoints use new audit data
+- ✅ **Deployment Script**: Automated deployment and testing
+
+**3. Error Prevention**:
+- ✅ **Validation**: Proper quota limit checking
+- ✅ **Error Handling**: Consistent error handling across all functions
+- ✅ **Logging**: Comprehensive logging for debugging
+- ✅ **Rollback**: Proper error handling prevents partial updates
+
+### **🚨 POTENTIAL ISSUES AND CONCERNS**
+
+**1. Database Schema Assumptions**:
+- **Issue**: Assumes `quota_usage` table doesn't exist
+- **Risk**: May conflict with existing schema
+- **Mitigation**: Uses `CREATE TABLE IF NOT EXISTS`
+
+**2. JavaScript Function Modifications**:
+- **Issue**: Complex sed replacements may break function logic
+- **Risk**: Could introduce syntax errors or logic bugs
+- **Mitigation**: Creates backups and uses careful pattern matching
+
+**3. Deployment Dependencies**:
+- **Issue**: Requires database schema changes before code deployment
+- **Risk**: Code may fail if schema not updated
+- **Mitigation**: Provides clear deployment order instructions
+
+**4. Testing Coverage**:
+- **Issue**: Limited testing of edge cases
+- **Risk**: May miss quota limit edge cases or error conditions
+- **Mitigation**: Includes basic deployment testing
+
+### **🔧 TECHNICAL IMPLEMENTATION ASSESSMENT**
+
+**1. Database Operations**:
+```sql
+-- Organizations update (correct)
+UPDATE organizations 
+SET quota_used = quota_used + ${adsConsumed}, updated_at = NOW() 
+WHERE id = ${organizationId}
+
+-- Quota usage record (correct)
+INSERT INTO quota_usage (id, organization_id, ads_consumed, consumed_at, metadata)
+VALUES (gen_random_uuid(), ${organizationId}, ${adsConsumed}, NOW(), ${JSON.stringify(metadata)})
+```
+
+**2. Function Call Pattern**:
+```javascript
+// Standardized pattern (good)
+await consumeQuota(orgId, requestedAds, { jobId, keyword })
+```
+
+**3. Error Handling**:
+```javascript
+// Proper error handling (good)
+if (!quotaUpdate[0]) {
+    throw new Error(`Organization ${organizationId} not found`);
+}
+```
+
+### **📋 PLANNER RECOMMENDATIONS**
+
+**1. Implementation Strategy**:
+- ✅ **Phase 1**: Deploy database schema changes first
+- ✅ **Phase 2**: Deploy code changes with feature flags
+- ✅ **Phase 3**: Test thoroughly before full activation
+- ✅ **Phase 4**: Monitor for any issues
+
+**2. Risk Mitigation**:
+- ✅ **Backup**: Create database backups before schema changes
+- ✅ **Rollback**: Prepare rollback plan for code changes
+- ✅ **Monitoring**: Enhanced logging during transition
+- ✅ **Testing**: Comprehensive testing of all quota consumption paths
+
+**3. Validation Requirements**:
+- ✅ **Quota Consumption**: Verify all functions create audit records
+- ✅ **Job Tracking**: Ensure jobs are properly recorded
+- ✅ **API Consistency**: Debug endpoints show complete data
+- ✅ **Error Handling**: Proper error responses and logging
+
+### **🎯 OVERALL ASSESSMENT**
+
+**Fix Quality**: ✅ **EXCELLENT**
+- **Architecture**: Properly addresses dual implementation problem
+- **Coverage**: Comprehensive solution covering all components
+- **Implementation**: Well-structured with proper error handling
+- **Deployment**: Includes automated deployment and testing
+
+**Risk Level**: ⚠️ **MEDIUM**
+- **Database Changes**: Schema modifications required
+- **Code Changes**: Multiple file modifications
+- **Testing**: Limited edge case coverage
+
+**Recommendation**: ✅ **APPROVE WITH CAUTION**
+- **Proceed**: Fix addresses critical architectural issues
+- **Monitor**: Enhanced monitoring during deployment
+- **Test**: Comprehensive testing before full activation
+
+**Status**: 🎯 **FIX APPROVED - PROCEED WITH IMPLEMENTATION**
