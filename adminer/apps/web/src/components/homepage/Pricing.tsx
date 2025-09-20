@@ -97,28 +97,52 @@ export default function Pricing() {
     setUpgrading(planId)
     
     try {
+      console.log('PRICING_UPGRADE_REQUEST:', {
+        planId,
+        userEmail: user?.emailAddresses[0]?.emailAddress,
+        timestamp: new Date().toISOString()
+      });
+
       const response = await fetch('/api/dodo/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          plan: planId, 
-          email: user.emailAddresses[0].emailAddress 
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id || '',
+          'x-workspace-id': user?.id || ''
+        },
+        body: JSON.stringify({
+          plan: planId,
+          email: user.emailAddresses[0].emailAddress,
+          orgName: user?.fullName || 'Personal Workspace'
         })
-      })
+      });
+
+      const data = await response.json();
 
       if (!response.ok) {
-        const error = await response.json()
-        throw new Error(error.error || 'Failed to create checkout session')
+        throw new Error(data.error || 'Failed to create checkout session');
       }
 
-      const { url } = await response.json()
-      
-      // Redirect to Dodo hosted checkout
-      window.location.href = url
+      console.log('PRICING_CHECKOUT_RESPONSE:', data);
+
+      if (data.immediate_activation) {
+        // Free plan activated immediately
+        console.log('FREE_PLAN_ACTIVATED');
+        toast.success('Free plan activated! Redirecting to dashboard...');
+        setTimeout(() => {
+          window.location.href = data.redirect_url || '/dashboard?plan=free&activated=true';
+        }, 1000);
+      } else if (data.checkout_url) {
+        // Redirect to Dodo checkout
+        console.log('REDIRECTING_TO_CHECKOUT:', data.checkout_url);
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL or activation provided');
+      }
       
     } catch (error) {
-      console.error('Upgrade error:', error)
-      toast.error('Failed to start upgrade process. Please try again.')
+      console.error('PRICING_UPGRADE_ERROR:', error);
+      toast.error(`Upgrade failed: ${error.message}. Please try again or contact support.`);
     } finally {
       setUpgrading(null)
     }
