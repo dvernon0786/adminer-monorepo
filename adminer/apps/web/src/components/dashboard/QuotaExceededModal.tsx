@@ -1,3 +1,7 @@
+/* DISABLED: Replaced with DirectCheckoutModal to fix pricing redirect issue */
+/* This component was causing redirects to /pricing instead of direct checkout */
+/* VERSION: DISABLED_V3_20250921 */
+
 import React, { useState } from 'react';
 import { useUser } from '@clerk/nextjs';
 import { X, AlertTriangle, Check } from "lucide-react";

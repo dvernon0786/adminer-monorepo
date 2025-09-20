@@ -3,7 +3,7 @@ import { useUser } from '@clerk/nextjs';
 import { useQuota } from '../../hooks/useQuota';
 import { useAnalysesStats } from '../../hooks/useAnalysesStats';
 import { QuotaBanner } from '../../components/QuotaBanner';
-import QuotaExceededModal from '../../components/dashboard/QuotaExceededModal';
+import DirectCheckoutModal from '../../components/dashboard/DirectCheckoutModal';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import JobsTable from '../../components/dashboard/JobsTable';
 import StartJobForm from '../../components/dashboard/StartJobForm';
@@ -86,7 +86,7 @@ export default function Dashboard() {
     if (error.includes('quota exceeded') || error.includes('Quota exceeded')) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-          <QuotaExceededModal
+          <DirectCheckoutModal
             isOpen={true}
             currentPlan={quota?.plan || 'free'}
             quota={quota || { used: 0, limit: 10, percentage: 0 }}
@@ -137,7 +137,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Quota Exceeded Modal */}
-      <QuotaExceededModal
+      <DirectCheckoutModal
         isOpen={showQuotaModal}
         currentPlan={quota?.plan || 'free'}
         quota={quota || { used: 0, limit: 10, percentage: 0 }}
