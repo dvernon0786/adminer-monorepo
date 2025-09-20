@@ -19,12 +19,23 @@ export default function Dashboard() {
   const { user } = useUser();
   const { data: quota, loading, error } = useQuota();
   const { data: stats, loading: statsLoading, error: statsError } = useAnalysesStats();
+  
+  // V4 DEBUG: Track render count to identify infinite loop
+  const renderCount = React.useRef(0);
+  renderCount.current += 1;
+
+  // V4 FIX: Prevent infinite render loop
+  if (renderCount.current > 10) {
+    console.error('🚨 INFINITE_LOOP_DETECTED: Dashboard rendering too many times');
+    return <div>Error: Infinite render loop detected</div>;
+  }
 
   console.log('🚀 DASHBOARD_COMPONENT_LOADED:', {
     quota,
     loading,
     error,
-    timestamp: new Date().toISOString()
+    timestamp: new Date().toISOString(),
+    renderCount: renderCount.current
   });
 
   // Mock data for dashboard components
@@ -32,25 +43,7 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('all');
   const [showQuotaModal, setShowQuotaModal] = useState(false);
 
-  // Show quota exceeded modal when quota is at 100%
-  useEffect(() => {
-    console.log('🔍 QUOTA_MODAL_CHECK:', {
-      quota: quota,
-      percentage: quota?.percentage,
-      shouldShow: quota && quota.percentage >= 100,
-      timestamp: new Date().toISOString(),
-      showQuotaModal: showQuotaModal
-    });
-    
-    if (quota && quota.percentage >= 100) {
-      console.log('🚨 QUOTA_MODAL_TRIGGERED: Setting showQuotaModal to true');
-      setShowQuotaModal(true);
-    } else {
-      console.log('ℹ️ QUOTA_MODAL_NOT_TRIGGERED:', {
-        reason: !quota ? 'quota is null' : `percentage is ${quota.percentage} (not >= 100)`
-      });
-    }
-  }, [quota]);
+  // V4 FIX: Removed duplicate quota modal check to prevent conflicts
 
 
   // Mock analyses data
@@ -77,28 +70,13 @@ export default function Dashboard() {
   console.log("DESIGN-SYSTEM-DASHBOARD: Quota data:", quota);
   console.log("DESIGN-SYSTEM-DASHBOARD: Stats data:", stats);
   
-  // TEMPORARY: Force modal for testing V4 QuotaUpgradeModal
+  // V4 FIX: Simplified modal trigger - no infinite loops
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setTimeout(() => {
-        console.log('🧪 FORCED_MODAL_TEST: Testing QuotaUpgradeModal');
-        // Uncomment the line below to force modal for testing
-        // setShowQuotaModal(true);
-      }, 2000);
-    }
-  }, []);
-  if (quota && quota.percentage >= 100 && !showQuotaModal) {
-    console.log("🧪 MANUAL_TEST: Forcing modal to show for V3 testing");
-    setShowQuotaModal(true);
-  }
-
-  // IMMEDIATE TEST: Force modal to show if quota is 100%
-  React.useEffect(() => {
-    if (quota && quota.percentage >= 100) {
-      console.log("🔥 IMMEDIATE_TEST: Quota is 100%, forcing modal immediately");
+    if (quota && quota.percentage >= 100 && !showQuotaModal) {
+      console.log('🎯 V4_MODAL_TRIGGER: Quota is 100%, showing QuotaUpgradeModal');
       setShowQuotaModal(true);
     }
-  }, [quota]);
+  }, [quota, showQuotaModal]);
 
   if (loading || statsLoading) {
     return (
