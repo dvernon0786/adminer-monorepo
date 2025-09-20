@@ -43,7 +43,7 @@ export default function Dashboard() {
         reason: !quota ? 'quota is null' : `percentage is ${quota.percentage} (not >= 100)`
       });
     }
-  }, [quota, showQuotaModal]);
+  }, [quota]);
 
 
   // Mock analyses data
@@ -69,6 +69,12 @@ export default function Dashboard() {
   console.log("DESIGN-SYSTEM-DASHBOARD: Component executing...");
   console.log("DESIGN-SYSTEM-DASHBOARD: Quota data:", quota);
   console.log("DESIGN-SYSTEM-DASHBOARD: Stats data:", stats);
+  
+  // MANUAL TEST: Force modal to show for testing V3 component
+  if (quota && quota.percentage >= 100 && !showQuotaModal) {
+    console.log("🧪 MANUAL_TEST: Forcing modal to show for V3 testing");
+    setShowQuotaModal(true);
+  }
 
   if (loading || statsLoading) {
     return (
