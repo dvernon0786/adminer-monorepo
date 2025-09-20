@@ -20,6 +20,13 @@ export default function Dashboard() {
   const { data: quota, loading, error } = useQuota();
   const { data: stats, loading: statsLoading, error: statsError } = useAnalysesStats();
 
+  console.log('🚀 DASHBOARD_COMPONENT_LOADED:', {
+    quota,
+    loading,
+    error,
+    timestamp: new Date().toISOString()
+  });
+
   // Mock data for dashboard components
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
@@ -75,6 +82,14 @@ export default function Dashboard() {
     console.log("🧪 MANUAL_TEST: Forcing modal to show for V3 testing");
     setShowQuotaModal(true);
   }
+
+  // IMMEDIATE TEST: Force modal to show if quota is 100%
+  React.useEffect(() => {
+    if (quota && quota.percentage >= 100) {
+      console.log("🔥 IMMEDIATE_TEST: Quota is 100%, forcing modal immediately");
+      setShowQuotaModal(true);
+    }
+  }, [quota]);
 
   if (loading || statsLoading) {
     return (
