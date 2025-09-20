@@ -78,6 +78,9 @@ export function useQuota() {
         },
       });
 
+      console.log('USE_QUOTA: API response status:', response.status);
+      console.log('USE_QUOTA: API response ok:', response.ok);
+
       if (!response.ok) {
         if (response.status === 401) {
           setNeedsAuth(true);
@@ -106,6 +109,7 @@ export function useQuota() {
       }
 
       const result = await response.json();
+      console.log('USE_QUOTA: API response body:', result);
       
       if (result.success && result.data) {
         console.log('USE_QUOTA: API response (per-ad quota):', result.data);
@@ -135,6 +139,7 @@ export function useQuota() {
         console.log('USE_QUOTA: Quota unit is ads_scraped, not jobs');
         
       } else {
+        console.log('USE_QUOTA: API response not successful:', result);
         setError(result.error || 'Failed to fetch quota');
       }
     } catch (e: any) {
