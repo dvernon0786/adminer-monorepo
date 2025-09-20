@@ -27,18 +27,23 @@ export default function Dashboard() {
 
   // Show quota exceeded modal when quota is at 100%
   useEffect(() => {
-    console.log('QUOTA_MODAL_CHECK:', {
+    console.log('🔍 QUOTA_MODAL_CHECK:', {
       quota: quota,
       percentage: quota?.percentage,
       shouldShow: quota && quota.percentage >= 100,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      showQuotaModal: showQuotaModal
     });
     
     if (quota && quota.percentage >= 100) {
-      console.log('QUOTA_MODAL_TRIGGERED: Setting showQuotaModal to true');
+      console.log('🚨 QUOTA_MODAL_TRIGGERED: Setting showQuotaModal to true');
       setShowQuotaModal(true);
+    } else {
+      console.log('ℹ️ QUOTA_MODAL_NOT_TRIGGERED:', {
+        reason: !quota ? 'quota is null' : `percentage is ${quota.percentage} (not >= 100)`
+      });
     }
-  }, [quota]);
+  }, [quota, showQuotaModal]);
 
 
   // Mock analyses data
@@ -137,6 +142,7 @@ export default function Dashboard() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Quota Exceeded Modal */}
+      {console.log('🎯 DASHBOARD_RENDER: showQuotaModal =', showQuotaModal, 'quota =', quota)}
       <DirectCheckoutModal
         isOpen={showQuotaModal}
         currentPlan={quota?.plan || 'free'}
