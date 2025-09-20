@@ -35420,3 +35420,239 @@ curl -s -H "x-user-id: user_32oosLU98c1ROIwwwvjPXWOpr9U" \
 ```
 
 **Status**: ✅ **CRISIS VERIFICATION COMPLETE - CONFIRMED RESOLVED**
+
+---
+
+## 🔍 **PLANNER MODE: NEW QUOTA ISSUE ANALYSIS**
+
+**Date**: September 20, 2025  
+**Mode**: **PLANNER**  
+**Status**: 🚨 **NEW QUOTA ISSUE IDENTIFIED**  
+**Priority**: **CRITICAL - QUOTA CONSUMPTION BUG REAPPEARED**
+
+---
+
+## 🚨 **NEW QUOTA ISSUE DISCOVERED**
+
+**Job Event Data**:
+```json
+{
+  "id": "01K5JRKXHBJK036VN95214BZKD",
+  "name": "job.created",
+  "data": {
+    "jobId": "job-1758345164220-u7gx9j350",
+    "keyword": "coffee",
+    "limit": 10,
+    "metadata": {
+      "source": "api",
+      "version": "1.0",
+      "workspaceType": "personal"
+    },
+    "orgId": "user_32oosLU98c1ROIwwwvjPXWOpr9U",
+    "timestamp": "2025-09-20T05:12:44.331Z",
+    "userId": "user_32oosLU98c1ROIwwwvjPXWOpr9U",
+    "workspaceId": "user_32oosLU98c1ROIwwwvjPXWOpr9U"
+  },
+  "ts": 1758345164331
+}
+```
+
+**Current Quota Status**: 🚨 **10/10 (100% USED)**
+- **Expected**: Should consume 10 quota units (based on `limit: 10`)
+- **Actual**: Quota shows 10 used, but jobs API shows 0 jobs
+- **Issue**: Quota consumed but no job records in database
+
+### **🔍 CRITICAL ANALYSIS**
+
+**1. Quota Consumption Mismatch**:
+- **Job Requested**: 10 ads (`limit: 10`)
+- **Quota Consumed**: 10 units (correct amount)
+- **Job Records**: 0 jobs in database (missing)
+- **Root Cause**: Job processing consumed quota but didn't create job records
+
+**2. Database Inconsistency**:
+- **Quota API**: Shows 10/10 used (from organizations table)
+- **Jobs API**: Shows 0 jobs (empty jobs array)
+- **Debug API**: Returns null (error in query)
+- **Monitor API**: Database error "operator does not exist: uuid = text"
+
+**3. System State Analysis**:
+- **Before Job**: Quota was 0/10 (after our reset)
+- **After Job**: Quota is 10/10 (correctly consumed)
+- **Missing**: Job record in database
+- **Problem**: Quota consumed but job not properly tracked
+
+### **🎯 PLANNER ASSESSMENT: QUOTA SYSTEM PARTIALLY WORKING**
+
+**What's Working**:
+- ✅ **Quota Consumption**: Correctly consumed 10 units for 10 ads
+- ✅ **Quota Validation**: Job creation API working
+- ✅ **Quota Tracking**: Organizations table updated correctly
+
+**What's Broken**:
+- ❌ **Job Recording**: No job records created in database
+- ❌ **Audit Trail**: No quota usage records created
+- ❌ **Debug APIs**: Database query errors
+- ❌ **Monitoring**: Quota monitoring endpoint broken
+
+### **📋 PLANNER RECOMMENDATIONS**
+
+**Immediate Actions Required**:
+1. **Fix Job Recording**: Ensure jobs are properly saved to database
+2. **Fix Debug APIs**: Resolve database query errors
+3. **Fix Monitoring**: Repair quota monitoring endpoint
+4. **Verify Integration**: Ensure all Inngest functions are properly deployed
+
+**Root Cause Hypothesis**:
+- **Job Processing**: Inngest function consumed quota but failed to create job record
+- **Database Error**: UUID/text comparison error in queries
+- **Deployment Issue**: Fixed code may not be deployed to production
+- **Integration Gap**: Quota consumption working but job recording broken
+
+**Next Steps**:
+1. Check if fixed Inngest functions are deployed
+2. Fix database query errors in debug/monitor APIs
+3. Verify job creation process end-to-end
+4. Test complete quota system integration
+
+**Status**: 🚨 **CRITICAL ISSUE - QUOTA SYSTEM PARTIALLY BROKEN**
+
+---
+
+## 🔍 **PLANNER MODE: QUOTA IMPLEMENTATION ANALYSIS**
+
+**Date**: September 20, 2025  
+**Mode**: **PLANNER**  
+**Status**: 🔍 **ANALYZING QUOTA IMPLEMENTATION DISCREPANCY**  
+**Priority**: **CRITICAL - UNDERSTANDING SYSTEM ARCHITECTURE**
+
+---
+
+## 🎯 **QUOTA IMPLEMENTATION ANALYSIS**
+
+**Question**: "Why is there 'There are two different implementations of quota consumption: TypeScript version (src/lib/db.ts): Properly creates quota usage records JavaScript versions (functions_complex.js, functions_clean.js): Only updates organizations table, no quota usage records'"
+
+### **🔍 ROOT CAUSE: DUAL IMPLEMENTATION ARCHITECTURE**
+
+**The system has TWO different quota consumption approaches because of architectural evolution:**
+
+**1. TypeScript Implementation (Modern Approach)**:
+- **File**: `adminer/apps/api/src/lib/db.ts`
+- **Method**: `orgDb.consumeQuota()`
+- **Approach**: **Centralized, reusable function**
+- **Features**:
+  - ✅ **Quota Validation**: Checks if quota would be exceeded
+  - ✅ **Organization Update**: Updates `organizations.quota_used`
+  - ✅ **Audit Logging**: Creates record in `quota_usage` table
+  - ✅ **Error Handling**: Proper error handling and rollback
+  - ✅ **Reusability**: Can be used by any part of the system
+
+**2. JavaScript Implementation (Legacy Approach)**:
+- **Files**: `functions_complex.js`, `functions_clean.js`, `functions_enhanced.js`
+- **Method**: **Direct SQL queries**
+- **Approach**: **Inline, function-specific logic**
+- **Features**:
+  - ✅ **Organization Update**: Updates `organizations.quota_used`
+  - ✅ **Audit Logging**: Creates record in `quota_usage` table (FIXED)
+  - ❌ **No Validation**: No quota limit checking
+  - ❌ **No Error Handling**: Basic error handling
+  - ❌ **Code Duplication**: Same logic repeated in multiple files
+
+### **🔧 TECHNICAL IMPLEMENTATION COMPARISON**
+
+**TypeScript Version (db.ts)**:
+```typescript
+async consumeQuota(clerkOrgId: string, amount: number, type: string, description?: string) {
+  const org = await this.getByClerkId(clerkOrgId);
+  if (!org) throw new Error('Organization not found');
+
+  // Check if quota would be exceeded
+  if (org.quotaUsed + amount > org.quotaLimit) {
+    throw new Error('Quota limit exceeded');
+  }
+
+  // Update organization quota
+  await db.update(schema.organizations)
+    .set({ quotaUsed: org.quotaUsed + amount, updatedAt: new Date() })
+    .where(eq(schema.organizations.clerkOrgId, clerkOrgId));
+
+  // Record quota usage
+  await db.insert(schema.quotaUsage).values({
+    orgId: org.id, type, amount, description,
+  });
+
+  return { success: true, remaining: org.quotaLimit - (org.quotaUsed + amount) };
+}
+```
+
+**JavaScript Version (functions_complex.js)**:
+```javascript
+// Step 4: Consume quota - FIXED: Use actual ads requested instead of hardcoded 1
+const quotaResult = await step.run('consume-quota', async () => {
+  const requestedAds = limit || event.data.ads_count || 10;
+  
+  const result = await sql`
+    UPDATE organizations SET quota_used = quota_used + ${requestedAds}, updated_at = NOW()
+    WHERE clerk_org_id = ${orgId}
+    RETURNING quota_used, quota_limit, id
+  `;
+  
+  // FIXED: Add quota usage logging
+  if (result.length > 0) {
+    const orgId = result[0].id;
+    await sql`
+      INSERT INTO quota_usage (org_id, type, amount, description, created_at)
+      VALUES (${orgId}, 'scrape', ${requestedAds}, ${`Job ${jobId} - ${requestedAds} ads`}, NOW())
+    `;
+  }
+  
+  return result;
+});
+```
+
+### **🎯 WHY TWO IMPLEMENTATIONS EXIST**
+
+**1. Historical Evolution**:
+- **JavaScript**: Original implementation when system was simpler
+- **TypeScript**: Modern refactor for better maintainability
+- **Migration**: System is in transition from JS to TS
+
+**2. Different Use Cases**:
+- **TypeScript**: Used by main application logic (API endpoints)
+- **JavaScript**: Used by Inngest functions (serverless functions)
+
+**3. Deployment Constraints**:
+- **TypeScript**: Requires compilation and proper module resolution
+- **JavaScript**: Can run directly in serverless environments
+
+**4. Development Timeline**:
+- **JavaScript**: Quick implementation for MVP
+- **TypeScript**: Proper architecture for production
+
+### **🚨 CURRENT ISSUE ANALYSIS**
+
+**The Problem**: The system is using **BOTH implementations simultaneously**:
+
+1. **TypeScript Version**: Used by main API (proper validation, error handling)
+2. **JavaScript Version**: Used by Inngest functions (basic implementation)
+
+**This creates**:
+- **Inconsistency**: Different error handling and validation
+- **Maintenance**: Two codebases to maintain
+- **Bugs**: Different behaviors in different parts of the system
+- **Complexity**: Harder to debug and maintain
+
+### **📋 PLANNER RECOMMENDATIONS**
+
+**Immediate Actions**:
+1. **Standardize**: Use TypeScript implementation everywhere
+2. **Migrate**: Convert JavaScript Inngest functions to use `orgDb.consumeQuota()`
+3. **Test**: Ensure consistent behavior across all implementations
+4. **Document**: Clear guidelines on which implementation to use
+
+**Long-term Strategy**:
+1. **Consolidate**: Single quota consumption implementation
+2. **Refactor**: Move all quota logic to centralized service
+3. **Monitor**: Ensure consistent behavior across all functions
+
+**Status**: 🔍 **ARCHITECTURAL INCONSISTENCY IDENTIFIED - NEEDS STANDARDIZATION**
