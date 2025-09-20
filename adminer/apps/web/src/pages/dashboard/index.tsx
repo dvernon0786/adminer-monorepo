@@ -24,7 +24,6 @@ export default function Dashboard() {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeTab, setActiveTab] = useState('all');
   const [showQuotaModal, setShowQuotaModal] = useState(false);
-  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
 
   // Show quota exceeded modal when quota is at 100%
   useEffect(() => {
@@ -41,81 +40,6 @@ export default function Dashboard() {
     }
   }, [quota]);
 
-  // FIXED: Direct checkout instead of pricing page redirect
-  const handleUpgrade = async (plan: string) => {
-    console.log('DASHBOARD_HANDLE_UPGRADE_CALLED:', {
-      plan,
-      timestamp: new Date().toISOString(),
-      source: 'Dashboard handleUpgrade',
-      user: user?.id || 'anonymous'
-    });
-    
-    if (plan === 'contact-sales') {
-      window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry&body=I am interested in the Enterprise plan for increased ad scraping capacity.', '_blank');
-      return;
-    }
-
-    try {
-      setUpgradeLoading(plan);
-      
-      console.log('QUOTA_MODAL_UPGRADE:', {
-        currentPlan: quota?.plan || 'free',
-        targetPlan: plan,
-        userEmail: user?.emailAddresses[0]?.emailAddress,
-        timestamp: new Date().toISOString()
-      });
-
-      // Determine plan code for Dodo API
-      const planCode = plan === 'pro' ? 'pro-500' : 'ent-2000';
-      
-      // CRITICAL FIX: Call Dodo checkout API directly
-      const response = await fetch('/api/dodo/checkout', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-user-id': user?.id || '',
-          'x-workspace-id': user?.id || ''
-        },
-        body: JSON.stringify({
-          plan: planCode,
-          email: user?.emailAddresses[0]?.emailAddress,
-          orgName: user?.fullName || 'Personal Workspace'
-        })
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.error || 'Failed to create checkout session');
-      }
-
-      console.log('QUOTA_MODAL_CHECKOUT_SUCCESS:', {
-        checkoutUrl: data.checkout_url,
-        sessionId: data.session_id,
-        planCode
-      });
-
-      if (data.immediate_activation) {
-        // Free plan activated immediately
-        window.location.href = data.redirect_url || '/dashboard?plan=free&activated=true';
-      } else if (data.checkout_url) {
-        // FIXED: Direct redirect to Dodo checkout (NO PRICING PAGE)
-        window.location.href = data.checkout_url;
-      } else {
-        throw new Error('No checkout URL provided');
-      }
-
-    } catch (error) {
-      console.error('QUOTA_MODAL_UPGRADE_ERROR:', error);
-      
-      // Graceful fallback: redirect to pricing page if checkout fails
-      console.log('QUOTA_MODAL_FALLBACK: Redirecting to pricing page');
-      window.location.href = `/pricing?plan=${plan}&error=checkout_failed`;
-      
-    } finally {
-      setUpgradeLoading(null);
-    }
-  };
 
   // Mock analyses data
   const mockAnalyses = [
@@ -165,9 +89,7 @@ export default function Dashboard() {
           <QuotaExceededModal
             isOpen={true}
             currentPlan={quota?.plan || 'free'}
-            quotaUsed={quota?.used || 0}
-            quotaLimit={quota?.limit || 10}
-            onUpgrade={handleUpgrade}
+            quota={quota || { used: 0, limit: 10, percentage: 0 }}
             onClose={() => {}} // Don't allow closing when quota exceeded
           />
         </div>
@@ -218,11 +140,8 @@ export default function Dashboard() {
       <QuotaExceededModal
         isOpen={showQuotaModal}
         currentPlan={quota?.plan || 'free'}
-        quotaUsed={quota?.used || 0}
-        quotaLimit={quota?.limit || 10}
-        onUpgrade={handleUpgrade}
+        quota={quota || { used: 0, limit: 10, percentage: 0 }}
         onClose={() => setShowQuotaModal(false)}
-        loading={upgradeLoading}
       />
       {/* Dashboard Header */}
       <DashboardHeader

@@ -1,124 +1,107 @@
-import React from "react";
+import React, { useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import { X, AlertTriangle, Check } from "lucide-react";
 
 interface QuotaExceededModalProps {
   isOpen: boolean;
-  currentPlan: 'free' | 'pro' | 'enterprise';
-  quotaUsed: number;
-  quotaLimit: number;
-  onUpgrade: (plan: string) => void;
   onClose: () => void;
-  loading?: string | null;
+  currentPlan: string;
+  quota: {
+    used: number;
+    limit: number;
+    percentage: number;
+  };
 }
 
-const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
-  isOpen,
-  currentPlan,
-  quotaUsed,
-  quotaLimit,
-  onUpgrade,
-  onClose,
-  loading = null
-}) => {
+export default function QuotaExceededModal({ isOpen, onClose, currentPlan, quota }: QuotaExceededModalProps) {
+  const { user } = useUser();
+  const [loading, setLoading] = useState<string | null>(null);
+
   console.log('QUOTA_MODAL_RENDER:', {
     isOpen,
     currentPlan,
-    quotaUsed,
-    quotaLimit,
+    quota,
     timestamp: new Date().toISOString()
   });
-  
+
   if (!isOpen) return null;
 
+  // DEFINITIVE FIX: Direct Dodo checkout API call - NO PRICING REDIRECTS
+  const handleDirectCheckout = async (targetPlan: string) => {
+    try {
+      setLoading(targetPlan);
+      
+      console.log('QUOTA_MODAL_DIRECT_CHECKOUT:', {
+        targetPlan,
+        currentPlan,
+        userEmail: user?.emailAddresses[0]?.emailAddress,
+        timestamp: new Date().toISOString(),
+        source: 'QuotaExceededModal_DIRECT_CHECKOUT'
+      });
+
+      // Map plan names to plan codes
+      const planCode = targetPlan === 'pro' ? 'pro-500' : 'ent-2000';
+      
+      // CRITICAL: Call Dodo checkout API directly - NEVER redirect to pricing
+      const response = await fetch('/api/dodo/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id || '',
+          'x-workspace-id': user?.id || ''
+        },
+        body: JSON.stringify({
+          plan: planCode,
+          email: user?.emailAddresses[0]?.emailAddress,
+          orgName: user?.fullName || 'Personal Workspace'
+        })
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || `HTTP ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      console.log('QUOTA_MODAL_CHECKOUT_API_SUCCESS:', {
+        sessionId: data.session_id,
+        checkoutUrl: data.checkout_url ? 'GENERATED' : 'MISSING',
+        immediateActivation: data.immediate_activation || false
+      });
+
+      if (data.immediate_activation) {
+        // Free plan - immediate activation
+        console.log('QUOTA_MODAL_FREE_PLAN_ACTIVATION');
+        window.location.href = data.redirect_url || '/dashboard?plan=free&activated=true';
+        return;
+      }
+
+      if (!data.checkout_url) {
+        throw new Error('No checkout URL provided by API');
+      }
+
+      // DIRECT REDIRECT TO DODO CHECKOUT - NO PRICING PAGE
+      console.log('QUOTA_MODAL_REDIRECTING_TO_CHECKOUT:', data.checkout_url);
+      window.location.href = data.checkout_url;
+
+    } catch (error) {
+      console.error('QUOTA_MODAL_CHECKOUT_ERROR:', {
+        error: error.message,
+        targetPlan,
+        timestamp: new Date().toISOString()
+      });
+      
+      // Show user-friendly error instead of redirecting to pricing
+      alert(`Checkout failed: ${error.message}. Please try again or contact support at support@adminer.online`);
+      
+    } finally {
+      setLoading(null);
+    }
+  };
+
   const getUpgradeMessage = () => {
-    switch (currentPlan) {
-      case 'free':
-        return `You've used ${quotaUsed}/${quotaLimit} ads. Upgrade to Pro for 500 ads/month.`;
-      case 'pro':
-        return `You've used ${quotaUsed}/${quotaLimit} ads. Upgrade to Enterprise for 2000 ads/month.`;
-      case 'enterprise':
-        return `You've reached your ${quotaLimit} ads limit. Contact sales for higher limits.`;
-      default:
-        return 'Upgrade needed.';
-    }
-  };
-
-  const getUpgradeOptions = () => {
-    switch (currentPlan) {
-      case 'free':
-        return [
-          { 
-            plan: 'pro', 
-            price: '$99', 
-            period: '/month',
-            ads: '500 ads/month', 
-            features: [
-              '500 competitor analyses',
-              'Advanced insights', 
-              'Priority analysis',
-              'Multi-result export'
-            ] 
-          },
-          { 
-            plan: 'enterprise', 
-            price: '$199', 
-            period: '/month',
-            ads: '2000 ads/month', 
-            features: [
-              '2000 competitor analyses',
-              'Team seats',
-              'SLA support', 
-              'Custom reports'
-            ] 
-          }
-        ];
-      case 'pro':
-        return [
-          { 
-            plan: 'enterprise', 
-            price: '$199', 
-            period: '/month',
-            ads: '2000 ads/month', 
-            features: [
-              '2000 competitor analyses',
-              'Team seats',
-              'SLA support', 
-              'Custom reports'
-            ] 
-          }
-        ];
-      case 'enterprise':
-        return [
-          { 
-            plan: 'contact-sales', 
-            price: 'Custom', 
-            period: '',
-            ads: 'Unlimited', 
-            features: [
-              'Custom limits',
-              'White-label options',
-              'Dedicated account manager',
-              'Priority support'
-            ] 
-          }
-        ];
-      default:
-        return [];
-    }
-  };
-
-  const handleUpgrade = (plan: string) => {
-    console.log('QUOTA_MODAL_UPGRADE_CLICKED:', {
-      plan,
-      timestamp: new Date().toISOString(),
-      source: 'QuotaExceededModal'
-    });
-    
-    if (plan === 'contact-sales') {
-      window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry', '_blank');
-    } else {
-      onUpgrade(plan);
-    }
+    return `You've used ${quota.used}/${quota.limit} ads (${quota.percentage}% of your ${currentPlan} plan). Upgrade now to continue scraping with higher limits.`;
   };
 
   return (
@@ -155,40 +138,88 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
 
         {/* Upgrade Options */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6 p-6 md:p-8 pt-0">
-          {getUpgradeOptions().map((option) => (
-            <div key={option.plan} className="rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col gap-4 hover:border-white/20 transition-colors">
-              <div className="flex items-center justify-between">
-                <h3 className="text-lg font-semibold capitalize">{option.plan.replace('-', ' ')}</h3>
-                {option.plan === 'pro' && (
-                  <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/20">Most Popular</span>
-                )}
-              </div>
-              
-              <div className="text-3xl font-bold">
-                {option.price}
-                <span className="text-base text-neutral-400">{option.period}</span>
-              </div>
-              
-              <div className="text-lg text-blue-400 font-medium">{option.ads}</div>
-              
-              <ul className="space-y-2 text-sm text-neutral-300 flex-grow">
-                {option.features.map((feature, index) => (
-                  <li key={index} className="flex items-center gap-2">
-                    <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
-                    {feature}
-                  </li>
-                ))}
-              </ul>
-              
-              <button
-                onClick={() => handleUpgrade(option.plan)}
-                disabled={loading === option.plan}
-                className="mt-auto gradient-btn text-center py-2.5 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
-              >
-                {loading === option.plan ? 'Creating checkout...' : (option.plan === 'contact-sales' ? 'Contact Sales' : 'Upgrade Now')}
-              </button>
+          {/* Pro Plan Option */}
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col gap-4 hover:border-white/20 transition-colors">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Pro Plan</h3>
+              <span className="text-xs px-2 py-1 rounded-full bg-white/10 border border-white/20">Most Popular</span>
             </div>
-          ))}
+            
+            <div className="text-3xl font-bold">
+              $99
+              <span className="text-base text-neutral-400">/month</span>
+            </div>
+            
+            <div className="text-lg text-blue-400 font-medium">500 ads/month</div>
+            
+            <ul className="space-y-2 text-sm text-neutral-300 flex-grow">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                500 competitor analyses
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                Advanced insights
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                Priority analysis
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                Multi-result export
+              </li>
+            </ul>
+            
+            <button
+              onClick={() => handleDirectCheckout('pro')}
+              disabled={loading === 'pro'}
+              className="mt-auto gradient-btn text-center py-2.5 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading === 'pro' ? 'Creating secure checkout...' : 'Upgrade to Pro - $99/month'}
+            </button>
+          </div>
+
+          {/* Enterprise Plan Option */}
+          <div className="rounded-2xl border border-white/10 bg-white/5 p-6 flex flex-col gap-4 hover:border-white/20 transition-colors">
+            <div className="flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Enterprise Plan</h3>
+            </div>
+            
+            <div className="text-3xl font-bold">
+              $199
+              <span className="text-base text-neutral-400">/month</span>
+            </div>
+            
+            <div className="text-lg text-blue-400 font-medium">2000 ads/month</div>
+            
+            <ul className="space-y-2 text-sm text-neutral-300 flex-grow">
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                2000 competitor analyses
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                Team seats
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                SLA support
+              </li>
+              <li className="flex items-center gap-2">
+                <Check className="w-4 h-4 text-green-400 flex-shrink-0" />
+                Custom reports
+              </li>
+            </ul>
+            
+            <button
+              onClick={() => handleDirectCheckout('enterprise')}
+              disabled={loading === 'enterprise'}
+              className="mt-auto gradient-btn text-center py-2.5 rounded-md font-medium hover:opacity-90 transition-opacity disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              {loading === 'enterprise' ? 'Creating secure checkout...' : 'Upgrade to Enterprise - $199/month'}
+            </button>
+          </div>
         </div>
 
         {/* Footer */}
@@ -200,6 +231,4 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
       </div>
     </div>
   );
-};
-
-export default QuotaExceededModal;
+}
