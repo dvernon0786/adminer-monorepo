@@ -100,6 +100,12 @@ const QuotaExceededModal: React.FC<QuotaExceededModalProps> = ({
   };
 
   const handleUpgrade = (plan: string) => {
+    console.log('QUOTA_MODAL_UPGRADE_CLICKED:', {
+      plan,
+      timestamp: new Date().toISOString(),
+      source: 'QuotaExceededModal'
+    });
+    
     if (plan === 'contact-sales') {
       window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry', '_blank');
     } else {

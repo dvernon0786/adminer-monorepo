@@ -35,6 +35,13 @@ export default function Dashboard() {
 
   // FIXED: Direct checkout instead of pricing page redirect
   const handleUpgrade = async (plan: string) => {
+    console.log('DASHBOARD_HANDLE_UPGRADE_CALLED:', {
+      plan,
+      timestamp: new Date().toISOString(),
+      source: 'Dashboard handleUpgrade',
+      user: user?.id || 'anonymous'
+    });
+    
     if (plan === 'contact-sales') {
       window.open('mailto:sales@adminer.online?subject=Enterprise Plan Inquiry&body=I am interested in the Enterprise plan for increased ad scraping capacity.', '_blank');
       return;

@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useUser } from '@clerk/nextjs';
 import type { QuotaData } from "@/hooks/useQuota";
 
 interface QuotaPaywallProps {
@@ -7,7 +8,74 @@ interface QuotaPaywallProps {
 }
 
 export default function QuotaPaywall({ quota, onUpgrade }: QuotaPaywallProps) {
+  const { user } = useUser();
+  const [upgradeLoading, setUpgradeLoading] = useState<string | null>(null);
+
   if (!quota) return null;
+
+  // FIXED: Direct checkout instead of pricing page redirect
+  const handleUpgrade = async (plan: string) => {
+    try {
+      setUpgradeLoading(plan);
+      
+      console.log('QUOTA_PAYWALL_UPGRADE:', {
+        currentPlan: quota?.plan || 'free',
+        targetPlan: plan,
+        userEmail: user?.emailAddresses[0]?.emailAddress,
+        timestamp: new Date().toISOString()
+      });
+
+      // Determine plan code for Dodo API
+      const planCode = plan === 'pro' ? 'pro-500' : 'ent-2000';
+      
+      // CRITICAL FIX: Call Dodo checkout API directly
+      const response = await fetch('/api/dodo/checkout', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-user-id': user?.id || '',
+          'x-workspace-id': user?.id || ''
+        },
+        body: JSON.stringify({
+          plan: planCode,
+          email: user?.emailAddresses[0]?.emailAddress,
+          orgName: user?.fullName || 'Personal Workspace'
+        })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Failed to create checkout session');
+      }
+
+      console.log('QUOTA_PAYWALL_CHECKOUT_SUCCESS:', {
+        checkoutUrl: data.checkout_url,
+        sessionId: data.session_id,
+        planCode
+      });
+
+      if (data.immediate_activation) {
+        // Free plan activated immediately
+        window.location.href = data.redirect_url || '/dashboard?plan=free&activated=true';
+      } else if (data.checkout_url) {
+        // FIXED: Direct redirect to Dodo checkout (NO PRICING PAGE)
+        window.location.href = data.checkout_url;
+      } else {
+        throw new Error('No checkout URL provided');
+      }
+
+    } catch (error) {
+      console.error('QUOTA_PAYWALL_UPGRADE_ERROR:', error);
+      
+      // Graceful fallback: redirect to pricing page if checkout fails
+      console.log('QUOTA_PAYWALL_FALLBACK: Redirecting to pricing page');
+      window.location.href = `/pricing?plan=${plan}&error=checkout_failed`;
+      
+    } finally {
+      setUpgradeLoading(null);
+    }
+  };
 
   return (
     <div className="p-6 bg-gradient-to-r from-red-50 to-orange-50 border border-red-200 rounded-lg">
@@ -26,13 +94,20 @@ export default function QuotaPaywall({ quota, onUpgrade }: QuotaPaywallProps) {
       </div>
       
       <div className="mt-4 flex space-x-3">
-        <a
-          href="/pricing"
-          onClick={onUpgrade}
-          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"
+        <button
+          onClick={() => handleUpgrade('pro')}
+          disabled={upgradeLoading === 'pro'}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-red-600 hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Upgrade Now
-        </a>
+          {upgradeLoading === 'pro' ? 'Creating checkout...' : 'Upgrade to Pro Now'}
+        </button>
+        <button
+          onClick={() => handleUpgrade('enterprise')}
+          disabled={upgradeLoading === 'enterprise'}
+          className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {upgradeLoading === 'enterprise' ? 'Creating checkout...' : 'Upgrade to Enterprise'}
+        </button>
         <a
           href="/billing"
           className="inline-flex items-center px-4 py-2 border border-red-300 text-sm font-medium rounded-md text-red-700 bg-white hover:bg-red-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-red-500"

@@ -28,6 +28,16 @@ export default function Pricing() {
   const { user } = useAuth()
   const { workspace } = useSafeWorkspace()
   const [upgrading, setUpgrading] = useState<string | null>(null)
+
+  // Debug logging to track pricing page access
+  console.log('PRICING_PAGE_ACCESS:', {
+    timestamp: new Date().toISOString(),
+    userAgent: navigator.userAgent,
+    referrer: document.referrer,
+    url: window.location.href,
+    user: user?.id || 'anonymous',
+    source: 'Pricing component render'
+  });
   
   const plans = [
     {
