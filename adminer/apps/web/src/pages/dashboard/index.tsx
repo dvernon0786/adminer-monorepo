@@ -3,7 +3,7 @@ import { useUser } from '@clerk/nextjs';
 import { useQuota } from '../../hooks/useQuota';
 import { useAnalysesStats } from '../../hooks/useAnalysesStats';
 import { QuotaBanner } from '../../components/QuotaBanner';
-import DirectCheckoutModal from '../../components/dashboard/DirectCheckoutModal';
+import QuotaUpgradeModal from '../../components/modals/QuotaUpgradeModal';
 import DashboardHeader from '../../components/dashboard/DashboardHeader';
 import JobsTable from '../../components/dashboard/JobsTable';
 import StartJobForm from '../../components/dashboard/StartJobForm';
@@ -77,7 +77,16 @@ export default function Dashboard() {
   console.log("DESIGN-SYSTEM-DASHBOARD: Quota data:", quota);
   console.log("DESIGN-SYSTEM-DASHBOARD: Stats data:", stats);
   
-  // MANUAL TEST: Force modal to show for testing V3 component
+  // TEMPORARY: Force modal for testing V4 QuotaUpgradeModal
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setTimeout(() => {
+        console.log('🧪 FORCED_MODAL_TEST: Testing QuotaUpgradeModal');
+        // Uncomment the line below to force modal for testing
+        // setShowQuotaModal(true);
+      }, 2000);
+    }
+  }, []);
   if (quota && quota.percentage >= 100 && !showQuotaModal) {
     console.log("🧪 MANUAL_TEST: Forcing modal to show for V3 testing");
     setShowQuotaModal(true);
@@ -164,9 +173,8 @@ export default function Dashboard() {
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
       {/* Quota Exceeded Modal */}
       {console.log('🎯 DASHBOARD_RENDER: showQuotaModal =', showQuotaModal, 'quota =', quota)}
-      <DirectCheckoutModal
+      <QuotaUpgradeModal
         isOpen={showQuotaModal}
-        currentPlan={quota?.plan || 'free'}
         quota={quota || { used: 0, limit: 10, percentage: 0 }}
         onClose={() => setShowQuotaModal(false)}
       />
