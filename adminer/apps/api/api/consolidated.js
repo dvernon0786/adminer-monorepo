@@ -1428,11 +1428,17 @@ module.exports = async function handler(req, res) {
   } else if (path === '/api/dodo/checkout') {
     // Handle Dodo checkout requests
     try {
+      console.log('DODO_CHECKOUT_ROUTE_HIT:', { path, method: req.method, timestamp: new Date().toISOString() });
+      
       const { neon } = require('@neondatabase/serverless');
       const { DodoClient } = require('../src/lib/dodo.js');
 
+      console.log('DODO_CHECKOUT_DEPENDENCIES_LOADED:', { neon: !!neon, DodoClient: !!DodoClient });
+
       const sql = neon(process.env.DATABASE_URL);
       const dodo = new DodoClient();
+
+      console.log('DODO_CHECKOUT_CLIENT_CREATED:', { sql: !!sql, dodo: !!dodo });
 
       // Set CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1481,13 +1487,18 @@ module.exports = async function handler(req, res) {
       const finalOrgId = orgId || userId;
 
       // Get or create organization
+      console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgName });
+      
       let org = await sql`
         SELECT * FROM organizations 
         WHERE clerk_org_id = ${finalOrgId} OR id = ${finalOrgId}
         LIMIT 1
       `;
 
+      console.log('DODO_CHECKOUT_DB_QUERY_RESULT:', { orgFound: !!org[0], orgCount: org.length });
+
       if (!org[0]) {
+        console.log('DODO_CHECKOUT_CREATING_ORG:', { finalOrgId, orgName });
         // Create organization if it doesn't exist
         org = await sql`
           INSERT INTO organizations (
@@ -1506,17 +1517,27 @@ module.exports = async function handler(req, res) {
             NOW()
           ) RETURNING *
         `;
+        console.log('DODO_CHECKOUT_ORG_CREATED:', { orgCreated: !!org[0] });
       }
 
       const organization = org[0];
+      console.log('DODO_CHECKOUT_ORG_FINAL:', { orgId: organization?.id, orgName: organization?.name });
 
       // Create checkout session
+      console.log('DODO_CHECKOUT_SESSION_START:', { plan, orgId: organization.id, orgName: organization.name, email });
+      
       const checkoutSession = await dodo.createCheckoutSession(
         plan,
         organization.id,
         organization.name,
         email
       );
+      
+      console.log('DODO_CHECKOUT_SESSION_RESULT:', { 
+        success: checkoutSession?.success, 
+        hasCheckoutUrl: !!checkoutSession?.checkout_url,
+        sessionId: checkoutSession?.session_id 
+      });
 
       // Log checkout session for tracking
       await sql`
