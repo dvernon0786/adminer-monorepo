@@ -1500,9 +1500,19 @@ module.exports = async function handler(req, res) {
         const finalOrgId = orgId || userId;
         
         // Generate a proper UUID for the organization if using Clerk user ID
-        const orgUuid = finalOrgId.startsWith('user_') ? 
-          `org_${finalOrgId.replace('user_', '')}` : 
-          finalOrgId;
+        // Convert Clerk user ID to a valid UUID format
+        const generateUuidFromClerkId = (clerkId) => {
+          if (clerkId.startsWith('user_')) {
+            // Extract the ID part and pad/truncate to create a valid UUID
+            const idPart = clerkId.replace('user_', '');
+            // Create a UUID-like string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
+            const padded = idPart.padEnd(32, '0').substring(0, 32);
+            return `${padded.substring(0,8)}-${padded.substring(8,12)}-${padded.substring(12,16)}-${padded.substring(16,20)}-${padded.substring(20,32)}`;
+          }
+          return clerkId;
+        };
+        
+        const orgUuid = generateUuidFromClerkId(finalOrgId);
 
         // Get or create organization
         console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgUuid, orgName });
@@ -1597,13 +1607,13 @@ module.exports = async function handler(req, res) {
         
         return res.status(200).json({
           success: true,
-          checkout_url: `https://app.dodopayments.com/checkout/mock-${Date.now()}`,
+          checkout_url: `https://app.dodopayments.com/signup?plan=${plan}`,
           session_id: `mock_${Date.now()}`,
           plan: {
             name: plan === 'pro-500' ? 'Pro Plan' : 'Enterprise Plan',
             price: plan === 'pro-500' ? 4900 : 19900
           },
-          message: 'Fallback mock checkout (database error) - redirecting to Dodo Payments',
+          message: 'Fallback checkout - redirecting to Dodo Payments signup',
           error: dbError.message
         });
       }
