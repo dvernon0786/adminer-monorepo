@@ -1425,21 +1425,20 @@ module.exports = async function handler(req, res) {
       success: false,
       error: 'Method not allowed'
     });
+  } else if (path === '/api/dodo/test') {
+    // Simple test endpoint for dodo checkout
+    res.status(200).json({
+      success: true,
+      message: 'Dodo test endpoint working',
+      timestamp: new Date().toISOString(),
+      path: path,
+      method: req.method
+    });
   } else if (path === '/api/dodo/checkout') {
-    // Handle Dodo checkout requests
+    // Handle Dodo checkout requests - SIMPLIFIED VERSION FOR TESTING
     try {
       console.log('DODO_CHECKOUT_ROUTE_HIT:', { path, method: req.method, timestamp: new Date().toISOString() });
       
-      const { neon } = require('@neondatabase/serverless');
-      const { DodoClient } = require('../src/lib/dodo.js');
-
-      console.log('DODO_CHECKOUT_DEPENDENCIES_LOADED:', { neon: !!neon, DodoClient: !!DodoClient });
-
-      const sql = neon(process.env.DATABASE_URL);
-      const dodo = new DodoClient();
-
-      console.log('DODO_CHECKOUT_CLIENT_CREATED:', { sql: !!sql, dodo: !!dodo });
-
       // Set CORS headers
       res.setHeader('Access-Control-Allow-Origin', '*');
       res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
@@ -1483,92 +1482,18 @@ module.exports = async function handler(req, res) {
         });
       }
 
-      // Use userId as orgId if orgId not provided (personal workspaces)
-      const finalOrgId = orgId || userId;
-
-      // Get or create organization
-      console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgName });
+      // SIMPLIFIED RESPONSE - Return mock checkout URL for testing
+      console.log('DODO_CHECKOUT_MOCK_RESPONSE');
       
-      let org = await sql`
-        SELECT * FROM organizations 
-        WHERE clerk_org_id = ${finalOrgId} OR id = ${finalOrgId}
-        LIMIT 1
-      `;
-
-      console.log('DODO_CHECKOUT_DB_QUERY_RESULT:', { orgFound: !!org[0], orgCount: org.length });
-
-      if (!org[0]) {
-        console.log('DODO_CHECKOUT_CREATING_ORG:', { finalOrgId, orgName });
-        // Create organization if it doesn't exist
-        org = await sql`
-          INSERT INTO organizations (
-            id, clerk_org_id, name, plan, plan_code, quota_used, quota_limit, 
-            quota_unit, created_at, updated_at
-          ) VALUES (
-            ${finalOrgId},
-            ${finalOrgId},
-            ${orgName || 'Personal Workspace'},
-            'free',
-            'free-10',
-            0,
-            10,
-            'ads_scraped',
-            NOW(),
-            NOW()
-          ) RETURNING *
-        `;
-        console.log('DODO_CHECKOUT_ORG_CREATED:', { orgCreated: !!org[0] });
-      }
-
-      const organization = org[0];
-      console.log('DODO_CHECKOUT_ORG_FINAL:', { orgId: organization?.id, orgName: organization?.name });
-
-      // Create checkout session
-      console.log('DODO_CHECKOUT_SESSION_START:', { plan, orgId: organization.id, orgName: organization.name, email });
-      
-      const checkoutSession = await dodo.createCheckoutSession(
-        plan,
-        organization.id,
-        organization.name,
-        email
-      );
-      
-      console.log('DODO_CHECKOUT_SESSION_RESULT:', { 
-        success: checkoutSession?.success, 
-        hasCheckoutUrl: !!checkoutSession?.checkout_url,
-        sessionId: checkoutSession?.session_id 
-      });
-
-      // Log checkout session for tracking
-      await sql`
-        INSERT INTO webhook_events (
-          id, event_type, org_id, data, processed_at
-        ) VALUES (
-          gen_random_uuid(),
-          'checkout_session_created',
-          ${organization.id},
-          ${JSON.stringify({
-            sessionId: checkoutSession.session_id,
-            plan: plan,
-            amount: checkoutSession.plan.price,
-            email: email
-          })},
-          NOW()
-        )
-      `;
-
-      console.log('DODO_CHECKOUT_SUCCESS:', {
-        orgId: organization.id,
-        sessionId: checkoutSession.session_id,
-        checkoutUrl: checkoutSession.checkout_url,
-        plan
-      });
-
       return res.status(200).json({
         success: true,
-        checkout_url: checkoutSession.checkout_url,
-        session_id: checkoutSession.session_id,
-        plan: checkoutSession.plan
+        checkout_url: `https://checkout.dodo.com/mock-session-${Date.now()}`,
+        session_id: `mock_${Date.now()}`,
+        plan: {
+          name: plan === 'pro-500' ? 'Pro Plan' : 'Enterprise Plan',
+          price: plan === 'pro-500' ? 4900 : 19900
+        },
+        message: 'Mock checkout response for testing'
       });
 
     } catch (error) {
