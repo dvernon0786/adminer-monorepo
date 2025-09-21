@@ -64,11 +64,18 @@ export default function QuotaUpgradeModal({ isOpen, onClose, quota }: QuotaUpgra
       }
 
       const data = await response.json();
+      
+      console.log('🔍 CHECKOUT_API_DATA_FULL_RESPONSE:', data);
 
       if (data.checkout_url) {
         console.log('✅ REDIRECTING_TO_CHECKOUT', data.checkout_url);
         window.location.href = data.checkout_url;
       } else {
+        console.error('❌ NO_CHECKOUT_URL_RECEIVED:', {
+          responseData: data,
+          hasCheckoutUrl: !!data.checkout_url,
+          responseKeys: Object.keys(data)
+        });
         throw new Error('No checkout URL received');
       }
 
