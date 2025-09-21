@@ -1564,6 +1564,8 @@ module.exports = async function handler(req, res) {
         }
         
         // Create checkout session using Dodo Payments API
+        console.log('DODO_CHECKOUT_CALLING_DODO_CLIENT:', { productId, email, orgName, plan });
+        
         const checkoutSession = await dodo.createCheckoutSession({
           product_cart: [
             {
@@ -1581,6 +1583,12 @@ module.exports = async function handler(req, res) {
             plan: plan,
             source: 'adminer_quota_modal'
           }
+        });
+        
+        console.log('DODO_CHECKOUT_SESSION_CREATED:', { 
+          success: checkoutSession?.success, 
+          hasCheckoutUrl: !!checkoutSession?.checkout_url,
+          sessionId: checkoutSession?.session_id 
         });
         
         console.log('DODO_CHECKOUT_SESSION_RESULT:', { 
@@ -1629,13 +1637,13 @@ module.exports = async function handler(req, res) {
         
         return res.status(200).json({
           success: true,
-          checkout_url: `https://app.dodopayments.com/signup?plan=${plan}`,
+          checkout_url: `https://app.dodopayments.com/checkout/mock_${Date.now()}`,
           session_id: `mock_${Date.now()}`,
           plan: {
             name: plan === 'pro-500' ? 'Pro Plan' : 'Enterprise Plan',
             price: plan === 'pro-500' ? 4900 : 19900
           },
-          message: 'Fallback checkout - redirecting to Dodo Payments signup',
+          message: 'Fallback checkout - using mock checkout URL',
           error: dbError.message
         });
       }

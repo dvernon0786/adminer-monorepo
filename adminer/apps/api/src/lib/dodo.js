@@ -5,9 +5,10 @@ class DodoClient {
     this.apiKey = process.env.DODO_PAYMENTS_API_KEY;
     this.secretKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
     this.environment = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test';
+    // Use correct Dodo Payments API URLs as per documentation
     this.apiUrl = this.environment === 'live' 
-      ? 'https://api.dodopayments.com/v1' 
-      : 'https://test.dodopayments.com/v1';
+      ? 'https://live.dodopayments.com' 
+      : 'https://test.dodopayments.com';
     this.appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://adminer.online';
     
     console.log('DODO_CLIENT_INIT:', {
@@ -42,14 +43,24 @@ class DodoClient {
         console.log('DODO_MOCK_MODE: Returning mock checkout session');
         return {
           success: true,
-          checkout_url: `https://test.checkout.dodopayments.com/session/mock_${Date.now()}`,
+          checkout_url: `https://app.dodopayments.com/checkout/mock_${Date.now()}`,
           session_id: `mock_${Date.now()}`,
-          plan: { name: 'Mock Plan', price: 4900 },
+          plan: { 
+            name: checkoutData.product_cart[0].product_id === 'prod_pro_plan' ? 'Pro Plan' : 'Enterprise Plan', 
+            price: checkoutData.product_cart[0].product_id === 'prod_pro_plan' ? 4900 : 19900 
+          },
           mock_mode: true
         };
       }
 
       // Make actual API call to Dodo Payments
+      console.log('DODO_API_REQUEST:', {
+        url: `${this.apiUrl}/checkout-sessions`,
+        method: 'POST',
+        hasApiKey: !!this.apiKey,
+        checkoutData
+      });
+
       const response = await fetch(`${this.apiUrl}/checkout-sessions`, {
         method: 'POST',
         headers: {
@@ -59,7 +70,27 @@ class DodoClient {
         body: JSON.stringify(checkoutData),
       });
 
-      const result = await response.json();
+      console.log('DODO_API_RESPONSE:', {
+        status: response.status,
+        ok: response.ok,
+        headers: Object.fromEntries(response.headers.entries())
+      });
+
+      // Check if response has content before trying to parse JSON
+      const responseText = await response.text();
+      console.log('DODO_API_RESPONSE_TEXT:', responseText);
+
+      if (!responseText) {
+        throw new Error('Empty response from Dodo Payments API');
+      }
+
+      let result;
+      try {
+        result = JSON.parse(responseText);
+      } catch (parseError) {
+        console.error('DODO_API_JSON_PARSE_ERROR:', parseError);
+        throw new Error(`Invalid JSON response from Dodo API: ${responseText.substring(0, 200)}`);
+      }
 
       if (!response.ok) {
         throw new Error(`Dodo API error: ${result.message || response.statusText}`);
