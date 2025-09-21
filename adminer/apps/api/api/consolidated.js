@@ -1498,27 +1498,32 @@ module.exports = async function handler(req, res) {
 
         // Use userId as orgId if orgId not provided (personal workspaces)
         const finalOrgId = orgId || userId;
+        
+        // Generate a proper UUID for the organization if using Clerk user ID
+        const orgUuid = finalOrgId.startsWith('user_') ? 
+          `org_${finalOrgId.replace('user_', '')}` : 
+          finalOrgId;
 
         // Get or create organization
-        console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgName });
+        console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgUuid, orgName });
         
         let org = await sql`
           SELECT * FROM organizations 
-          WHERE clerk_org_id = ${finalOrgId} OR id = ${finalOrgId}
+          WHERE clerk_org_id = ${finalOrgId} OR id = ${orgUuid}
           LIMIT 1
         `;
 
         console.log('DODO_CHECKOUT_DB_QUERY_RESULT:', { orgFound: !!org[0], orgCount: org.length });
 
         if (!org[0]) {
-          console.log('DODO_CHECKOUT_CREATING_ORG:', { finalOrgId, orgName });
+          console.log('DODO_CHECKOUT_CREATING_ORG:', { finalOrgId, orgUuid, orgName });
           // Create organization if it doesn't exist
           org = await sql`
             INSERT INTO organizations (
               id, clerk_org_id, name, plan, plan_code, quota_used, quota_limit, 
               quota_unit, created_at, updated_at
             ) VALUES (
-              ${finalOrgId},
+              ${orgUuid},
               ${finalOrgId},
               ${orgName || 'Personal Workspace'},
               'free',
@@ -1592,13 +1597,13 @@ module.exports = async function handler(req, res) {
         
         return res.status(200).json({
           success: true,
-          checkout_url: `https://checkout.stripe.com/pay/mock-${Date.now()}`,
+          checkout_url: `https://app.dodopayments.com/checkout/mock-${Date.now()}`,
           session_id: `mock_${Date.now()}`,
           plan: {
             name: plan === 'pro-500' ? 'Pro Plan' : 'Enterprise Plan',
             price: plan === 'pro-500' ? 4900 : 19900
           },
-          message: 'Fallback mock checkout (database error)',
+          message: 'Fallback mock checkout (database error) - redirecting to Dodo Payments',
           error: dbError.message
         });
       }
