@@ -1500,14 +1500,12 @@ module.exports = async function handler(req, res) {
         const finalOrgId = orgId || userId;
         
         // Generate a proper UUID for the organization if using Clerk user ID
-        // Convert Clerk user ID to a valid UUID format
+        // Use crypto to generate a proper UUID v4
         const generateUuidFromClerkId = (clerkId) => {
           if (clerkId.startsWith('user_')) {
-            // Extract the ID part and pad/truncate to create a valid UUID
-            const idPart = clerkId.replace('user_', '');
-            // Create a UUID-like string: xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx
-            const padded = idPart.padEnd(32, '0').substring(0, 32);
-            return `${padded.substring(0,8)}-${padded.substring(8,12)}-${padded.substring(12,16)}-${padded.substring(16,20)}-${padded.substring(20,32)}`;
+            // Use crypto to generate a proper UUID v4
+            const crypto = require('crypto');
+            return crypto.randomUUID();
           }
           return clerkId;
         };
@@ -1551,15 +1549,39 @@ module.exports = async function handler(req, res) {
         const organization = org[0];
         console.log('DODO_CHECKOUT_ORG_FINAL:', { orgId: organization?.id, orgName: organization?.name });
 
-        // Create checkout session
+        // Create checkout session using proper Dodo Payments API
         console.log('DODO_CHECKOUT_SESSION_START:', { plan, orgId: organization.id, orgName: organization.name, email });
         
-        const checkoutSession = await dodo.createCheckoutSession(
-          plan,
-          organization.id,
-          organization.name,
-          email
-        );
+        // Map plan codes to product IDs (you'll need to create these products in Dodo Payments dashboard)
+        const planToProductId = {
+          'pro-500': 'prod_pro_plan', // Replace with actual product ID from Dodo dashboard
+          'ent-2000': 'prod_enterprise_plan' // Replace with actual product ID from Dodo dashboard
+        };
+        
+        const productId = planToProductId[plan];
+        if (!productId) {
+          throw new Error(`Unknown plan: ${plan}`);
+        }
+        
+        // Create checkout session using Dodo Payments API
+        const checkoutSession = await dodo.createCheckoutSession({
+          product_cart: [
+            {
+              product_id: productId,
+              quantity: 1
+            }
+          ],
+          customer: {
+            email: email,
+            name: orgName || 'Customer'
+          },
+          return_url: `${process.env.DODO_PAYMENTS_RETURN_URL || 'https://www.adminer.online'}/dashboard?payment=success`,
+          metadata: {
+            organization_id: organization.id,
+            plan: plan,
+            source: 'adminer_quota_modal'
+          }
+        });
         
         console.log('DODO_CHECKOUT_SESSION_RESULT:', { 
           success: checkoutSession?.success, 

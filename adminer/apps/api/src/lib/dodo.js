@@ -19,78 +19,44 @@ class DodoClient {
     });
   }
 
-  async createCheckoutSession(planCode, orgId, orgName = null, userEmail = null) {
+  async createCheckoutSession(checkoutData) {
     try {
       console.log('DODO_CHECKOUT_SESSION_REQUEST:', {
-        planCode,
-        orgId,
-        orgName,
-        userEmail,
+        checkoutData,
         timestamp: new Date().toISOString()
       });
 
-      // Plan configuration
-      const planMap = {
-        'free-10': { price: 0, name: 'Free Plan', quota: 10 },
-        'pro-500': { price: 4900, name: 'Pro Plan', quota: 500 },
-        'ent-2000': { price: 19900, name: 'Enterprise Plan', quota: 2000 }
-      };
-
-      const plan = planMap[planCode];
-      if (!plan) {
-        throw new Error(`Invalid plan code: ${planCode}`);
-      }
-
       // For free plan, create immediate subscription
-      if (planCode === 'free-10') {
+      if (checkoutData.product_cart[0].product_id === 'prod_free_plan') {
         return {
           success: true,
           checkout_url: null,
           session_id: `free_${Date.now()}`,
-          plan: plan,
+          plan: { name: 'Free Plan', price: 0 },
           immediate_activation: true
         };
       }
-
-      // Create checkout session payload
-      const payload = {
-        amount: plan.price,
-        currency: 'usd',
-        description: `${plan.name} subscription for ${orgName || 'Organization'}`,
-        metadata: {
-          orgId,
-          planCode,
-          type: 'subscription',
-          source: 'adminer',
-          userEmail: userEmail || null,
-          orgName: orgName || null
-        },
-        success_url: `${this.appUrl}/dashboard?payment=success&plan=${planCode}&session={CHECKOUT_SESSION_ID}`,
-        cancel_url: `${this.appUrl}/pricing?payment=cancelled&plan=${planCode}`
-      };
-
-      console.log('DODO_PAYLOAD:', payload);
 
       // If no API keys configured, return mock response for development
       if (!this.apiKey || !this.secretKey) {
         console.log('DODO_MOCK_MODE: Returning mock checkout session');
         return {
           success: true,
-          checkout_url: `${this.appUrl}/mock-payment?plan=${planCode}&amount=${plan.price}`,
+          checkout_url: `https://test.checkout.dodopayments.com/session/mock_${Date.now()}`,
           session_id: `mock_${Date.now()}`,
-          plan: plan,
+          plan: { name: 'Mock Plan', price: 4900 },
           mock_mode: true
         };
       }
 
-      // Make actual API call to Dodo
-      const response = await fetch(`${this.apiUrl}/checkout/sessions`, {
+      // Make actual API call to Dodo Payments
+      const response = await fetch(`${this.apiUrl}/checkout-sessions`, {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${this.apiKey}`,
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: JSON.stringify(checkoutData),
       });
 
       const result = await response.json();
@@ -100,16 +66,15 @@ class DodoClient {
       }
 
       console.log('DODO_CHECKOUT_SUCCESS:', {
-        sessionId: result.id,
-        checkoutUrl: result.url,
-        planCode
+        sessionId: result.session_id,
+        checkoutUrl: result.checkout_url
       });
 
       return {
         success: true,
-        checkout_url: result.url,
-        session_id: result.id,
-        plan: plan
+        checkout_url: result.checkout_url,
+        session_id: result.session_id,
+        plan: result.plan || { name: 'Plan', price: 0 }
       };
 
     } catch (error) {
