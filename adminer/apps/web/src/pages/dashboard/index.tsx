@@ -106,9 +106,8 @@ export default function Dashboard() {
     if (error.includes('quota exceeded') || error.includes('Quota exceeded')) {
       return (
         <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
-          <DirectCheckoutModal
+          <QuotaUpgradeModal
             isOpen={true}
-            currentPlan={quota?.plan || 'free'}
             quota={quota || { used: 0, limit: 10, percentage: 0 }}
             onClose={() => {}} // Don't allow closing when quota exceeded
           />
