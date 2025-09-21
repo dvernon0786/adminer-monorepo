@@ -1425,12 +1425,144 @@ module.exports = async function handler(req, res) {
       success: false,
       error: 'Method not allowed'
     });
+  } else if (path === '/api/dodo/checkout') {
+    // Handle Dodo checkout requests
+    try {
+      const { neon } = require('@neondatabase/serverless');
+      const { DodoClient } = require('../src/lib/dodo.js');
+
+      const sql = neon(process.env.DATABASE_URL);
+      const dodo = new DodoClient();
+
+      // Set CORS headers
+      res.setHeader('Access-Control-Allow-Origin', '*');
+      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
+      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-workspace-id');
+      
+      if (req.method === 'OPTIONS') {
+        return res.status(200).end();
+      }
+
+      if (req.method !== 'POST') {
+        return res.status(405).json({
+          success: false,
+          error: 'Method not allowed'
+        });
+      }
+
+      const { plan, email, orgId, orgName } = req.body;
+      const userId = req.headers['x-user-id'] || req.body.userId;
+
+      console.log('DODO_CHECKOUT_REQUEST:', {
+        plan,
+        email,
+        orgId,
+        orgName,
+        userId,
+        timestamp: new Date().toISOString()
+      });
+
+      // Validate required fields
+      if (!plan) {
+        return res.status(400).json({
+          success: false,
+          error: 'Plan is required'
+        });
+      }
+
+      if (!userId && !orgId) {
+        return res.status(400).json({
+          success: false,
+          error: 'User ID or Organization ID is required'
+        });
+      }
+
+      // Use userId as orgId if orgId not provided (personal workspaces)
+      const finalOrgId = orgId || userId;
+
+      // Get or create organization
+      let org = await sql`
+        SELECT * FROM organizations 
+        WHERE clerk_org_id = ${finalOrgId} OR id = ${finalOrgId}
+        LIMIT 1
+      `;
+
+      if (!org[0]) {
+        // Create organization if it doesn't exist
+        org = await sql`
+          INSERT INTO organizations (
+            id, clerk_org_id, name, plan, plan_code, quota_used, quota_limit, 
+            quota_unit, created_at, updated_at
+          ) VALUES (
+            ${finalOrgId},
+            ${finalOrgId},
+            ${orgName || 'Personal Workspace'},
+            'free',
+            'free-10',
+            0,
+            10,
+            'ads_scraped',
+            NOW(),
+            NOW()
+          ) RETURNING *
+        `;
+      }
+
+      const organization = org[0];
+
+      // Create checkout session
+      const checkoutSession = await dodo.createCheckoutSession(
+        plan,
+        organization.id,
+        organization.name,
+        email
+      );
+
+      // Log checkout session for tracking
+      await sql`
+        INSERT INTO webhook_events (
+          id, event_type, org_id, data, processed_at
+        ) VALUES (
+          gen_random_uuid(),
+          'checkout_session_created',
+          ${organization.id},
+          ${JSON.stringify({
+            sessionId: checkoutSession.session_id,
+            plan: plan,
+            amount: checkoutSession.plan.price,
+            email: email
+          })},
+          NOW()
+        )
+      `;
+
+      console.log('DODO_CHECKOUT_SUCCESS:', {
+        orgId: organization.id,
+        sessionId: checkoutSession.session_id,
+        checkoutUrl: checkoutSession.checkout_url,
+        plan
+      });
+
+      return res.status(200).json({
+        success: true,
+        checkout_url: checkoutSession.checkout_url,
+        session_id: checkoutSession.session_id,
+        plan: checkoutSession.plan
+      });
+
+    } catch (error) {
+      console.error('DODO_CHECKOUT_API_ERROR:', error);
+      return res.status(500).json({
+        success: false,
+        error: error.message || 'Failed to create checkout session'
+      });
+    }
   } else {
     // Default response for unknown paths
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats', '/api/organizations'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats', '/api/organizations', '/api/dodo/checkout'],
       timestamp: new Date().toISOString()
     });
   }
