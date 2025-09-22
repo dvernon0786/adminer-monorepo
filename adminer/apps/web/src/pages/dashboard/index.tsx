@@ -85,6 +85,73 @@ export default function Dashboard() {
     }
   }, [quota]); // Removed showQuotaModal from dependencies to prevent infinite loop
 
+  // Payment Success Handling - Detect upgrade=success and refresh quota
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const upgrade = urlParams.get('upgrade');
+    const subscriptionId = urlParams.get('subscription_id');
+    const status = urlParams.get('status');
+
+    if (upgrade === 'success' && subscriptionId && status === 'active') {
+      console.log('🎉 PAYMENT_SUCCESS_DETECTED_V6', {
+        subscriptionId,
+        status,
+        timestamp: new Date().toISOString()
+      });
+
+      // Force refresh quota data after payment success
+      const refreshQuotaAfterPayment = async () => {
+        try {
+          console.log('🔄 REFRESHING_QUOTA_AFTER_PAYMENT_V6');
+          
+          // Call manual quota fix endpoint
+          const fixResponse = await fetch('/api/fix-quota', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-user-id': user?.id || '',
+            },
+            body: JSON.stringify({
+              subscriptionId: subscriptionId,
+              plan: 'pro', // Default to pro, webhook will determine actual plan
+              userId: user?.id,
+              email: user?.emailAddresses?.[0]?.emailAddress
+            })
+          });
+
+          if (fixResponse.ok) {
+            const fixResult = await fixResponse.json();
+            console.log('✅ QUOTA_FIX_APPLIED_V6', fixResult);
+            
+            // Refresh quota data by reloading the page
+            window.location.reload();
+            
+            // Show success message
+            alert(`Payment successful! Your plan has been upgraded to ${fixResult.newPlan} with ${fixResult.newQuotaLimit} ads per month.`);
+            
+            // Clear URL parameters
+            window.history.replaceState({}, '', window.location.pathname);
+            
+          } else {
+            console.log('⚠️ QUOTA_FIX_FAILED_V6', fixResponse.status);
+            
+            // Still try to refresh quota data
+            window.location.reload();
+          }
+          
+        } catch (error) {
+          console.error('💥 PAYMENT_SUCCESS_REFRESH_ERROR_V6', error);
+          
+          // Fallback: still try to refresh quota
+          window.location.reload();
+        }
+      };
+
+      // Delay refresh to allow webhook processing
+      setTimeout(refreshQuotaAfterPayment, 2000);
+    }
+  }, [user]); // Only run when user changes
+
   if (loading || statsLoading) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">

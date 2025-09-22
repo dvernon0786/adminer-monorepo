@@ -97,10 +97,18 @@ export default async function handler(req, res) {
     });
 
   } catch (error) {
-    console.error('DODO_WEBHOOK_ERROR:', error);
+    console.error('DODO_WEBHOOK_ERROR:', {
+      error: error.message,
+      stack: error.stack,
+      eventType: req.body?.type,
+      eventId: req.body?.id,
+      timestamp: new Date().toISOString()
+    });
+    
     return res.status(500).json({
       success: false,
-      error: 'Webhook processing failed'
+      error: 'Webhook processing failed',
+      message: error.message
     });
   }
 }
@@ -140,12 +148,14 @@ async function handleCheckoutCompleted(event) {
       SET 
         plan = ${planDetails.plan},
         quota_limit = ${planDetails.quota},
+        quota_used = 0,
         dodo_customer_id = ${session.customer},
         billing_status = 'active',
         current_period_end = ${new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()},
+        plan_code = ${planCode},
         updated_at = NOW()
       WHERE id = ${orgId}
-      RETURNING id, plan, quota_limit, quota_used
+      RETURNING id, clerk_org_id, plan, quota_limit, quota_used, plan_code
     `;
 
     if (!updatedOrg[0]) {
@@ -172,9 +182,12 @@ async function handleCheckoutCompleted(event) {
 
     console.log('DODO_PLAN_ACTIVATED:', {
       orgId,
+      clerkOrgId: updatedOrg[0].clerk_org_id,
       plan: planDetails.plan,
       quota: planDetails.quota,
-      customerId: session.customer
+      planCode: planCode,
+      customerId: session.customer,
+      updatedOrg: updatedOrg[0]
     });
 
   } catch (error) {
