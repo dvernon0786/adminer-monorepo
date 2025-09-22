@@ -1435,224 +1435,178 @@ module.exports = async function handler(req, res) {
       method: req.method
     });
   } else if (path === '/api/dodo/checkout') {
-    // Handle Dodo checkout requests - SIMPLIFIED VERSION FOR TESTING
     try {
-      console.log('DODO_CHECKOUT_ROUTE_HIT:', { path, method: req.method, timestamp: new Date().toISOString() });
-      
-      // Set CORS headers
-      res.setHeader('Access-Control-Allow-Origin', '*');
-      res.setHeader('Access-Control-Allow-Methods', 'GET, POST, OPTIONS');
-      res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, x-user-id, x-workspace-id');
-      
-      if (req.method === 'OPTIONS') {
-        return res.status(200).end();
-      }
-
-      if (req.method !== 'POST') {
-        return res.status(405).json({
-          success: false,
-          error: 'Method not allowed'
-        });
-      }
+      console.log('🔗 DODO_CHECKOUT_CONFIGURED_URLS_V5', {
+        timestamp: new Date().toISOString(),
+        method: req.method,
+        body: req.body
+      });
 
       const { plan, email, orgId, orgName } = req.body;
       const userId = req.headers['x-user-id'] || req.body.userId;
-
-      console.log('DODO_CHECKOUT_REQUEST:', {
-        plan,
-        email,
-        orgId,
-        orgName,
-        userId,
-        timestamp: new Date().toISOString()
-      });
+      const workspaceId = req.headers['x-workspace-id'] || userId;
 
       // Validate required fields
-      if (!plan) {
+      if (!plan || !email || !userId) {
+        console.log('❌ DODO_VALIDATION_ERROR_V5', { plan, email, userId });
         return res.status(400).json({
-          success: false,
-          error: 'Plan is required'
+          error: 'Missing required fields: plan, email, userId'
         });
       }
 
-      if (!userId && !orgId) {
-        return res.status(400).json({
-          success: false,
-          error: 'User ID or Organization ID is required'
-        });
-      }
-
-      // REAL DODO CHECKOUT - Now that routing is confirmed working
-      console.log('DODO_CHECKOUT_REAL_IMPLEMENTATION_START');
+      // Map plan codes to product IDs
+      const planToProductId = {
+        'pro-500': 'prod_pro_plan',
+        'ent-2000': 'prod_enterprise_plan',
+        'free-10': 'prod_free_plan'
+      };
       
+      const productId = planToProductId[plan];
+      if (!productId) {
+        console.log('❌ DODO_INVALID_PLAN_V5', { plan, availablePlans: Object.keys(planToProductId) });
+        return res.status(400).json({
+          error: `Invalid plan: ${plan}`,
+          availablePlans: Object.keys(planToProductId)
+        });
+      }
+
+      console.log('📦 DODO_PLAN_TO_PRODUCT_V5', {
+        plan: plan,
+        productId: productId
+      });
+
+      // Create checkout session with configured URLs
+      const checkoutSessionData = {
+        product_cart: [
+          {
+            product_id: productId,
+            quantity: 1
+          }
+        ],
+        customer: {
+          email: email,
+          name: orgName || email.split('@')[0] || 'Customer'
+        },
+        metadata: {
+          plan: plan,
+          source: 'adminer_quota_modal',
+          user_id: userId,
+          workspace_id: workspaceId
+        }
+      };
+
+      console.log('🚀 DODO_USING_CONFIGURED_URLS_V5', {
+        productId: productId,
+        customerEmail: email
+      });
+
+      // Call DodoClient with configured URLs
+      const dodo = require('../src/lib/dodo.js');
+      const checkoutSession = await dodo.createCheckoutSession(checkoutSessionData);
+
+      console.log('📋 DODO_CONFIGURED_URLS_RESULT_V5', {
+        success: checkoutSession.success,
+        hasCheckoutUrl: !!checkoutSession.checkout_url,
+        sessionId: checkoutSession.session_id,
+        configuredUrl: checkoutSession.configured_url,
+        error: checkoutSession.error
+      });
+
+      // Handle errors
+      if (!checkoutSession.success || checkoutSession.error) {
+        console.log('❌ DODO_CONFIGURED_URLS_ERROR_V5', {
+          error: checkoutSession.error
+        });
+
+        return res.status(500).json({
+          success: false,
+          error: 'Checkout session creation failed',
+          details: checkoutSession.error,
+          message: 'Please try again or contact support'
+        });
+      }
+
+      // Log successful checkout session (optional)
       try {
         const { neon } = require('@neondatabase/serverless');
-        const { DodoClient } = require('../src/lib/dodo.js');
-
-        console.log('DODO_CHECKOUT_DEPENDENCIES_LOADED:', { neon: !!neon, DodoClient: !!DodoClient });
-
         const sql = neon(process.env.DATABASE_URL);
-        const dodo = new DodoClient();
 
-        console.log('DODO_CHECKOUT_CLIENT_CREATED:', { sql: !!sql, dodo: !!dodo });
-
-        // Use userId as orgId if orgId not provided (personal workspaces)
-        const finalOrgId = orgId || userId;
-        
-        // Generate a proper UUID for the organization if using Clerk user ID
-        // Use crypto to generate a proper UUID v4
+        // Get or create organization for logging
         const generateUuidFromClerkId = (clerkId) => {
-          if (clerkId.startsWith('user_')) {
-            // Use crypto to generate a proper UUID v4
+          if (clerkId && clerkId.startsWith('user_')) {
             const crypto = require('crypto');
             return crypto.randomUUID();
           }
           return clerkId;
         };
-        
+
+        const finalOrgId = orgId || workspaceId || userId;
         const orgUuid = generateUuidFromClerkId(finalOrgId);
 
-        // Get or create organization
-        console.log('DODO_CHECKOUT_DB_QUERY_START:', { finalOrgId, orgUuid, orgName });
-        
-        let org = await sql`
-          SELECT * FROM organizations 
+        let orgResult = await sql`
+          SELECT id FROM organizations 
           WHERE clerk_org_id = ${finalOrgId} OR id = ${orgUuid}
           LIMIT 1
         `;
 
-        console.log('DODO_CHECKOUT_DB_QUERY_RESULT:', { orgFound: !!org[0], orgCount: org.length });
-
-        if (!org[0]) {
-          console.log('DODO_CHECKOUT_CREATING_ORG:', { finalOrgId, orgUuid, orgName });
-          // Create organization if it doesn't exist
-          org = await sql`
-            INSERT INTO organizations (
-              id, clerk_org_id, name, plan, plan_code, quota_used, quota_limit, 
-              quota_unit, created_at, updated_at
+        if (orgResult.length > 0) {
+          await sql`
+            INSERT INTO webhook_events (
+              id, event_type, org_id, data, processed_at
             ) VALUES (
-              ${orgUuid},
-              ${finalOrgId},
-              ${orgName || 'Personal Workspace'},
-              'free',
-              'free-10',
-              0,
-              10,
-              'ads_scraped',
-              NOW(),
+              gen_random_uuid(),
+              'checkout_session_created_configured',
+              ${orgResult[0].id},
+              ${JSON.stringify({
+                sessionId: checkoutSession.session_id,
+                plan: plan,
+                productId: productId,
+                checkoutUrl: checkoutSession.checkout_url,
+                email: email,
+                configuredUrl: true
+              })},
               NOW()
-            ) RETURNING *
+            )
           `;
-          console.log('DODO_CHECKOUT_ORG_CREATED:', { orgCreated: !!org[0] });
+          console.log('✅ DODO_CONFIGURED_URLS_LOGGED_V5');
         }
-
-        const organization = org[0];
-        console.log('DODO_CHECKOUT_ORG_FINAL:', { orgId: organization?.id, orgName: organization?.name });
-
-        // Create checkout session using proper Dodo Payments API
-        console.log('DODO_CHECKOUT_SESSION_START:', { plan, orgId: organization.id, orgName: organization.name, email });
-        
-        // Map plan codes to product IDs (you'll need to create these products in Dodo Payments dashboard)
-        const planToProductId = {
-          'pro-500': 'prod_pro_plan', // Replace with actual product ID from Dodo dashboard
-          'ent-2000': 'prod_enterprise_plan' // Replace with actual product ID from Dodo dashboard
-        };
-        
-        const productId = planToProductId[plan];
-        if (!productId) {
-          throw new Error(`Unknown plan: ${plan}`);
-        }
-        
-        // Create checkout session using Dodo Payments API
-        console.log('DODO_CHECKOUT_CALLING_DODO_CLIENT:', { productId, email, orgName, plan });
-        
-        const checkoutSession = await dodo.createCheckoutSession({
-          product_cart: [
-            {
-              product_id: productId,
-              quantity: 1
-            }
-          ],
-          customer: {
-            email: email,
-            name: orgName || 'Customer'
-          },
-          return_url: `${process.env.DODO_PAYMENTS_RETURN_URL || 'https://www.adminer.online'}/dashboard?payment=success`,
-          metadata: {
-            organization_id: organization.id,
-            plan: plan,
-            source: 'adminer_quota_modal'
-          }
-        });
-        
-        console.log('DODO_CHECKOUT_SESSION_CREATED:', { 
-          success: checkoutSession?.success, 
-          hasCheckoutUrl: !!checkoutSession?.checkout_url,
-          sessionId: checkoutSession?.session_id 
-        });
-        
-        console.log('DODO_CHECKOUT_SESSION_RESULT:', { 
-          success: checkoutSession?.success, 
-          hasCheckoutUrl: !!checkoutSession?.checkout_url,
-          sessionId: checkoutSession?.session_id 
-        });
-
-        // Log checkout session for tracking
-        await sql`
-          INSERT INTO webhook_events (
-            id, event_type, org_id, data, processed_at
-          ) VALUES (
-            gen_random_uuid(),
-            'checkout_session_created',
-            ${organization.id},
-            ${JSON.stringify({
-              sessionId: checkoutSession.session_id,
-              plan: plan,
-              amount: checkoutSession.plan.price,
-              email: email
-            })},
-            NOW()
-          )
-        `;
-
-        console.log('DODO_CHECKOUT_SUCCESS:', {
-          orgId: organization.id,
-          sessionId: checkoutSession.session_id,
-          checkoutUrl: checkoutSession.checkout_url,
-          plan
-        });
-
-        return res.status(200).json({
-          success: true,
-          checkout_url: checkoutSession.checkout_url,
-          session_id: checkoutSession.session_id,
-          plan: checkoutSession.plan
-        });
-
-      } catch (dbError) {
-        console.error('DODO_CHECKOUT_DB_ERROR:', dbError);
-        
-        // Fallback to mock response if database/DodoClient fails
-        console.log('DODO_CHECKOUT_FALLBACK_TO_MOCK');
-        
-        return res.status(200).json({
-          success: true,
-          checkout_url: `https://app.dodopayments.com/checkout/mock_${Date.now()}`,
-          session_id: `mock_${Date.now()}`,
-          plan: {
-            name: plan === 'pro-500' ? 'Pro Plan' : 'Enterprise Plan',
-            price: plan === 'pro-500' ? 4900 : 19900
-          },
-          message: 'Fallback checkout - using mock checkout URL',
-          error: dbError.message
-        });
+      } catch (logError) {
+        console.log('⚠️ DODO_CONFIGURED_URLS_LOG_ERROR_V5', logError.message);
+        // Continue even if logging fails
       }
 
+      // Return successful response
+      const response = {
+        success: true,
+        checkout_url: checkoutSession.checkout_url,
+        session_id: checkoutSession.session_id,
+        plan: checkoutSession.plan,
+        configured_url: true,
+        message: 'Using configured Dodo checkout URL',
+        immediate_activation: checkoutSession.immediate_activation || false,
+        redirect_url: checkoutSession.redirect_url
+      };
+
+      console.log('🎯 DODO_CONFIGURED_URLS_SUCCESS_V5', {
+        sessionId: response.session_id,
+        hasCheckoutUrl: !!response.checkout_url,
+        configuredUrl: response.configured_url
+      });
+
+      return res.status(200).json(response);
+
     } catch (error) {
-      console.error('DODO_CHECKOUT_API_ERROR:', error);
+      console.error('💥 DODO_CONFIGURED_URLS_API_ERROR_V5', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+
       return res.status(500).json({
         success: false,
-        error: error.message || 'Failed to create checkout session'
+        error: 'Checkout API failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
       });
     }
   } else {

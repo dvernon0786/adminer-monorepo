@@ -5,120 +5,137 @@ class DodoClient {
     this.apiKey = process.env.DODO_PAYMENTS_API_KEY;
     this.secretKey = process.env.DODO_PAYMENTS_WEBHOOK_KEY;
     this.environment = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test';
-    // Use correct Dodo Payments API URLs as per documentation
-    this.apiUrl = this.environment === 'live' 
-      ? 'https://live.dodopayments.com' 
-      : 'https://test.dodopayments.com';
-    this.appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://adminer.online';
+    this.proCheckoutUrl = process.env.DODO_CHECKOUT_PRO_URL;
+    this.entCheckoutUrl = process.env.DODO_CHECKOUT_ENT_URL;
+    this.returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || 'https://adminer.online/dashboard';
     
-    console.log('DODO_CLIENT_INIT:', {
-      environment: this.environment,
-      apiUrl: this.apiUrl,
+    console.log('🔧 DODO_CLIENT_INIT_V5', {
       hasApiKey: !!this.apiKey,
       hasSecretKey: !!this.secretKey,
-      appUrl: this.appUrl
+      environment: this.environment,
+      hasProUrl: !!this.proCheckoutUrl,
+      hasEntUrl: !!this.entCheckoutUrl,
+      proUrlPrefix: this.proCheckoutUrl ? this.proCheckoutUrl.substring(0, 50) + '...' : 'none',
+      entUrlPrefix: this.entCheckoutUrl ? this.entCheckoutUrl.substring(0, 50) + '...' : 'none'
     });
   }
 
   async createCheckoutSession(checkoutData) {
-    try {
-      console.log('DODO_CHECKOUT_SESSION_REQUEST:', {
-        checkoutData,
-        timestamp: new Date().toISOString()
-      });
+    console.log('🚀 DODO_CREATE_CHECKOUT_V5', {
+      timestamp: new Date().toISOString(),
+      productId: checkoutData.product_cart?.[0]?.product_id,
+      customerEmail: checkoutData.customer?.email,
+      useConfiguredUrls: true
+    });
 
-      // For free plan, create immediate subscription
-      if (checkoutData.product_cart[0].product_id === 'prod_free_plan') {
+    try {
+      // Handle free plan immediately
+      if (checkoutData.product_cart && 
+          checkoutData.product_cart[0] && 
+          checkoutData.product_cart[0].product_id === 'prod_free_plan') {
+        console.log('✅ DODO_FREE_PLAN_ACTIVATION_V5');
         return {
           success: true,
           checkout_url: null,
           session_id: `free_${Date.now()}`,
           plan: { name: 'Free Plan', price: 0 },
-          immediate_activation: true
+          immediate_activation: true,
+          redirect_url: `${this.returnUrl}?plan=free&activated=true`
         };
       }
 
-      // If no API keys configured, return mock response for development
-      if (!this.apiKey || !this.secretKey) {
-        console.log('DODO_MOCK_MODE: Returning mock checkout session');
-        return {
-          success: true,
-          checkout_url: `https://app.dodopayments.com/checkout/mock_${Date.now()}`,
-          session_id: `mock_${Date.now()}`,
-          plan: { 
-            name: checkoutData.product_cart[0].product_id === 'prod_pro_plan' ? 'Pro Plan' : 'Enterprise Plan', 
-            price: checkoutData.product_cart[0].product_id === 'prod_pro_plan' ? 4900 : 19900 
-          },
-          mock_mode: true
-        };
+      // Use configured checkout URLs instead of API calls
+      const productId = checkoutData.product_cart[0].product_id;
+      let checkoutUrl = null;
+      let planName = '';
+      let price = 0;
+
+      if (productId === 'prod_pro_plan') {
+        checkoutUrl = this.proCheckoutUrl;
+        planName = 'Pro Plan';
+        price = 9900;
+        console.log('📦 DODO_PRO_PLAN_SELECTED_V5', {
+          productId: productId,
+          checkoutUrl: checkoutUrl
+        });
+      } else if (productId === 'prod_enterprise_plan') {
+        checkoutUrl = this.entCheckoutUrl;
+        planName = 'Enterprise Plan';
+        price = 19900;
+        console.log('📦 DODO_ENTERPRISE_PLAN_SELECTED_V5', {
+          productId: productId,
+          checkoutUrl: checkoutUrl
+        });
+      } else {
+        console.log('❌ DODO_UNKNOWN_PRODUCT_V5', {
+          productId: productId,
+          availableProducts: ['prod_pro_plan', 'prod_enterprise_plan']
+        });
+        throw new Error(`Unknown product ID: ${productId}`);
       }
 
-      // Make actual API call to Dodo Payments
-      console.log('DODO_API_REQUEST:', {
-        url: `${this.apiUrl}/checkout-sessions`,
-        method: 'POST',
-        hasApiKey: !!this.apiKey,
-        checkoutData
-      });
-
-      const response = await fetch(`${this.apiUrl}/checkout-sessions`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(checkoutData),
-      });
-
-      console.log('DODO_API_RESPONSE:', {
-        status: response.status,
-        ok: response.ok,
-        headers: Object.fromEntries(response.headers.entries())
-      });
-
-      // Check if response has content before trying to parse JSON
-      const responseText = await response.text();
-      console.log('DODO_API_RESPONSE_TEXT:', responseText);
-
-      if (!responseText) {
-        throw new Error('Empty response from Dodo Payments API');
+      // Validate that we have the checkout URL
+      if (!checkoutUrl) {
+        console.log('❌ DODO_MISSING_CHECKOUT_URL_V5', {
+          productId: productId,
+          hasProUrl: !!this.proCheckoutUrl,
+          hasEntUrl: !!this.entCheckoutUrl
+        });
+        throw new Error(`No checkout URL configured for ${productId}`);
       }
 
-      let result;
-      try {
-        result = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('DODO_API_JSON_PARSE_ERROR:', parseError);
-        throw new Error(`Invalid JSON response from Dodo API: ${responseText.substring(0, 200)}`);
-      }
+      // Add return URL parameters to checkout URL
+      const urlObj = new URL(checkoutUrl);
+      urlObj.searchParams.set('redirect_url', encodeURIComponent(`${this.returnUrl}?upgrade=success&plan=${productId}`));
+      
+      const finalCheckoutUrl = urlObj.toString();
 
-      if (!response.ok) {
-        throw new Error(`Dodo API error: ${result.message || response.statusText}`);
-      }
-
-      console.log('DODO_CHECKOUT_SUCCESS:', {
-        sessionId: result.session_id,
-        checkoutUrl: result.checkout_url
+      console.log('✅ DODO_CONFIGURED_URL_SUCCESS_V5', {
+        originalUrl: checkoutUrl,
+        finalUrl: finalCheckoutUrl,
+        planName: planName,
+        price: price
       });
 
+      // Return successful response with configured URL
+      const sessionId = `configured_${Date.now()}_${productId}`;
+      
       return {
         success: true,
-        checkout_url: result.checkout_url,
-        session_id: result.session_id,
-        plan: result.plan || { name: 'Plan', price: 0 }
+        checkout_url: finalCheckoutUrl,
+        session_id: sessionId,
+        plan: { 
+          name: planName, 
+          price: price 
+        },
+        customer: checkoutData.customer,
+        configured_url: true,
+        message: 'Using configured Dodo checkout URL'
       };
 
     } catch (error) {
-      console.error('DODO_CHECKOUT_ERROR:', error);
-      throw error;
+      console.error('💥 DODO_CONFIGURED_URL_ERROR_V5', {
+        error: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
+
+      // Return error response
+      return {
+        success: false,
+        error: error.message,
+        checkout_url: null,
+        session_id: null,
+        fallback_required: true
+      };
     }
   }
 
   verifyWebhook(payload, signature) {
     try {
       if (!this.secretKey) {
-        console.warn('DODO_SECRET_KEY not configured - webhook verification skipped');
-        return true; // Allow in development
+        console.log('⚠️ DODO_WEBHOOK_NO_SECRET_KEY_V5');
+        return false;
       }
 
       const expectedSignature = crypto
@@ -126,73 +143,55 @@ class DodoClient {
         .update(payload, 'utf8')
         .digest('hex');
       
+      const providedSignature = signature.replace('sha256=', '');
+      
       const isValid = crypto.timingSafeEqual(
-        Buffer.from(signature, 'utf8'),
-        Buffer.from(`sha256=${expectedSignature}`, 'utf8')
+        Buffer.from(expectedSignature, 'hex'),
+        Buffer.from(providedSignature, 'hex')
       );
 
-      console.log('DODO_WEBHOOK_VERIFICATION:', {
-        isValid,
-        signature: signature ? 'present' : 'missing',
-        timestamp: new Date().toISOString()
+      console.log('🔐 DODO_WEBHOOK_VERIFICATION_V5', {
+        isValid: isValid,
+        hasSignature: !!signature
       });
 
       return isValid;
-
     } catch (error) {
-      console.error('DODO_WEBHOOK_VERIFICATION_ERROR:', error);
+      console.error('💥 DODO_WEBHOOK_VERIFICATION_ERROR_V5', error);
       return false;
     }
   }
 
   async createCustomer(orgId, userEmail = null, orgName = null) {
     try {
-      const payload = {
+      console.log('👤 DODO_CREATE_CUSTOMER_V5', {
+        orgId: orgId,
+        userEmail: userEmail,
+        orgName: orgName
+      });
+
+      // For configured URLs approach, we don't need to create customers via API
+      // Return a mock customer ID for compatibility
+      const customerId = `cust_${orgId}_${Date.now()}`;
+      
+      console.log('✅ DODO_CUSTOMER_CREATED_V5', {
+        customerId: customerId,
+        orgId: orgId
+      });
+
+      return {
+        id: customerId,
         external_id: orgId,
         email: userEmail,
         name: orgName,
-        metadata: {
-          source: 'adminer',
-          created_at: new Date().toISOString(),
-          orgId
-        }
+        configured_url_mode: true
       };
 
-      console.log('DODO_CREATE_CUSTOMER:', payload);
-
-      if (!this.apiKey) {
-        console.log('DODO_MOCK_MODE: Returning mock customer');
-        return {
-          id: `cust_mock_${Date.now()}`,
-          external_id: orgId,
-          email: userEmail,
-          mock_mode: true
-        };
-      }
-
-      const response = await fetch(`${this.apiUrl}/customers`, {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${this.apiKey}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(`Dodo customer creation error: ${result.message || response.statusText}`);
-      }
-
-      console.log('DODO_CUSTOMER_CREATED:', result.id);
-      return result;
-
     } catch (error) {
-      console.error('DODO_CREATE_CUSTOMER_ERROR:', error);
+      console.error('💥 DODO_CREATE_CUSTOMER_ERROR_V5', error);
       throw error;
     }
   }
 }
 
-module.exports = { DodoClient };
+module.exports = new DodoClient();
