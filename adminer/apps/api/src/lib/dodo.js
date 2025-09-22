@@ -7,7 +7,7 @@ class DodoClient {
     this.environment = process.env.DODO_PAYMENTS_ENVIRONMENT || 'test';
     this.proCheckoutUrl = process.env.DODO_CHECKOUT_PRO_URL;
     this.entCheckoutUrl = process.env.DODO_CHECKOUT_ENT_URL;
-    this.returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || 'https://adminer.online/dashboard';
+    this.returnUrl = process.env.DODO_PAYMENTS_RETURN_URL || 'https://www.adminer.online/dashboard';
     
     console.log('🔧 DODO_CLIENT_INIT_V5', {
       hasApiKey: !!this.apiKey,
@@ -15,6 +15,7 @@ class DodoClient {
       environment: this.environment,
       hasProUrl: !!this.proCheckoutUrl,
       hasEntUrl: !!this.entCheckoutUrl,
+      returnUrl: this.returnUrl,
       proUrlPrefix: this.proCheckoutUrl ? this.proCheckoutUrl.substring(0, 50) + '...' : 'none',
       entUrlPrefix: this.entCheckoutUrl ? this.entCheckoutUrl.substring(0, 50) + '...' : 'none'
     });
@@ -86,7 +87,8 @@ class DodoClient {
 
       // Add return URL parameters to checkout URL
       const urlObj = new URL(checkoutUrl);
-      urlObj.searchParams.set('redirect_url', encodeURIComponent(`${this.returnUrl}?upgrade=success&plan=${productId}`));
+      // Use 'return_url' parameter name as expected by Dodo Payments
+      urlObj.searchParams.set('return_url', `${this.returnUrl}?upgrade=success&plan=${productId}`);
       
       const finalCheckoutUrl = urlObj.toString();
 
