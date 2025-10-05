@@ -22,20 +22,22 @@ const aiAnalyze = inngest.createFunction(
   { id: "ai-analyze" },
   { event: "ai/analyze.start" },
   async ({ event, step }) => {
-    const { jobId, scraped_data, orgId } = event.data;
-    
-    console.log(`🤖 AI Analysis started for job ${jobId} with ${scraped_data?.dataExtracted || 0} ads`);
-
-    if (!database) {
-      console.log("⚠️ Database not available, AI analysis processed locally only");
-      return { success: true, jobId, orgId, note: "database unavailable" };
-    }
-
-    if (!jobId || !orgId || !scraped_data) {
-      throw new Error(`Missing required data: jobId=${jobId}, orgId=${orgId}, scraped_data=${!!scraped_data}`);
-    }
-
     try {
+      const { jobId, scraped_data, orgId } = event.data;
+      
+      console.log(`🤖 AI Analysis started for job ${jobId} with ${scraped_data?.dataExtracted || 0} ads`);
+      console.log(`📊 AI Analysis event data:`, JSON.stringify(event.data, null, 2));
+      console.log(`🔗 Database URL available:`, !!process.env.DATABASE_URL);
+      console.log(`🔗 Database client:`, !!database);
+
+      if (!database) {
+        console.log("⚠️ Database not available, AI analysis processed locally only");
+        return { success: true, jobId, orgId, note: "database unavailable" };
+      }
+
+      if (!jobId || !orgId || !scraped_data) {
+        throw new Error(`Missing required data: jobId=${jobId}, orgId=${orgId}, scraped_data=${!!scraped_data}`);
+      }
       // Step 1: Update job status to running
       await step.run('update-job-status', async () => {
         await database.query(`
