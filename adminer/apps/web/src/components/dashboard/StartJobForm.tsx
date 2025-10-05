@@ -12,7 +12,7 @@ export default function StartJobForm() {
   const [selectedCountry, setSelectedCountry] = useState("");
   const [limit, setLimit] = useState<number | "">("");
   const { start, loading, error } = useStartJob();
-  const { data: quota, needsOrg, needsUpgrade, canScrapeAds, getRemainingQuota } = useQuota();
+  const { data: quota, needsOrg, needsUpgrade, canScrapeAds, getRemainingAds } = useQuota();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -21,7 +21,7 @@ export default function StartJobForm() {
 
     // Client-side quota validation
     if (!canScrapeAds(limit)) {
-      console.error(`Cannot request ${limit} ads. You have ${getRemainingQuota()} ads remaining.`);
+      console.error(`Cannot request ${limit} ads. You have ${getRemainingAds()} ads remaining.`);
       return;
     }
 
@@ -94,7 +94,7 @@ export default function StartJobForm() {
                 <strong>Quota:</strong> {quota.used}/{quota.limit} ads used ({quota.percentage}%)
                 {quota.used > 0 && (
                   <span className="ml-2 text-green-600">
-                    • {getRemainingQuota()} remaining
+                    • {getRemainingAds()} remaining
                   </span>
                 )}
               </p>
