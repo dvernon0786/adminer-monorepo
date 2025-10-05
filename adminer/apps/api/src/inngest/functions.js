@@ -37,12 +37,12 @@ const jobCreatedFunction = inngest.createFunction(
     
     const orgResult = await database.query(`
       INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at) 
-      VALUES ($1, $2, $3, 'free', 10, 0, NOW(), NOW())
+      VALUES (gen_random_uuid(), $1, $2, 'free', 10, 0, NOW(), NOW())
       ON CONFLICT (clerk_org_id) DO UPDATE SET 
         updated_at = NOW(),
         name = EXCLUDED.name
       RETURNING id, clerk_org_id, name, quota_used, quota_limit
-    `, [orgId, orgId, `Organization ${orgId}`]);
+    `, [orgId, `Organization ${orgId}`]);
     
     if (!orgResult || !Array.isArray(orgResult) || orgResult.length === 0) {
       throw new Error("Failed to ensure organization exists");
