@@ -13,22 +13,24 @@ const jobCreatedFunction = inngest.createFunction(
   { id: "job-created" },
   { event: "job.created" },
   async ({ event }) => {
-    try {
-      const { jobId, keyword, orgId } = event.data || {};
-      
-      console.log(`🚀 Processing enhanced job: ${jobId} for org: ${orgId}`);
-      console.log(`📊 Event data:`, JSON.stringify(event.data, null, 2));
-      console.log(`🔗 Database URL available:`, !!process.env.DATABASE_URL);
-      console.log(`🔗 Database client:`, !!database);
-      
-      if (!database) {
-        console.log("⚠️ Database not available, job processed locally only");
-        return { success: true, jobId, orgId, note: "database unavailable" };
-      }
+    // Move variable declarations outside try block to fix scope issue
+    const { jobId, keyword, orgId } = event.data || {};
+    
+    console.log(`🚀 Processing enhanced job: ${jobId} for org: ${orgId}`);
+    console.log(`📊 Event data:`, JSON.stringify(event.data, null, 2));
+    console.log(`🔗 Database URL available:`, !!process.env.DATABASE_URL);
+    console.log(`🔗 Database client:`, !!database);
     
     if (!orgId || !jobId) {
       throw new Error(`Missing required data: jobId=${jobId}, orgId=${orgId}`);
     }
+    
+    if (!database) {
+      console.log("⚠️ Database not available, job processed locally only");
+      return { success: true, jobId, orgId, note: "database unavailable" };
+    }
+    
+    try {
     
     // Step 1: Ensure organization exists using UPSERT
     let organization;
