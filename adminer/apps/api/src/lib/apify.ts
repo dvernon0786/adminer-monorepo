@@ -154,6 +154,10 @@ export class ApifyService {
         timeout: 600, // 10 minute timeout for async
       });
 
+      if (!run) {
+        throw new Error('Failed to start Apify run - no run object returned');
+      }
+
       console.log('Async Apify run started:', {
         runId: run.id,
         status: run.status
@@ -176,6 +180,10 @@ export class ApifyService {
   async getRunResults(runId: string, limit: number = 100): Promise<any[]> {
     try {
       const run = await this.client.run(runId).get();
+      
+      if (!run) {
+        throw new Error(`Run ${runId} not found`);
+      }
       
       if (run.status !== 'SUCCEEDED') {
         throw new Error(`Run ${runId} is not completed. Status: ${run.status}`);
@@ -216,6 +224,13 @@ export class ApifyService {
 
       // Try to get actor info to verify connection
       const actor = await this.client.actor(this.defaultActorId).get();
+      
+      if (!actor) {
+        return {
+          status: 'error',
+          message: 'Actor not found'
+        };
+      }
       
       return {
         status: 'healthy',
