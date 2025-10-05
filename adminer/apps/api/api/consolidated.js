@@ -274,33 +274,6 @@ module.exports = async function handler(req, res) {
       headers: req.headers,
       url: req.url
     });
-  } else if (path === '/api/inngest') {
-    if (req.method === 'PUT') {
-      try {
-        // Return proper Inngest sync format without loading client
-        res.status(200).json({
-          functions: [
-            {
-              id: "job-created",
-              name: "Job Created Handler",
-              triggers: [{ event: "job.created" }]
-            }
-          ],
-          appId: "adminer-jobs",
-          appName: "Adminer Job Pipeline",
-          timestamp: new Date().toISOString()
-        });
-      } catch (error) {
-        console.error('Inngest sync error:', error);
-        res.status(500).json({
-          error: "Internal server error",
-          message: error.message,
-          timestamp: new Date().toISOString()
-        });
-      }
-    } else {
-      res.status(405).json({ error: 'Method not allowed' });
-    }
   } else if (path === '/api/jobs') {
     console.log('Jobs endpoint hit:', { method: req.method, path });
     if (req.method === 'POST') {

@@ -46,34 +46,48 @@ const orgDb = {
     console.log('Getting quota status for:', clerkOrgId);
     
     try {
-      // Import the real database connection
-      const { orgDb } = await import('./db.ts');
+      // Use real database connection
+      const { neon } = require('@neondatabase/serverless');
+      const sql = neon(process.env.DATABASE_URL);
       
       // Get real quota status from database
-      const quotaStatus = await orgDb.getQuotaStatus(clerkOrgId);
+      const result = await sql`
+        SELECT o.plan, o.quota_limit, o.quota_used,
+               ROUND((o.quota_used::decimal / o.quota_limit::decimal) * 100, 1) as percentage
+        FROM organizations o 
+        WHERE o.clerk_org_id = ${clerkOrgId}
+        LIMIT 1
+      `;
       
-      if (quotaStatus) {
-        console.log('Real quota status:', quotaStatus);
+      if (result && result.length > 0) {
+        const org = result[0];
+        const quotaStatus = {
+          used: parseInt(org.quota_used) || 0,
+          limit: parseInt(org.quota_limit) || 10,
+          percentage: parseFloat(org.percentage) || 0,
+          plan: org.plan || 'free'
+        };
+        
+        console.log('Real quota status from database:', quotaStatus);
         return quotaStatus;
       }
       
-      // Fallback to mock data if no organization found
+      // If no organization found, create one with free plan
+      console.log('No organization found, creating new one with free plan');
+      await sql`
+        INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at)
+        VALUES (gen_random_uuid(), ${clerkOrgId}, 'Personal Workspace', 'free', 10, 0, NOW(), NOW())
+      `;
+      
       return {
         used: 0,
-        limit: 100,
+        limit: 10,
         percentage: 0,
         plan: 'free'
       };
     } catch (error) {
       console.error('Error fetching real quota status:', error);
-      
-      // Fallback to mock data if database query fails
-      return {
-        used: 0,
-        limit: 100,
-        percentage: 0,
-        plan: 'free'
-      };
+      throw error; // Don't return fallback data, let the caller handle the error
     }
   },
 
