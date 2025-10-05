@@ -24,6 +24,19 @@ export const jobs = pgTable('jobs', {
   startedAt: timestamp('started_at'),
   completedAt: timestamp('completed_at'),
   createdAt: timestamp('created_at').defaultNow().notNull(),
+  
+  // AI Analysis Fields
+  contentType: text('content_type'), // 'text_only', 'text_with_image', 'text_with_video', 'mixed'
+  textAnalysis: jsonb('text_analysis'), // Text-only analysis results
+  imageAnalysis: jsonb('image_analysis'), // Image analysis results from GPT-4o
+  videoAnalysis: jsonb('video_analysis'), // Video analysis results from Gemini
+  combinedAnalysis: jsonb('combined_analysis'), // Combined analysis results
+  summary: text('summary'), // Strategic analysis summary
+  rewrittenAdCopy: text('rewritten_ad_copy'), // Rewritten ad copy for repurposing
+  keyInsights: jsonb('key_insights'), // Key insights array
+  competitorStrategy: text('competitor_strategy'), // Competitor strategy assessment
+  recommendations: jsonb('recommendations'), // Recommendations array
+  processingStats: jsonb('processing_stats'), // AI processing statistics
 });
 
 // Quota usage tracking - detailed quota consumption

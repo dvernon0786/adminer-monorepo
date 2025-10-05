@@ -4,6 +4,7 @@
 const { inngest } = require("./client.js");
 const { neon } = require("@neondatabase/serverless");
 const { apifyDirectService } = require("../lib/apify-direct.js");
+const { aiAnalyze } = require("./ai-analyze.js");
 
 const database = process.env.DATABASE_URL ? neon(process.env.DATABASE_URL) : null;
 
@@ -188,4 +189,8 @@ const jobCreatedFunction = inngest.createFunction(
   }
 );
 
-module.exports = { jobCreatedFunction };
+// Export all functions for Inngest
+module.exports = { 
+  jobCreatedFunction, 
+  aiAnalyze 
+};
