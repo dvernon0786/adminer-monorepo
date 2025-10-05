@@ -1,5 +1,10 @@
 {
   "version": 2,
+  "functions": {
+    "api/consolidated.js": {
+      "maxDuration": 300
+    }
+  },
   "headers": [
     {
       "source": "/(.*)",
