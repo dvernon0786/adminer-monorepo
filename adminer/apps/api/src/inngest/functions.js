@@ -53,11 +53,13 @@ const jobCreatedFunction = inngest.createFunction(
       
     // Step 2: Create job record with "queued" status
     await database.query(`
-      INSERT INTO jobs (id, org_id, content_type, status, input, created_at) 
-      VALUES ($1, $2, $3, $4, $5, NOW())
+      INSERT INTO jobs (id, org_id, requested_by, keyword, content_type, status, input, created_at) 
+      VALUES ($1, $2, $3, $4, $5, $6, $7, NOW())
     `, [
       jobId, 
       organization.id, 
+      'api',
+      keyword,
       'scrape',
       'queued',
       JSON.stringify({ keyword, limit: 10 })
