@@ -49,12 +49,13 @@ export const jobCreated = inngest.createFunction(
         const quota = await orgDb.consumeQuota(orgId, requestedAds, 'scrape', `Job ${jobId} - ${requestedAds} ads`);
         console.log('Quota consumed:', quota);
         return quota;
-      } catch (error) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error('Quota exceeded:', error);
         // Quota exceeded - trigger quota exceeded event
         await inngest.send({
           name: 'quota/exceeded',
-          data: { orgId, jobId, error: error.message }
+          data: { orgId, jobId, error: message }
         });
         throw error;
       }
@@ -174,12 +175,13 @@ export const apifyRunStart = inngest.createFunction(
         });
         
         return result;
-      } catch (error) {
+      } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error);
         console.error('Apify scrape failed:', error);
-        await jobDb.updateStatus(jobId, 'failed', null, error.message);
+        await jobDb.updateStatus(jobId, 'failed', null, message);
         await inngest.send({
           name: 'apify/run.failed',
-          data: { jobId, error: error.message, orgId }
+          data: { jobId, error: message, orgId }
         });
         throw error;
       }
