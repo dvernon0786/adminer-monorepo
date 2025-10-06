@@ -22,6 +22,12 @@ const aiAnalyze = inngest.createFunction(
   { id: "ai-analyze" },
   { event: "ai/analyze.start" },
   async ({ event, step }) => {
+    console.log("🔥 AI ANALYSIS FUNCTION TRIGGERED!", { 
+      eventData: event.data,
+      timestamp: new Date().toISOString(),
+      eventName: event.name
+    });
+    
     try {
       const { jobId, scraped_data, orgId } = event.data;
       
