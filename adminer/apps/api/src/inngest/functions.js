@@ -107,9 +107,9 @@ const jobCreatedFunction = inngest.createFunction(
     const adsScraped = scrapeResults.dataExtracted || 0;
     try {
       await database.query(`
-        UPDATE orgs 
+        UPDATE organizations 
         SET quota_used = quota_used + $1, updated_at = NOW() 
-        WHERE id = $2
+        WHERE clerk_org_id = $2
       `, [adsScraped, orgId]);
       
       console.log(`✅ Quota updated for organization: ${orgId} (${adsScraped} ads consumed)`);
@@ -121,7 +121,7 @@ const jobCreatedFunction = inngest.createFunction(
     // Step 7: Trigger AI Analysis (next phase)
     try {
       await inngest.send({
-        name: "ai.analyze.start",
+        name: "ai/analyze.start",
         data: {
           jobId: jobId,
           orgId: orgId,
