@@ -1408,7 +1408,7 @@ module.exports = async function handler(req, res) {
       method: req.method
     });
   } else if (path === '/api/ai-analysis') {
-    // AI ANALYSIS ENDPOINT - Phase 1: Simple test implementation
+    // AI ANALYSIS ENDPOINT - Phase 2: Real AI analysis implementation
     try {
       console.log('🤖 AI Analysis endpoint hit:', { method: req.method, path });
       
@@ -1422,31 +1422,153 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        console.log(`🤖 Processing AI analysis for job: ${jobId}`);
+        console.log(`🤖 Processing real AI analysis for job: ${jobId}`);
 
-        // Phase 1: Simple test - prove the endpoint works
         const { neon } = require('@neondatabase/serverless');
         const sql = neon(process.env.DATABASE_URL);
 
-        // Update job with test AI analysis data
-        await sql`
-          UPDATE jobs 
-          SET 
-            summary = 'API: AI analysis triggered successfully',
-            content_type = 'api-test',
-            updated_at = NOW()
+        // Step 1: Get job data and raw scraped data
+        const jobResult = await sql`
+          SELECT id, raw_data, org_id, status 
+          FROM jobs 
           WHERE id = ${jobId}
+          LIMIT 1
         `;
 
-        console.log(`✅ AI analysis test completed for job: ${jobId}`);
+        if (!jobResult || jobResult.length === 0) {
+          return res.status(404).json({
+            success: false,
+            error: 'Job not found',
+            jobId: jobId
+          });
+        }
+
+        const job = jobResult[0];
+        console.log(`📊 Job found: ${job.id}, status: ${job.status}`);
+
+        if (!job.raw_data) {
+          return res.status(400).json({
+            success: false,
+            error: 'No raw data found for analysis',
+            jobId: jobId
+          });
+        }
+
+        // Step 2: Parse raw data
+        let scrapedData;
+        try {
+          scrapedData = typeof job.raw_data === 'string' ? JSON.parse(job.raw_data) : job.raw_data;
+        } catch (parseError) {
+          console.error('❌ Failed to parse raw data:', parseError);
+          return res.status(400).json({
+            success: false,
+            error: 'Invalid raw data format',
+            jobId: jobId
+          });
+        }
+
+        console.log(`📊 Raw data parsed, ads count: ${scrapedData.data?.length || 0}`);
+
+        // Step 3: Process with real AI analysis
+        const { UnifiedApifyAnalyzer } = require('../src/lib/unified-ai-analyzer.js');
+        const analyzer = new UnifiedApifyAnalyzer();
+        
+        const adsData = scrapedData.data || scrapedData.results || [];
+        if (!Array.isArray(adsData) || adsData.length === 0) {
+          return res.status(400).json({
+            success: false,
+            error: 'No ads data found in scraped data',
+            jobId: jobId
+          });
+        }
+
+        console.log(`🔄 Processing ${adsData.length} ads with real AI analysis...`);
+        
+        // Process with AI analysis (without step parameter for direct API call)
+        const analysisResults = await analyzer.processApifyData(adsData);
+        
+        console.log(`✅ AI analysis completed:`, {
+          processed: analysisResults.stats.processed,
+          textOnly: analysisResults.stats.textOnly,
+          textWithImage: analysisResults.stats.textWithImage,
+          textWithVideo: analysisResults.stats.textWithVideo,
+          mixed: analysisResults.stats.mixed,
+          errors: analysisResults.stats.errors
+        });
+
+        // Step 4: Store results in database
+        const { results } = analysisResults;
+        const allAnalyzedAds = [
+          ...results.textOnly,
+          ...results.textWithImage, 
+          ...results.textWithVideo,
+          ...results.mixed
+        ];
+
+        console.log(`💾 Storing ${allAnalyzedAds.length} analyzed ads in database...`);
+
+        // Update job with AI analysis results
+        for (const analyzedAd of allAnalyzedAds) {
+          try {
+            const analysis = analyzedAd.analysis;
+            
+            // Extract key insights from analysis
+            const summary = analysis.step2_strategic_analysis?.summary || 
+                           analysis.summary || 
+                           'AI analysis completed';
+            
+            const rewrittenCopy = analysis.step2_strategic_analysis?.rewritten_ad_copy || 
+                                 analysis.rewritten_ad_copy || 
+                                 'No rewritten copy available';
+
+            await sql`
+              UPDATE jobs 
+              SET 
+                content_type = ${analyzedAd.contentType},
+                text_analysis = ${JSON.stringify(analysis.step2_strategic_analysis || analysis)},
+                image_analysis = ${JSON.stringify(analysis.step1_image_analysis || null)},
+                video_analysis = ${JSON.stringify(analysis.step1_video_analysis || null)},
+                combined_analysis = ${JSON.stringify(analysis.combined_analysis || null)},
+                summary = ${summary},
+                rewritten_ad_copy = ${rewrittenCopy},
+                key_insights = ${JSON.stringify(analysis.step2_strategic_analysis?.key_insights || [])},
+                competitor_strategy = ${analysis.step2_strategic_analysis?.competitor_strategy || ''},
+                recommendations = ${JSON.stringify(analysis.step2_strategic_analysis?.recommendations || [])},
+                processing_stats = ${JSON.stringify({
+                  contentType: analyzedAd.contentType,
+                  processingTime: new Date().toISOString(),
+                  aiModelsUsed: analysis.ai_models_used || [],
+                  adArchiveId: analyzedAd.ad_archive_id
+                })},
+                status = 'completed',
+                completed_at = NOW(),
+                updated_at = NOW()
+              WHERE id = ${jobId}
+            `;
+            
+            console.log(`✅ Stored analysis for ad ${analyzedAd.ad_archive_id} (${analyzedAd.contentType})`);
+          } catch (storeError) {
+            console.error(`❌ Failed to store analysis for ad ${analyzedAd.ad_archive_id}:`, storeError);
+          }
+        }
+
+        console.log(`✅ Real AI analysis completed for job: ${jobId}`);
 
         return res.status(200).json({
           success: true,
-          message: 'AI analysis test completed successfully',
+          message: 'Real AI analysis completed successfully',
           jobId: jobId,
-          testData: {
-            summary: 'API: AI analysis triggered successfully',
-            content_type: 'api-test'
+          results: {
+            totalProcessed: analysisResults.stats.processed,
+            contentTypes: {
+              textOnly: analysisResults.stats.textOnly,
+              textWithImage: analysisResults.stats.textWithImage,
+              textWithVideo: analysisResults.stats.textWithVideo,
+              mixed: analysisResults.stats.mixed
+            },
+            skipped: analysisResults.stats.skippedLargeVideos,
+            errors: analysisResults.stats.errors,
+            adsAnalyzed: allAnalyzedAds.length
           },
           timestamp: new Date().toISOString()
         });
