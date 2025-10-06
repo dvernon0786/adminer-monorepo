@@ -1407,6 +1407,65 @@ module.exports = async function handler(req, res) {
       path: path,
       method: req.method
     });
+  } else if (path === '/api/ai-analysis') {
+    // AI ANALYSIS ENDPOINT - Phase 1: Simple test implementation
+    try {
+      console.log('🤖 AI Analysis endpoint hit:', { method: req.method, path });
+      
+      if (req.method === 'POST') {
+        const { jobId } = req.body;
+        
+        if (!jobId) {
+          return res.status(400).json({
+            success: false,
+            error: 'Missing required field: jobId'
+          });
+        }
+
+        console.log(`🤖 Processing AI analysis for job: ${jobId}`);
+
+        // Phase 1: Simple test - prove the endpoint works
+        const { neon } = require('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL);
+
+        // Update job with test AI analysis data
+        await sql`
+          UPDATE jobs 
+          SET 
+            summary = 'API: AI analysis triggered successfully',
+            content_type = 'api-test',
+            updated_at = NOW()
+          WHERE id = ${jobId}
+        `;
+
+        console.log(`✅ AI analysis test completed for job: ${jobId}`);
+
+        return res.status(200).json({
+          success: true,
+          message: 'AI analysis test completed successfully',
+          jobId: jobId,
+          testData: {
+            summary: 'API: AI analysis triggered successfully',
+            content_type: 'api-test'
+          },
+          timestamp: new Date().toISOString()
+        });
+
+      } else {
+        return res.status(405).json({ 
+          success: false, 
+          error: 'Method not allowed' 
+        });
+      }
+    } catch (error) {
+      console.error('❌ AI Analysis endpoint error:', error);
+      return res.status(500).json({
+        success: false,
+        error: 'AI analysis failed',
+        message: error.message,
+        timestamp: new Date().toISOString()
+      });
+    }
   } else if (path === '/api/dodo/checkout') {
     try {
       console.log('🔗 DODO_CHECKOUT_CONFIGURED_URLS_V5', {
@@ -1587,7 +1646,7 @@ module.exports = async function handler(req, res) {
     res.status(200).json({ 
       success: true, 
       message: 'Consolidated API endpoint working',
-      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats', '/api/organizations', '/api/dodo/checkout'],
+      availableEndpoints: ['/api/test', '/api/inngest', '/api/jobs', '/api/health', '/api/webhook', '/api/apify/health', '/api/apify/webhook', '/api/quota', '/api/analyses/stats', '/api/organizations', '/api/dodo/checkout', '/api/ai-analysis'],
       timestamp: new Date().toISOString()
     });
   }
