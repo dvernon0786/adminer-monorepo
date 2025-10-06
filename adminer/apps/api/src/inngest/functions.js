@@ -36,12 +36,12 @@ const jobCreatedFunction = inngest.createFunction(
     let organization;
     
     const orgResult = await database.query(`
-      INSERT INTO orgs (id, name, plan, quota_limit, quota_used, created_at, updated_at) 
-      VALUES ($1, $2, 'free', 10, 0, NOW(), NOW())
-      ON CONFLICT (id) DO UPDATE SET 
+      INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at) 
+      VALUES (gen_random_uuid(), $1, $2, 'free', 10, 0, NOW(), NOW())
+      ON CONFLICT (clerk_org_id) DO UPDATE SET 
         updated_at = NOW(),
         name = EXCLUDED.name
-      RETURNING id, name, quota_used, quota_limit
+      RETURNING id, clerk_org_id, name, quota_used, quota_limit
     `, [orgId, `Organization ${orgId}`]);
     
     if (!orgResult || !Array.isArray(orgResult) || orgResult.length === 0) {
@@ -49,7 +49,7 @@ const jobCreatedFunction = inngest.createFunction(
     }
     
     organization = orgResult[0];
-    console.log(`✅ Organization ready: ${organization.id}`);
+    console.log(`✅ Organization ready: ${organization.id} (${organization.clerk_org_id})`);
       
     // Step 2: Create job record with "queued" status
     await database.query(`
