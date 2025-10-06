@@ -36,12 +36,12 @@ const jobCreatedFunction = inngest.createFunction(
     let organization;
     
     const orgResult = await database.query(`
-      INSERT INTO organizations (id, clerk_org_id, name, plan, quota_limit, quota_used, created_at, updated_at) 
-      VALUES (gen_random_uuid(), $1, $2, 'free', 10, 0, NOW(), NOW())
-      ON CONFLICT (clerk_org_id) DO UPDATE SET 
+      INSERT INTO orgs (id, name, plan, quota_limit, quota_used, created_at, updated_at) 
+      VALUES ($1, $2, 'free', 10, 0, NOW(), NOW())
+      ON CONFLICT (id) DO UPDATE SET 
         updated_at = NOW(),
         name = EXCLUDED.name
-      RETURNING id, clerk_org_id, name, quota_used, quota_limit
+      RETURNING id, name, quota_used, quota_limit
     `, [orgId, `Organization ${orgId}`]);
     
     if (!orgResult || !Array.isArray(orgResult) || orgResult.length === 0) {
@@ -49,7 +49,7 @@ const jobCreatedFunction = inngest.createFunction(
     }
     
     organization = orgResult[0];
-    console.log(`✅ Organization ready: ${organization.id} (${organization.clerk_org_id})`);
+    console.log(`✅ Organization ready: ${organization.id}`);
       
     // Step 2: Create job record with "queued" status
     await database.query(`
@@ -107,9 +107,9 @@ const jobCreatedFunction = inngest.createFunction(
     const adsScraped = scrapeResults.dataExtracted || 0;
     try {
       await database.query(`
-        UPDATE organizations 
+        UPDATE orgs 
         SET quota_used = quota_used + $1, updated_at = NOW() 
-        WHERE clerk_org_id = $2
+        WHERE id = $2
       `, [adsScraped, orgId]);
       
       console.log(`✅ Quota updated for organization: ${orgId} (${adsScraped} ads consumed)`);
