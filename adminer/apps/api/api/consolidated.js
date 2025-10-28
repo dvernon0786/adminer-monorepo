@@ -234,6 +234,9 @@ async function loadInngest() {
   return inngest;
 }
 
+// Also expose the client at module level for direct use
+const { inngest: inngestModule } = require('../src/inngest/client.js');
+
 module.exports = async function handler(req, res) {
   // Set CORS headers
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -1547,9 +1550,8 @@ module.exports = async function handler(req, res) {
         
         // Send Inngest event instead of processing synchronously
         try {
-          const { inngest } = await loadInngest();
-          
-          await inngest.send({
+          // Use the module-level client directly
+          await inngestModule.send({
             name: 'ai/analyze.start',
             data: {
               jobId: jobId,
