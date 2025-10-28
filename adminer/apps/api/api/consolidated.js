@@ -433,15 +433,79 @@ module.exports = async function handler(req, res) {
         });
       }
     } else if (req.method === 'GET') {
-      // Job listing endpoint
-      res.status(200).json({
-        success: true,
-        data: {
-          jobs: [],
-          total: 0,
-          limit: 50
+      // Job listing endpoint with real database query
+      try {
+        const userId = req.headers['x-user-id'];
+        const workspaceId = req.headers['x-workspace-id'] || userId;
+        
+        if (!userId) {
+          return res.status(400).json({
+            success: false,
+            error: 'Missing user ID',
+            message: 'User ID required to fetch jobs',
+            requiresUser: true
+          });
         }
-      });
+        
+        console.log(`📋 Fetching jobs for user: ${userId}`);
+        
+        // Get organization ID from userId
+        const { neon } = require('@neondatabase/serverless');
+        const sql = neon(process.env.DATABASE_URL);
+        
+        const orgResult = await sql`
+          SELECT id FROM organizations WHERE clerk_org_id = ${userId} LIMIT 1
+        `;
+        
+        if (!orgResult || orgResult.length === 0) {
+          return res.status(200).json({
+            success: true,
+            data: {
+              jobs: [],
+              total: 0,
+              message: 'No organization found'
+            }
+          });
+        }
+        
+        const orgId = orgResult[0].id;
+        
+        // Get all jobs for this organization with AI analysis fields
+        const jobsResult = await sql`
+          SELECT 
+            id, org_id, type, status, input, 
+            summary, content_type, text_analysis, image_analysis, 
+            video_analysis, rewritten_ad_copy, key_insights, 
+            competitor_strategy, recommendations,
+            created_at, completed_at, updated_at
+          FROM jobs 
+          WHERE org_id = ${orgId}
+          ORDER BY created_at DESC 
+          LIMIT 50
+        `;
+        
+        console.log(`✅ Found ${jobsResult.length} jobs for user: ${userId}`);
+        
+        res.status(200).json({
+          success: true,
+          data: {
+            jobs: jobsResult || [],
+            total: jobsResult.length,
+            userId,
+            orgId
+          },
+          source: 'real_database',
+          timestamp: new Date().toISOString()
+        });
+        
+      } catch (error) {
+        console.error('Jobs list error:', error);
+        res.status(500).json({
+          success: false,
+          error: 'Failed to fetch jobs',
+          message: error.message
+        });
+      }
     } else {
       res.status(405).json({ error: 'Method not allowed' });
     }
@@ -1469,10 +1533,7 @@ module.exports = async function handler(req, res) {
 
         console.log(`📊 Raw data parsed, ads count: ${scrapedData.data?.length || 0}`);
 
-        // Step 3: Process with real AI analysis
-        const { UnifiedApifyAnalyzer } = require('../src/lib/unified-ai-analyzer.js');
-        const analyzer = new UnifiedApifyAnalyzer();
-        
+        // Trigger AI analysis via Inngest (async, no timeout)
         const adsData = scrapedData.data || scrapedData.results || [];
         if (!Array.isArray(adsData) || adsData.length === 0) {
           return res.status(400).json({
@@ -1482,94 +1543,42 @@ module.exports = async function handler(req, res) {
           });
         }
 
-        console.log(`🔄 Processing ${adsData.length} ads with real AI analysis...`);
+        console.log(`🔄 Queuing AI analysis for ${adsData.length} ads via Inngest...`);
         
-        // Process with AI analysis (without step parameter for direct API call)
-        const analysisResults = await analyzer.processApifyData(adsData);
-        
-        console.log(`✅ AI analysis completed:`, {
-          processed: analysisResults.stats.processed,
-          textOnly: analysisResults.stats.textOnly,
-          textWithImage: analysisResults.stats.textWithImage,
-          textWithVideo: analysisResults.stats.textWithVideo,
-          mixed: analysisResults.stats.mixed,
-          errors: analysisResults.stats.errors
-        });
-
-        // Step 4: Store results in database
-        const { results } = analysisResults;
-        const allAnalyzedAds = [
-          ...results.textOnly,
-          ...results.textWithImage, 
-          ...results.textWithVideo,
-          ...results.mixed
-        ];
-
-        console.log(`💾 Storing ${allAnalyzedAds.length} analyzed ads in database...`);
-
-        // Update job with AI analysis results
-        for (const analyzedAd of allAnalyzedAds) {
-          try {
-            const analysis = analyzedAd.analysis;
-            
-            // Extract key insights from analysis
-            const summary = analysis.step2_strategic_analysis?.summary || 
-                           analysis.summary || 
-                           'AI analysis completed';
-            
-            const rewrittenCopy = analysis.step2_strategic_analysis?.rewritten_ad_copy || 
-                                 analysis.rewritten_ad_copy || 
-                                 'No rewritten copy available';
-
-            await sql`
-              UPDATE jobs 
-              SET 
-                content_type = ${analyzedAd.contentType},
-                text_analysis = ${JSON.stringify(analysis.step2_strategic_analysis || analysis)},
-                image_analysis = ${JSON.stringify(analysis.step1_image_analysis || null)},
-                video_analysis = ${JSON.stringify(analysis.step1_video_analysis || null)},
-                combined_analysis = ${JSON.stringify(analysis.combined_analysis || null)},
-                summary = ${summary},
-                rewritten_ad_copy = ${rewrittenCopy},
-                key_insights = ${JSON.stringify(analysis.step2_strategic_analysis?.key_insights || [])},
-                competitor_strategy = ${analysis.step2_strategic_analysis?.competitor_strategy || ''},
-                recommendations = ${JSON.stringify(analysis.step2_strategic_analysis?.recommendations || [])},
-                processing_stats = ${JSON.stringify({
-                  contentType: analyzedAd.contentType,
-                  processingTime: new Date().toISOString(),
-                  aiModelsUsed: analysis.ai_models_used || [],
-                  adArchiveId: analyzedAd.ad_archive_id
-                })},
-                status = 'completed',
-                completed_at = NOW(),
-                updated_at = NOW()
-              WHERE id = ${jobId}
-            `;
-            
-            console.log(`✅ Stored analysis for ad ${analyzedAd.ad_archive_id} (${analyzedAd.contentType})`);
-          } catch (storeError) {
-            console.error(`❌ Failed to store analysis for ad ${analyzedAd.ad_archive_id}:`, storeError);
-          }
+        // Send Inngest event instead of processing synchronously
+        try {
+          const { inngest } = await loadInngest();
+          
+          await inngest.send({
+            name: 'ai/analyze.start',
+            data: {
+              jobId: jobId,
+              orgId: job.org_id,
+              scraped_data: scrapedData,
+              keyword: job.input?.keyword || 'unknown'
+            }
+          });
+          
+          console.log(`✅ AI analysis queued for job: ${jobId}`);
+        } catch (inngestError) {
+          console.error('❌ Failed to trigger AI analysis:', inngestError);
+          return res.status(500).json({
+            success: false,
+            error: 'Failed to queue AI analysis',
+            message: inngestError.message
+          });
         }
-
-        console.log(`✅ Real AI analysis completed for job: ${jobId}`);
+        
+        // AI analysis is now handled asynchronously via Inngest
+        console.log(`✅ AI analysis queued successfully for job: ${jobId}`);
 
         return res.status(200).json({
           success: true,
-          message: 'Real AI analysis completed successfully',
+          message: 'AI analysis queued successfully',
           jobId: jobId,
-          results: {
-            totalProcessed: analysisResults.stats.processed,
-            contentTypes: {
-              textOnly: analysisResults.stats.textOnly,
-              textWithImage: analysisResults.stats.textWithImage,
-              textWithVideo: analysisResults.stats.textWithVideo,
-              mixed: analysisResults.stats.mixed
-            },
-            skipped: analysisResults.stats.skippedLargeVideos,
-            errors: analysisResults.stats.errors,
-            adsAnalyzed: allAnalyzedAds.length
-          },
+          adsQueued: adsData.length,
+          status: 'queued',
+          note: 'Analysis will be processed asynchronously by Inngest',
           timestamp: new Date().toISOString()
         });
 
