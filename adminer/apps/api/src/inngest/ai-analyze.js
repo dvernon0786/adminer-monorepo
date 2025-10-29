@@ -100,6 +100,12 @@ const aiAnalyze = inngest.createFunction(
         ...results.mixed
       ];
       
+      console.log(`📊 Preparing to store ${allAnalyzedAds.length} analyzed ads for job ${jobId}`);
+      
+      // Build comprehensive analysis object with all ads
+      const allAnalyses = [];
+      let primaryAnalysis = null;
+      
       for (const analyzedAd of allAnalyzedAds) {
         try {
           const analysis = analyzedAd.analysis || {};
@@ -113,38 +119,67 @@ const aiAnalyze = inngest.createFunction(
                                analysis.rewritten_ad_copy || 
                                'No rewritten copy available';
           
-          await sql`
-            UPDATE jobs 
-            SET 
-              content_type = ${analyzedAd.contentType},
-              text_analysis = ${JSON.stringify(analysis.step2_strategic_analysis || analysis)},
-              image_analysis = ${JSON.stringify(analysis.step1_image_analysis || null)},
-              video_analysis = ${JSON.stringify(analysis.step1_video_analysis || null)},
-              combined_analysis = ${JSON.stringify(analysis.combined_analysis || null)},
-              summary = ${summary},
-              rewritten_ad_copy = ${rewrittenCopy},
-              key_insights = ${JSON.stringify(analysis.step2_strategic_analysis?.key_insights || [])},
-              competitor_strategy = ${analysis.step2_strategic_analysis?.competitor_strategy || ''},
-              recommendations = ${JSON.stringify(analysis.step2_strategic_analysis?.recommendations || [])},
-              processing_stats = ${JSON.stringify({
-                contentType: analyzedAd.contentType,
-                processingTime: new Date().toISOString(),
-                aiModelsUsed: analysis.ai_models_used || [],
-                adArchiveId: analyzedAd.ad_archive_id
-              })},
-              status = 'completed',
-              completed_at = NOW(),
-              updated_at = NOW()
-            WHERE id = ${jobId}
-          `;
+          // Store each ad's analysis
+          const adAnalysis = {
+            adArchiveId: analyzedAd.ad_archive_id,
+            contentType: analyzedAd.contentType,
+            textAnalysis: analysis.step2_strategic_analysis || analysis,
+            imageAnalysis: analysis.step1_image_analysis || null,
+            videoAnalysis: analysis.step1_video_analysis || null,
+            combinedAnalysis: analysis.combined_analysis || null,
+            summary: summary,
+            rewrittenAdCopy: rewrittenCopy,
+            keyInsights: analysis.step2_strategic_analysis?.key_insights || [],
+            competitorStrategy: analysis.step2_strategic_analysis?.competitor_strategy || '',
+            recommendations: analysis.step2_strategic_analysis?.recommendations || [],
+            processingStats: {
+              contentType: analyzedAd.contentType,
+              processingTime: new Date().toISOString(),
+              aiModelsUsed: analysis.ai_models_used || [],
+              adArchiveId: analyzedAd.ad_archive_id
+            }
+          };
           
-          console.log(`✅ Stored analysis for ad ${analyzedAd.ad_archive_id} (${analyzedAd.contentType})`);
+          allAnalyses.push(adAnalysis);
+          
+          // Use first ad as primary for summary fields
+          if (!primaryAnalysis) {
+            primaryAnalysis = adAnalysis;
+          }
+          
+          console.log(`✅ Prepared analysis for ad ${analyzedAd.ad_archive_id} (${analyzedAd.contentType})`);
         } catch (storeError) {
-          console.error(`❌ Failed to store analysis for ad ${analyzedAd.ad_archive_id}:`, storeError);
+          console.error(`❌ Failed to prepare analysis for ad ${analyzedAd.ad_archive_id}:`, storeError);
         }
       }
       
-      console.log(`✅ All AI analysis results stored for job: ${jobId}`);
+      // Single UPDATE to store all analyses
+      if (primaryAnalysis) {
+        await sql`
+          UPDATE jobs 
+          SET 
+            content_type = ${primaryAnalysis.contentType},
+            text_analysis = ${JSON.stringify(primaryAnalysis.textAnalysis)},
+            image_analysis = ${JSON.stringify(primaryAnalysis.imageAnalysis)},
+            video_analysis = ${JSON.stringify(primaryAnalysis.videoAnalysis)},
+            combined_analysis = ${JSON.stringify(primaryAnalysis.combinedAnalysis)},
+            summary = ${primaryAnalysis.summary},
+            rewritten_ad_copy = ${primaryAnalysis.rewrittenAdCopy},
+            key_insights = ${JSON.stringify(primaryAnalysis.keyInsights)},
+            competitor_strategy = ${primaryAnalysis.competitorStrategy},
+            recommendations = ${JSON.stringify(primaryAnalysis.recommendations)},
+            processing_stats = ${JSON.stringify(primaryAnalysis.processingStats)},
+            ai_analysis = ${JSON.stringify(allAnalyses)},
+            status = 'completed',
+            completed_at = NOW(),
+            updated_at = NOW()
+          WHERE id = ${jobId}
+        `;
+        
+        console.log(`✅ Stored ${allAnalyses.length} AI analysis results for job: ${jobId}`);
+      } else {
+        console.error(`❌ No valid analysis data to store for job: ${jobId}`);
+      }
       
       return allAnalyzedAds.length;
     });
