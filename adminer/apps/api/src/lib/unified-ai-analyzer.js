@@ -300,9 +300,36 @@ Please analyze and return a JSON object with the following structure:
 Ad Data:
 ${JSON.stringify(adData, null, 2)}
 
-Content Type: ${contentType}`;
+Content Type: ${contentType}
 
-    return await this.callOpenAI('gpt-4o-mini', prompt);
+Return your response as a JSON object with this exact structure:
+{
+  "summary": "Strategic analysis of the ad approach and effectiveness",
+  "rewrittenAdCopy": "Improved version optimized for conversion",
+  "keyInsights": ["insight1", "insight2", "insight3"],
+  "competitorStrategy": "Overall strategy assessment",
+  "recommendations": ["rec1", "rec2", "rec3"]
+}`;
+
+    const result = await this.callOpenAI('gpt-4o-mini', prompt);
+    
+    // If result is already an object (from callOpenAI JSON parsing), return it
+    if (typeof result === 'object' && result !== null) {
+      return result;
+    }
+    
+    // Otherwise it's a string, try to parse
+    try {
+      return JSON.parse(result);
+    } catch {
+      return {
+        summary: result,
+        rewrittenAdCopy: result,
+        keyInsights: ["Analysis completed"],
+        competitorStrategy: "Unknown",
+        recommendations: ["Review manually"]
+      };
+    }
   }
 
   /**
@@ -357,7 +384,30 @@ Content Type: ${contentType}`;
       throw new Error('Invalid OpenAI response structure');
     }
     
-    return data.choices[0].message.content;
+    const content = data.choices[0].message.content;
+    
+    // Try to parse as JSON if it looks like JSON
+    try {
+      // Check if content looks like JSON
+      if (content.trim().startsWith('{') && content.trim().endsWith('}')) {
+        return JSON.parse(content);
+      }
+      // If not JSON, return as-is (fallback)
+      return {
+        summary: content,
+        keyInsights: ["Analysis completed"],
+        recommendations: ["Review content"],
+        rawContent: content
+      };
+    } catch (parseError) {
+      // If JSON parse fails, return the content wrapped
+      return {
+        summary: content,
+        keyInsights: ["Analysis completed"],
+        recommendations: ["Review content"],
+        rawContent: content
+      };
+    }
   }
 
   /**
