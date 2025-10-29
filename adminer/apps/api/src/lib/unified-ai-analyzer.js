@@ -309,6 +309,11 @@ Content Type: ${contentType}`;
    * OpenAI API integration
    */
   async callOpenAI(model, prompt, imageUrl = null) {
+    // Validate API key
+    if (!process.env.OPENAI_API_KEY) {
+      throw new Error('OPENAI_API_KEY environment variable not configured');
+    }
+
     const messages = [{
       role: "user",
       content: imageUrl ? [
@@ -330,7 +335,28 @@ Content Type: ${contentType}`;
       })
     });
 
+    // Check if response is ok
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ OpenAI API error (${response.status}):`, errorData);
+      
+      if (response.status === 401) {
+        throw new Error('OpenAI API key is invalid or expired');
+      } else if (response.status === 429) {
+        throw new Error('OpenAI rate limit exceeded - please wait');
+      } else {
+        throw new Error(`OpenAI API error (${response.status}): ${errorData.error?.message || response.statusText}`);
+      }
+    }
+
     const data = await response.json();
+    
+    // Validate response structure
+    if (!data.choices || !data.choices[0] || !data.choices[0].message) {
+      console.error('❌ Invalid OpenAI response structure:', data);
+      throw new Error('Invalid OpenAI response structure');
+    }
+    
     return data.choices[0].message.content;
   }
 
@@ -338,6 +364,11 @@ Content Type: ${contentType}`;
    * Gemini API integration for video analysis
    */
   async callGemini(prompt, videoUrl) {
+    // Validate API key
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error('GEMINI_API_KEY environment variable not configured');
+    }
+
     const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
@@ -356,7 +387,28 @@ Content Type: ${contentType}`;
       })
     });
 
+    // Check if response is ok
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error(`❌ Gemini API error (${response.status}):`, errorData);
+      
+      if (response.status === 401) {
+        throw new Error('Gemini API key is invalid or expired');
+      } else if (response.status === 429) {
+        throw new Error('Gemini rate limit exceeded - please wait');
+      } else {
+        throw new Error(`Gemini API error (${response.status}): ${errorData.error?.message || response.statusText}`);
+      }
+    }
+
     const data = await response.json();
+    
+    // Validate response structure
+    if (!data.candidates || !data.candidates[0] || !data.candidates[0].content) {
+      console.error('❌ Invalid Gemini response structure:', data);
+      throw new Error('Invalid Gemini response structure');
+    }
+    
     return data.candidates[0].content.parts[0].text;
   }
 

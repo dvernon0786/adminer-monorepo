@@ -59,7 +59,12 @@ const aiAnalyze = inngest.createFunction(
         throw new Error('No ads data found in scraped data');
       }
       
-      return ads;
+      // CONSERVATIVE FIX: Limit to 5 ads to prevent timeout
+      const maxAds = 5;
+      const limitedAds = ads.slice(0, maxAds);
+      console.log(`🎯 Processing ${limitedAds.length} ads (limited from ${ads.length} total for safety)`);
+      
+      return limitedAds;
     });
     
     // Step 3: Process with real AI analysis using UnifiedApifyAnalyzer
