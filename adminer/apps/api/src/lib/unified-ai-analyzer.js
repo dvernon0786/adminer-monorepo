@@ -107,12 +107,12 @@ class UnifiedApifyAnalyzer {
   }
 
   /**
-   * Main processing function - handles complete pipeline with 20-second delays
+   * Main processing function - handles complete pipeline with 8-second delays
    */
   async processApifyData(adsData, step = null) {
-    console.log(`🔄 Processing ${adsData.length} ads from Apify with 20-second delays between API calls...`);
+    console.log(`🔄 Processing ${adsData.length} ads from Apify with 8-second delays between API calls...`);
     
-    // Use delay processor for 20-second delay processing
+    // Use delay processor for 8-second delay processing
     const { DelayProcessor } = require('./delay-processor.js');
     const delayProcessor = new DelayProcessor();
     

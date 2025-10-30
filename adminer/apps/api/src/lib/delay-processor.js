@@ -8,16 +8,17 @@ const { rateLimiter } = require('./rate-limiter.js');
 
 class DelayProcessor {
   constructor() {
-    this.delayBetweenCalls = 20000; // 20 seconds between API calls
+    this.delayBetweenCalls = 8000; // 8 seconds between API calls (reduced from 20s to prevent timeout)
     this.maxRetries = 3;
   }
 
   /**
-   * Process ads with 20-second delays between API calls
+   * Process ads with 8-second delays between API calls (reduced from 20s to prevent timeout)
    * Uses Inngest step.sleep for efficient delay management
    */
   async processAdsWithDelays(adsData, analyzer, step = null) {
-    console.log(`🔄 Processing ${adsData.length} ads with 20-second delays between API calls`);
+    const delaySeconds = Math.ceil(this.delayBetweenCalls / 1000);
+    console.log(`🔄 Processing ${adsData.length} ads with ${delaySeconds}-second delays between API calls`);
     
     const results = {
       textOnly: [],
@@ -60,11 +61,12 @@ class DelayProcessor {
         // Record the API usage
         this.recordUsage(contentType, analysisResult);
         
-        // 20-second delay between ads using Inngest step.sleep
+        // 8-second delay between ads using Inngest step.sleep (reduced from 20s to prevent timeout)
         if (i < adsData.length - 1) {
-          console.log(`⏳ Waiting 20 seconds before processing next ad...`);
+          const delaySeconds = Math.ceil(this.delayBetweenCalls / 1000);
+          console.log(`⏳ Waiting ${delaySeconds} seconds before processing next ad...`);
           if (step) {
-            await step.sleep(`rate-limit-spacing-${i}`, "20s");
+            await step.sleep(`rate-limit-spacing-${i}`, `${delaySeconds}s`);
           } else {
             await this.sleep(this.delayBetweenCalls);
           }

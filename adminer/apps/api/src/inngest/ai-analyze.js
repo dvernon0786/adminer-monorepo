@@ -59,10 +59,11 @@ const aiAnalyze = inngest.createFunction(
         throw new Error('No ads data found in scraped data');
       }
       
-      // CONSERVATIVE FIX: Limit to 5 ads to prevent timeout
-      const maxAds = 5;
+      // TIMEOUT FIX: Limit to 2 ads per invocation to prevent FUNCTION_INVOCATION_TIMEOUT
+      // With 5-10s delays and API processing, 2 ads = ~20-30s total, well under limits
+      const maxAds = 2;
       const limitedAds = ads.slice(0, maxAds);
-      console.log(`🎯 Processing ${limitedAds.length} ads (limited from ${ads.length} total for safety)`);
+      console.log(`🎯 Processing ${limitedAds.length} ads (limited from ${ads.length} total to prevent timeout)`);
       
       return limitedAds;
     });
@@ -153,33 +154,47 @@ const aiAnalyze = inngest.createFunction(
         }
       }
       
-      // Single UPDATE to store all analyses
-      if (primaryAnalysis) {
+      // Validate that at least one ad was successfully analyzed
+      if (!primaryAnalysis || allAnalyses.length === 0) {
+        const errorMsg = `All ads failed AI analysis for job: ${jobId}`;
+        console.error(`❌ ${errorMsg}`);
+        
+        // Update job status to failed
         await sql`
           UPDATE jobs 
           SET 
-            content_type = ${primaryAnalysis.contentType},
-            text_analysis = ${JSON.stringify(primaryAnalysis.textAnalysis)},
-            image_analysis = ${JSON.stringify(primaryAnalysis.imageAnalysis)},
-            video_analysis = ${JSON.stringify(primaryAnalysis.videoAnalysis)},
-            combined_analysis = ${JSON.stringify(primaryAnalysis.combinedAnalysis)},
-            summary = ${primaryAnalysis.summary},
-            rewritten_ad_copy = ${primaryAnalysis.rewrittenAdCopy},
-            key_insights = ${JSON.stringify(primaryAnalysis.keyInsights)},
-            competitor_strategy = ${primaryAnalysis.competitorStrategy},
-            recommendations = ${JSON.stringify(primaryAnalysis.recommendations)},
-            processing_stats = ${JSON.stringify(primaryAnalysis.processingStats)},
-            ai_analysis = ${JSON.stringify(allAnalyses)},
-            status = 'completed',
-            completed_at = NOW(),
+            status = 'failed',
+            error = ${errorMsg},
             updated_at = NOW()
           WHERE id = ${jobId}
         `;
         
-        console.log(`✅ Stored ${allAnalyses.length} AI analysis results for job: ${jobId}`);
-      } else {
-        console.error(`❌ No valid analysis data to store for job: ${jobId}`);
+        throw new Error(errorMsg);
       }
+      
+      // Single UPDATE to store all analyses
+      await sql`
+        UPDATE jobs 
+        SET 
+          content_type = ${primaryAnalysis.contentType},
+          text_analysis = ${JSON.stringify(primaryAnalysis.textAnalysis)},
+          image_analysis = ${JSON.stringify(primaryAnalysis.imageAnalysis)},
+          video_analysis = ${JSON.stringify(primaryAnalysis.videoAnalysis)},
+          combined_analysis = ${JSON.stringify(primaryAnalysis.combinedAnalysis)},
+          summary = ${primaryAnalysis.summary},
+          rewritten_ad_copy = ${primaryAnalysis.rewrittenAdCopy},
+          key_insights = ${JSON.stringify(primaryAnalysis.keyInsights)},
+          competitor_strategy = ${primaryAnalysis.competitorStrategy},
+          recommendations = ${JSON.stringify(primaryAnalysis.recommendations)},
+          processing_stats = ${JSON.stringify(primaryAnalysis.processingStats)},
+          ai_analysis = ${JSON.stringify(allAnalyses)},
+          status = 'completed',
+          completed_at = NOW(),
+          updated_at = NOW()
+        WHERE id = ${jobId}
+      `;
+      
+      console.log(`✅ Stored ${allAnalyses.length} AI analysis results for job: ${jobId}`);
       
       return allAnalyzedAds.length;
     });
