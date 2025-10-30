@@ -156,10 +156,24 @@ const aiAnalyze = inngest.createFunction(
       
       // Validate that at least one ad was successfully analyzed
       if (!primaryAnalysis || allAnalyses.length === 0) {
-        const errorMsg = `All ads failed AI analysis for job: ${jobId}`;
-        console.error(`❌ ${errorMsg}`);
+        // Build detailed error message with per-ad error information
+        const errorDetails = analysisResults.results?.errors || [];
+        const errorSummary = errorDetails.map(err => {
+          const status = err.status ? ` (HTTP ${err.status})` : '';
+          const contentType = err.contentType ? ` [${err.contentType}]` : '';
+          return `  - Ad ${err.ad_archive_id || 'unknown'}${contentType}: ${err.error}${status}`;
+        }).join('\n');
         
-        // Update job status to failed
+        const errorMsg = `All ${adsData.length} ads failed AI analysis for job: ${jobId}\n\nFailed ads:\n${errorSummary || '  - No error details available'}`;
+        console.error(`❌ ${errorMsg}`);
+        console.error(`📊 Error breakdown:`, {
+          totalAds: adsData.length,
+          successful: allAnalyses.length,
+          failed: errorDetails.length,
+          errors: errorDetails
+        });
+        
+        // Update job status to failed with detailed error
         await sql`
           UPDATE jobs 
           SET 

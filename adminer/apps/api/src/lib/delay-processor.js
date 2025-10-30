@@ -73,12 +73,19 @@ class DelayProcessor {
         }
         
       } catch (error) {
-        console.error(`❌ Error processing ad ${ad.ad_archive_id}:`, error.message);
-        results.errors.push({
+        // Enhanced error logging with full details
+        const errorInfo = {
           ad_archive_id: ad.ad_archive_id,
           error: error.message,
-          contentType: analyzer.detectContentType(ad)
-        });
+          contentType: analyzer.detectContentType(ad),
+          errorDetails: error.errorDetails || [],
+          stack: error.stack?.substring(0, 500), // Limit stack trace length
+          status: error.status || error.response?.status,
+          name: error.name
+        };
+        
+        console.error(`❌ Error processing ad ${ad.ad_archive_id}:`, errorInfo);
+        results.errors.push(errorInfo);
       }
     }
 
@@ -123,6 +130,7 @@ class DelayProcessor {
    */
   async processSingleAd(ad, analyzer, contentType) {
     let lastError;
+    const errorDetails = [];
     
     for (let attempt = 1; attempt <= this.maxRetries; attempt++) {
       try {
@@ -151,7 +159,32 @@ class DelayProcessor {
         
       } catch (error) {
         lastError = error;
-        console.warn(`⚠️ Attempt ${attempt}/${this.maxRetries} failed for ad ${ad.ad_archive_id}: ${error.message}`);
+        
+        // Enhanced error logging with full details
+        const errorDetail = {
+          attempt,
+          error: error.message,
+          stack: error.stack,
+          name: error.name,
+          status: error.status || error.response?.status,
+          response: error.response ? {
+            status: error.response.status,
+            statusText: error.response.statusText,
+            data: error.response.data
+          } : null
+        };
+        errorDetails.push(errorDetail);
+        
+        console.error(`❌ Attempt ${attempt}/${this.maxRetries} failed for ad ${ad.ad_archive_id}:`, {
+          message: error.message,
+          status: error.status || error.response?.status,
+          name: error.name,
+          contentType
+        });
+        
+        if (error.stack) {
+          console.error(`   Stack trace: ${error.stack.substring(0, 500)}`);
+        }
         
         if (attempt < this.maxRetries) {
           // Exponential backoff
@@ -160,6 +193,13 @@ class DelayProcessor {
           await this.sleep(delay);
         }
       }
+    }
+    
+    // Attach error details to the error for better debugging
+    if (lastError) {
+      lastError.errorDetails = errorDetails;
+      lastError.adArchiveId = ad.ad_archive_id;
+      lastError.contentType = contentType;
     }
     
     throw lastError;

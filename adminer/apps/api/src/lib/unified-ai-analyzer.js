@@ -104,6 +104,34 @@ class UnifiedApifyAnalyzer {
       processed: 0,
       errors: 0
     };
+    
+    // Validate API keys on construction
+    this.validateAPIKeys();
+  }
+  
+  /**
+   * Validate API keys are configured
+   */
+  validateAPIKeys() {
+    const missingKeys = [];
+    
+    if (!process.env.OPENAI_API_KEY) {
+      missingKeys.push('OPENAI_API_KEY');
+    }
+    
+    // Gemini key is optional (only needed for video analysis)
+    if (!process.env.GEMINI_API_KEY) {
+      console.warn('⚠️ GEMINI_API_KEY not configured - video analysis will fail if attempted');
+    }
+    
+    if (missingKeys.length > 0) {
+      throw new Error(`Missing required API keys: ${missingKeys.join(', ')}`);
+    }
+    
+    // Basic validation that keys are not empty
+    if (process.env.OPENAI_API_KEY && process.env.OPENAI_API_KEY.trim().length === 0) {
+      throw new Error('OPENAI_API_KEY is empty');
+    }
   }
 
   /**
@@ -142,6 +170,41 @@ class UnifiedApifyAnalyzer {
     console.log(`❌ Errors: ${this.stats.errors}`);
 
     return { results, stats: this.stats };
+  }
+
+  /**
+   * Validate ad has analyzable content before processing
+   */
+  validateAdContent(ad) {
+    if (!ad || !ad.snapshot) {
+      throw new Error(`Ad ${ad.ad_archive_id || 'unknown'}: Missing snapshot field`);
+    }
+    
+    const hasText = ad.snapshot?.body?.text && ad.snapshot.body.text.trim().length > 0;
+    const hasImages = ad.snapshot?.images && 
+      ad.snapshot.images.length > 0 && 
+      ad.snapshot.images[0]?.original_image_url;
+    const hasVideos = ad.snapshot?.videos && 
+      ad.snapshot.videos.length > 0 &&
+      ad.snapshot.videos.some(v => v.video_url?.includes('https://video'));
+    
+    if (!hasText && !hasImages && !hasVideos) {
+      throw new Error(`Ad ${ad.ad_archive_id || 'unknown'}: No analyzable content (missing text, images, and videos)`);
+    }
+    
+    // Additional validation for specific content types
+    if (hasImages && !ad.snapshot.images[0]?.original_image_url) {
+      throw new Error(`Ad ${ad.ad_archive_id || 'unknown'}: Image array exists but first image URL is missing`);
+    }
+    
+    if (hasVideos) {
+      const validVideoUrls = ad.snapshot.videos.filter(v => v.video_url?.includes('https://video'));
+      if (validVideoUrls.length === 0) {
+        throw new Error(`Ad ${ad.ad_archive_id || 'unknown'}: Video array exists but no valid video URLs found`);
+      }
+    }
+    
+    return true; // Content is valid
   }
 
   /**
@@ -195,8 +258,16 @@ class UnifiedApifyAnalyzer {
    * Text-only analysis: Direct strategic analysis
    */
   async analyzeTextOnly(ad) {
+    // Validate content before processing
+    this.validateAdContent(ad);
+    
+    const text = ad.snapshot?.body?.text;
+    if (!text || text.trim().length === 0) {
+      throw new Error(`Ad ${ad.ad_archive_id}: Text content is empty or missing`);
+    }
+    
     const adData = {
-      text: ad.snapshot?.body?.text,
+      text: text,
       title: ad.snapshot?.title,
       cta_text: ad.snapshot?.cta_text,
       page_name: ad.snapshot?.page_name,
@@ -210,7 +281,13 @@ class UnifiedApifyAnalyzer {
    * Text + Image analysis: 2-step process
    */
   async analyzeTextWithImage(ad) {
+    // Validate content before processing
+    this.validateAdContent(ad);
+    
     const imageUrl = ad.snapshot.images[0]?.original_image_url;
+    if (!imageUrl) {
+      throw new Error(`Ad ${ad.ad_archive_id}: Image URL is missing`);
+    }
     
     // Step 1: Image Analysis (GPT-4o)
     const imagePrompt = `${IMAGE_ANALYSIS_STEP1_PROMPT}
@@ -250,9 +327,20 @@ Please analyze and return a JSON object with the following structure:
    * Text + Video analysis: 2-step process
    */
   async analyzeTextWithVideo(ad) {
+    // Validate content before processing
+    this.validateAdContent(ad);
+    
+    if (!process.env.GEMINI_API_KEY) {
+      throw new Error(`Ad ${ad.ad_archive_id}: GEMINI_API_KEY not configured - cannot analyze video`);
+    }
+    
     const videoUrls = ad.snapshot.videos
       .filter(v => v.video_url?.includes('https://video'))
       .map(v => v.video_url);
+    
+    if (videoUrls.length === 0) {
+      throw new Error(`Ad ${ad.ad_archive_id}: No valid video URLs found`);
+    }
 
     // Step 1: Video Analysis (Gemini)
     const videoPrompt = `${VIDEO_ANALYSIS_STEP1_PROMPT}
@@ -419,7 +507,7 @@ Return your response as a JSON object with this exact structure:
       throw new Error('GEMINI_API_KEY environment variable not configured');
     }
 
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
+    const response = await fetch(`https://generativelanguage.googleapis.com/v1/models/gemini-2.5-flash:generateContent?key=${process.env.GEMINI_API_KEY}`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -524,7 +612,7 @@ function extractRecommendations(analysis) {
 function getAIModelsUsed(contentType) {
   switch (contentType) {
     case 'text_with_image': return ['gpt-4o', 'gpt-4o-mini'];
-    case 'text_with_video': return ['gemini-1.5-flash', 'gpt-4o-mini'];
+    case 'text_with_video': return ['gemini-2.5-flash', 'gpt-4o-mini'];
     default: return ['gpt-4o-mini'];
   }
 }

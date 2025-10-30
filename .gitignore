@@ -7,3 +7,4 @@ adminer/apps/web/dist/
 adminer/apps/api/public/assets/
 adminer/apps/api/public/clerk-runtime/
 .bypass.log
+.env.local
